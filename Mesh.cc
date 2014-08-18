@@ -378,7 +378,39 @@ template<typename GridType> void Mesh::Create(typename GridType::ConstPtr grid,P
 			}
 		}
 	}
+	primType=PrimitiveType::QUADS;
+	UpdateGL();
+}
+void Mesh::Draw(bool colorEnabled){
+	if (mVertexBuffer > 0){
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glEnableClientState(GL_NORMAL_ARRAY);
+		glEnableClientState(GL_INDEX_ARRAY);
 
+		if (colorEnabled)glEnableClientState(GL_COLOR_ARRAY);
+		int vertexCount = points.size();
+
+		glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
+		glVertexPointer(3, GL_FLOAT, 0, 0);
+
+		if (colorEnabled){
+			glBindBuffer(GL_ARRAY_BUFFER, mColorBuffer);
+			glColorPointer(3, GL_FLOAT, 0, 0);
+		}
+
+		glBindBuffer(GL_ARRAY_BUFFER, mNormalBuffer);
+		glNormalPointer(GL_FLOAT, 0, 0);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,mIndexBuffer);
+		glDrawElements(GL_TRIANGLES, indexes.size(), GL_UNSIGNED_INT, NULL);
+
+		if (colorEnabled)glDisableClientState(GL_COLOR_ARRAY);
+		glDisableClientState(GL_INDEX_ARRAY);
+		glDisableClientState(GL_NORMAL_ARRAY);
+		glDisableClientState(GL_VERTEX_ARRAY);
+	}
+}
+void Mesh::UpdateGL(){
 	if (points.size() > 0) {
 		if (glIsBuffer(mVertexBuffer) == GL_TRUE)
 			glDeleteBuffers(1, &mVertexBuffer);
@@ -448,7 +480,6 @@ template<typename GridType> void Mesh::Create(typename GridType::ConstPtr grid,P
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 }
-
 Mesh::~Mesh() {
 	// TODO Auto-generated destructor stub
 }

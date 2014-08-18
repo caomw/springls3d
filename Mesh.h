@@ -29,6 +29,9 @@ class Mesh {
 		std::vector<openvdb::Index32> indexes;
 
 		Mesh();
+
+		static Mesh* Open(const std::string& file);
+		bool Save(const std::string& file);
 		template<typename GridType> void Create(typename GridType::ConstPtr grid,enum PrimitiveType primType);
 		virtual ~Mesh();
 	};

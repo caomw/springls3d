@@ -29,11 +29,12 @@ class Mesh {
 		std::vector<openvdb::Index32> indexes;
 		PrimitiveType primType;
 		Mesh();
-		void Draw(bool colorEnabled=false);
-		void UpdateGL();
-		static Mesh* Open(const std::string& file);
-		bool Save(const std::string& file);
-		template<typename GridType> void Create(typename GridType::ConstPtr grid,enum PrimitiveType primType);
+		void draw(bool colorEnabled=false);
+		void updateGL();
+		static Mesh* openMesh(const std::string& file);
+		static Mesh* openGrid(const std::string& file);
+		bool save(const std::string& file);
+		template<typename GridType> void create(typename GridType::Ptr grid,enum PrimitiveType primType);
 		virtual ~Mesh();
 	};
 }

@@ -10,6 +10,7 @@
 #include <openvdb/tools/VolumeToMesh.h>
 #include <openvdb/tree/LeafManager.h>
 #include <openvdb/math/Operators.h>
+#include <boost/smart_ptr.hpp>
 #include "ply_io.h"
 namespace imagesci {
 template<typename T> T clamp(T a,T min,T max){
@@ -71,7 +72,7 @@ PlyProperty faceProps[] = { // property information for a face
 Mesh::Mesh() :
 		mVertexBuffer(0), mNormalBuffer(0), mColorBuffer(0), mIndexBuffer(0),primType(PrimitiveType::TRIANGLES) {
 }
-bool Mesh::Save(const std::string& f){
+bool Mesh::save(const std::string& f){
 	int i, j, idx;
 	const char* fileName=f.c_str();
 	unsigned char  *pointColors=NULL;
@@ -173,7 +174,15 @@ bool Mesh::Save(const std::string& f){
 	close_ply(ply);
 	return true;
 }
-Mesh* Mesh::Open(const std::string& file){
+Mesh* Mesh::openGrid(const std::string& fileName){
+    openvdb::io::File file(fileName);
+      file.open();
+      openvdb::GridPtrVecPtr grids = file.getGrids();
+      Mesh* mesh=new Mesh();
+      GridBase::Ptr ptr=grids[0];
+      mesh->create<GridBase>(ptr,PrimitiveType::QUADS);
+}
+Mesh* Mesh::openMesh(const std::string& file){
 			int i, j, k;
 			int numPts = 0, numPolys = 0;
 
@@ -333,7 +342,7 @@ Mesh* Mesh::Open(const std::string& file){
 				return NULL;
 			}
 }
-template<typename GridType> void Mesh::Create(typename GridType::ConstPtr grid,PrimitiveType primType) {
+template<typename GridType> void Mesh::create(typename GridType::Ptr grid,PrimitiveType primType) {
 	using openvdb::Index64;
 	openvdb::tools::VolumeToMesh mesher(
 			grid->getGridClass() == openvdb::GRID_LEVEL_SET ? 0.0 : 0.01);
@@ -379,9 +388,9 @@ template<typename GridType> void Mesh::Create(typename GridType::ConstPtr grid,P
 		}
 	}
 	primType=PrimitiveType::QUADS;
-	UpdateGL();
+	updateGL();
 }
-void Mesh::Draw(bool colorEnabled){
+void Mesh::draw(bool colorEnabled){
 	if (mVertexBuffer > 0){
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glEnableClientState(GL_NORMAL_ARRAY);
@@ -410,7 +419,7 @@ void Mesh::Draw(bool colorEnabled){
 		glDisableClientState(GL_VERTEX_ARRAY);
 	}
 }
-void Mesh::UpdateGL(){
+void Mesh::updateGL(){
 	if (points.size() > 0) {
 		if (glIsBuffer(mVertexBuffer) == GL_TRUE)
 			glDeleteBuffers(1, &mVertexBuffer);

@@ -5,16 +5,16 @@
  *      Author: blake
  */
 
-#include "TrackingGrid.h"
+#include "SpringlGrid.h"
 
 namespace imagesci {
 
-TrackingGrid::TrackingGrid() {
+template<typename GridType> SpringlGrid<GridType>::SpringlGrid() {
 	// TODO Auto-generated constructor stub
 
 }
 
-TrackingGrid::~TrackingGrid() {
+template<typename GridType> SpringlGrid<GridType>::~SpringlGrid() {
 	// TODO Auto-generated destructor stub
 }
 

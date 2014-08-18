@@ -27,7 +27,7 @@ class Mesh {
 		std::vector<openvdb::Vec3s> colors;
 		std::vector<openvdb::Vec3s> normals;
 		std::vector<openvdb::Index32> indexes;
-
+		PrimitiveType primType;
 		Mesh();
 
 		static Mesh* Open(const std::string& file);

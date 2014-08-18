@@ -69,7 +69,7 @@ PlyProperty faceProps[] = { // property information for a face
 
 
 Mesh::Mesh() :
-		mVertexBuffer(0), mNormalBuffer(0), mColorBuffer(0), mIndexBuffer(0) {
+		mVertexBuffer(0), mNormalBuffer(0), mColorBuffer(0), mIndexBuffer(0),primType(PrimitiveType::TRIANGLES) {
 }
 bool Mesh::Save(const std::string& f){
 	int i, j, idx;
@@ -86,10 +86,10 @@ bool Mesh::Save(const std::string& f){
 
 	// compute colors, if any
 	int numPts=points.size();
-	int numPolys=indexes.size()/3;
 
+	int npts=(primType==PrimitiveType::TRIANGLES)?3:4;
+	int numPolys=indexes.size()/npts;
 	unsigned char* c;
-
 	if(colors.size()>0){
 		pointColors = c = new unsigned char[3*numPts];
 		for (i=0; i<numPts; i++){
@@ -116,8 +116,8 @@ bool Mesh::Save(const std::string& f){
 	ply_describe_property (ply, "face", &faceProps[0]);
 
 	// write a comment and an object information field
-	append_comment_ply(ply, "Intel Perceptual Computing generated PLY File");
-	append_obj_info_ply(ply, "3D Reconstruction");
+	append_comment_ply(ply, "PLY File");
+	append_obj_info_ply(ply, "ImageSci");
 
 	// complete the header
 	header_complete_ply(ply);
@@ -142,13 +142,13 @@ bool Mesh::Save(const std::string& f){
 		}
 		put_element_ply (ply, (void *) &vert);
 	}
-
 	// set up and write the face elements
 	plyFace face;
 	int verts[256];
 	face.verts = verts;
 	put_element_setup_ply(ply, "face");
-	int npts=3;
+
+
 	if(indexes.size()<numPolys){
 		for (int i=0;i<numPolys;i++){
 			for (j=0; j<npts; j++)
@@ -263,8 +263,6 @@ Mesh* Mesh::Open(const std::string& file){
 						ply_get_property(ply, elemName, &vertProps[4]);
 						ply_get_property(ply, elemName, &vertProps[5]);
 					}
-					int updateStep = std::max(numPts / 100, 1);
-
 					for (j = 0; j < numPts; j++)
 					{
 						get_element_ply(ply, &vertex);
@@ -292,21 +290,22 @@ Mesh* Mesh::Open(const std::string& file){
 						ply_get_property(ply, elemName, &faceProps[3]);
 						ply_get_property(ply, elemName, &faceProps[4]);
 					}
-
-					indexes.resize(numPolys * 3);
-					// grab all the face elements
-					int updateStep = std::max(numPolys / 100,1);
+					indexes.clear();
+					indexes.reserve(numPolys *3);
 					for (j = 0; j < numPolys; j++)
 					{
 
 						//grab and element from the file
 						face.verts = &verts[0];
 						get_element_ply(ply, &face);
-						//if(j%1000==0)std::cout << j << ":: " << (int)face.nverts<<std::endl;
 						for (k = 0; k<face.nverts; k++)
 						{
-							//if (j % 1000 == 0)std::cout << "-> " << face.verts[k] << std::endl;
-							indexes[3*j+k]=face.verts[k];
+							indexes.push_back(face.verts[k]);
+						}
+						if(face.nverts==3){
+							primType=PrimitiveType::TRIANGLES;
+						} else {
+							primType=PrimitiveType::QUADS;
 						}
 						if (intensityAvailable)
 						{

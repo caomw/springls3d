@@ -31,8 +31,8 @@
 								</option>
 								<option id="gnu.cpp.compiler.option.other.pic.2012626782" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" useByScannerDiscovery="false" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.compiler.option.dialect.std.1275973708" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.cpp.compiler.dialect.c++11" valueType="enumerated"/>
-								<option id="gnu.cpp.compiler.option.other.other.1271275428" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 " valueType="string"/>
-								<option id="gnu.cpp.compiler.option.include.paths.2095688111" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath"/>
+								<option id="gnu.cpp.compiler.option.other.other.1271275428" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -Wwrite-strings" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.include.paths.2095688111" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.761436541" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool command="gcc" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GCCErrorParser" id="cdt.managedbuild.tool.gnu.c.compiler.exe.debug.1689495079" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.debug">
@@ -43,6 +43,7 @@
 								</option>
 								<option id="gnu.c.compiler.option.misc.pic.424249364" name="Position Independent Code (-fPIC)" superClass="gnu.c.compiler.option.misc.pic" useByScannerDiscovery="false" value="true" valueType="boolean"/>
 								<option id="gnu.c.compiler.option.dialect.std.237040210" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.c11" valueType="enumerated"/>
+								<option id="gnu.c.compiler.option.misc.other.814835314" superClass="gnu.c.compiler.option.misc.other" value="-c -fmessage-length=0 -Wwrite-strings" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.587584579" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.debug.1230143460" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.debug"/>
@@ -114,7 +115,7 @@
 								</option>
 								<option id="gnu.cpp.compiler.option.other.pic.1178352333" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.compiler.option.debugging.other.426035632" name="Other debugging flags" superClass="gnu.cpp.compiler.option.debugging.other" value="" valueType="string"/>
-								<option id="gnu.cpp.compiler.option.other.other.1327063172" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -version" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.1327063172" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c -Wwrite-strings" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.11556076" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.exe.release.142335621" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.exe.release">
@@ -125,6 +126,7 @@
 									<listOptionValue builtIn="false" value="NDEBUG"/>
 								</option>
 								<option id="gnu.c.compiler.option.dialect.std.466167929" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" value="gnu.c.compiler.dialect.c11" valueType="enumerated"/>
+								<option id="gnu.c.compiler.option.misc.other.31517399" superClass="gnu.c.compiler.option.misc.other" value="-c -fmessage-length=0 -Wwrite-strings" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1777808185" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.exe.release.103992972" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.release"/>

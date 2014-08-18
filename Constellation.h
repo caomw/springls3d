@@ -12,11 +12,13 @@
 #include <vector>
 #include <list>
 namespace imagesci{
+
 struct SpringlDesc{
 	openvdb::Vec3s trackedPoint;
 	openvdb::Index64 label;
 };
-	class Constellation : public Mesh {
+
+class Constellation : public Mesh {
 	public:
 		std::vector<SpringlDesc> descriptions;
 		std::vector<std::list<openvdb::Int64>> neighborGraph;
@@ -24,4 +26,5 @@ struct SpringlDesc{
 		virtual ~Constellation();
 	};
 }
+
 #endif /* CONSTELLATION_H_ */

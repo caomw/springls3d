@@ -14,9 +14,9 @@ namespace imagesci {
 
 template<typename GridType> class SpringlGrid<GridType> {
 public:
-	openvdb::Grid<GridType> signedLevelSet;
-	openvdb::Grid<GridType> unsignedLevelSet;
-	openvdb::Int32Grid springlPointerGrid;
+	openvdb::Grid<GridType>::Ptr signedLevelSet;
+	openvdb::Grid<GridType>::Ptr unsignedLevelSet;
+	openvdb::Int32Grid::Ptr springlPointerGrid;
 	SpringlGrid();
 	virtual ~SpringlGrid();
 };

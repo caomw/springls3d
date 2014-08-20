@@ -52,6 +52,7 @@ public:
     void enableClipping() const;
     void disableClipping() const;
     void setBBox(const openvdb::BBoxd&);
+    inline openvdb::BBoxd GetBBox() const {return mBBox;}
     void setStepSize(const openvdb::Vec3d& s) { mStepSize = s; }
     void set(const openvdb::GridBase& grid);
 

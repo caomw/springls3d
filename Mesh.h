@@ -21,7 +21,7 @@ class Mesh{
 
 		std::mutex drawLock;
 
-		int meshType;
+		PrimitiveType meshType;
 		GLuint mVertexBuffer;
 		GLuint mNormalBuffer;
 		GLuint mColorBuffer;
@@ -31,6 +31,7 @@ class Mesh{
 		std::vector<openvdb::Vec3s> colors;
 		std::vector<openvdb::Vec3s> normals;
 		std::vector<openvdb::Index32> indexes;
+		std::vector<openvdb::Vec4I> faces;
 		Mesh();
 		void draw(bool colorEnabled=false);
 		void updateGL();
@@ -38,6 +39,7 @@ class Mesh{
 		static Mesh* openGrid(const std::string& file);
 		bool save(const std::string& file);
 		static Mesh* create(openvdb::FloatGrid::Ptr grid);
+		float EstimateVoxelSize(int stride=4);
 		virtual ~Mesh();
 
 };

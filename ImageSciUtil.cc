@@ -15,7 +15,7 @@
 namespace imagesci {
 using namespace openvdb;
 using namespace openvdb::tools;
-bool WriteToRawFile(openvdb::FloatGrid::Ptr mGrid,const std::string fileName){
+bool WriteToRawFile(openvdb::FloatGrid::Ptr mGrid,const std::string& fileName){
     std::ostringstream vstr;
     vstr << fileName<<".raw";
     FILE* f=fopen(vstr.str().c_str(),"wb");
@@ -78,7 +78,7 @@ bool WriteToRawFile(openvdb::FloatGrid::Ptr mGrid,const std::string fileName){
 	std::cout<<xmlFile.str()<<std::endl;
 	return true;
 }
-bool WriteToRawFile(openvdb::Int32Grid::Ptr mGrid,const std::string fileName){
+bool WriteToRawFile(openvdb::Int32Grid::Ptr mGrid,const std::string& fileName){
     std::ostringstream vstr;
     vstr << fileName<<".raw";
     FILE* f=fopen(vstr.str().c_str(),"wb");

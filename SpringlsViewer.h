@@ -75,6 +75,7 @@ protected:
 	FieldT field;
 	boost::shared_ptr<AdvectT> advect;
 	std::thread simThread;
+
 public:
 	typedef std::unique_ptr<openvdb_viewer::Camera> CameraPtr;
 	typedef std::unique_ptr<openvdb_viewer::ClipBox> ClipBoxPtr;

@@ -148,8 +148,10 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
 	Mesh* mesh=Mesh::openMesh(fileName);
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
-
-    mClipBox->set(springlGrid.signedLevelSet);
+    openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform(mesh->EstimateVoxelSize());
+    std::cout<<"Voxel size "<<trans->voxelSize()<<std::endl;
+    springlGrid.create(*originalMesh,trans);
+    mClipBox->set(*springlGrid.signedLevelSet);
 	return true;
 }
 bool SpringlsViewer::openGrid(const std::string& fileName){
@@ -157,16 +159,17 @@ bool SpringlsViewer::openGrid(const std::string& fileName){
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
 
-    mClipBox->set(springlGrid.signedLevelSet);
+    mClipBox->set(*springlGrid.signedLevelSet);
 	return true;
 }
 bool SpringlsViewer::init(int width,int height){
-	advect=boost::shared_ptr<AdvectT>(new AdvectT(springlGrid.signedLevelSet,field));
+	/*
+	advect=boost::shared_ptr<AdvectT>(new AdvectT(*springlGrid.signedLevelSet,field));
 	advect->setSpatialScheme(openvdb::math::HJWENO5_BIAS);
 	advect->setTemporalScheme(openvdb::math::TVD_RK2);
 	advect->setTrackerSpatialScheme(openvdb::math::HJWENO5_BIAS);
 	advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
-
+*/
    using namespace openvdb_viewer;
 
 	meshDirty=false;
@@ -178,6 +181,7 @@ bool SpringlsViewer::init(int width,int height){
                        GLFW_WINDOW))    // Window mode
     {
         glfwTerminate();
+        std::cout<<"Could not Open "<<width<<" "<<height<<std::endl;
         return false;
     }
 
@@ -186,13 +190,8 @@ bool SpringlsViewer::init(int width,int height){
 
     BitmapFont13::initialize();
 
-    openvdb::BBoxd bbox(openvdb::Vec3d(0.0), openvdb::Vec3d(0.0));
-
-
-
-
-    // setup camera
-
+    openvdb::BBoxd bbox=mClipBox->GetBBox();
+    std::cout<<"Bounding Box "<<bbox<<std::endl;
     openvdb::Vec3d extents = bbox.extents();
     double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
 
@@ -200,9 +199,6 @@ bool SpringlsViewer::init(int width,int height){
     mCamera->lookAtTarget();
     mCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.02);
 
-    //////////
-
-    // register callback functions
 
     glfwSetKeyCallback(keyCB);
     glfwSetMouseButtonCallback(mouseButtonCB);

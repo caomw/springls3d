@@ -10,13 +10,14 @@
 #include <openvdb/openvdb.h>
 #include <vector>
 #include <list>
+#include "Mesh.h"
 namespace imagesci {
-
 class SpringlGrid {
 public:
-	openvdb::FloatGrid signedLevelSet;
-	openvdb::FloatGrid unsignedLevelSet;
-	openvdb::Int32Grid springlPointerGrid;
+	openvdb::FloatGrid::Ptr signedLevelSet;
+	openvdb::FloatGrid::Ptr unsignedLevelSet;
+	openvdb::Int32Grid::Ptr springlPointerGrid;
+	bool create(const Mesh& mesh,openvdb::math::Transform::Ptr& transform);
 	SpringlGrid();
 	virtual ~SpringlGrid();
 };

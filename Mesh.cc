@@ -350,6 +350,17 @@ Mesh* Mesh::openMesh(const std::string& file){
 			}//for all elements of the PLY file
 			free(elist); //allocated by ply_open_for_reading
 			close_ply(ply);
+
+			mesh->faces.resize(numPolys);
+			if(mesh->meshType==TRIANGLES){
+				int counter=0;
+				for(int i=0;i<numPolys;i++){
+					mesh->faces[i]=Vec4I(mesh->indexes[counter++],mesh->indexes[counter++],mesh->indexes[counter++],-1);
+				}
+			} else {
+				mesh->faces.resize(numPolys);
+				memcpy(&mesh->faces[0],&mesh->indexes[0],sizeof(Vec4I)*numPolys);
+			}
 			if (points.size() > 0 && indexes.size() > 0){
 				return mesh;
 			} else {
@@ -378,17 +389,20 @@ Mesh* Mesh::create(FloatGrid::Ptr grid) {
 
 	// Copy primitives
 	openvdb::tools::PolygonPoolList& polygonPoolList = mesher.polygonPoolList();
+
 	Index64 numQuads = 0;
 	for (Index64 n = 0, N = mesher.polygonPoolListSize(); n < N; ++n) {
 		numQuads += polygonPoolList[n].numQuads();
 	}
 	mesh->indexes.reserve(numQuads * 4);
 	openvdb::Vec3d normal, e1, e2;
+	mesh->faces.reserve(mesher.polygonPoolListSize());
 	for (Index64 n = 0, N = mesher.polygonPoolListSize(); n < N; ++n) {
 		const openvdb::tools::PolygonPool& polygons = polygonPoolList[n];
 		//std::cout << "Polygon " << polygons.numTriangles() << " "<< polygons.numQuads() << std::endl;
 		for (Index64 i = 0, I = polygons.numQuads(); i < I; ++i) {
 			const openvdb::Vec4I& quad = polygons.quad(i);
+			mesh->faces.push_back(quad);
 			mesh->indexes.push_back(quad[0]);
 			mesh->indexes.push_back(quad[1]);
 			mesh->indexes.push_back(quad[2]);
@@ -408,6 +422,43 @@ Mesh* Mesh::create(FloatGrid::Ptr grid) {
 	}
 	mesh->meshType=PrimitiveType::QUADS;
 	return mesh;
+}
+float Mesh::EstimateVoxelSize(int stride){
+	float avg = 0.0f;
+	int count = 0;
+	float maxLength = 0.0f;
+	int sz = indexes.size();
+	if(meshType==TRIANGLES){
+		for (int i = 0; i<sz; i += 3*stride){
+			Vec3s v1 = points[indexes[i]];
+			Vec3s v2 = points[indexes[i+1]];
+			Vec3s v3 = points[indexes[i+2]];
+			float e1 = (v1-v2).length();
+			float e2 = (v1-v3).length();
+			float e3 = (v2-v3).length();
+			maxLength = std::max(std::max(e1, e2), std::max(maxLength,e3));
+			avg += e1 + e2 + e3;
+			count += 3;
+		}
+	} else {
+		for (int i = 0; i<sz; i += 4*stride){
+			Vec3s v1 = points[indexes[i]];
+			Vec3s v2 = points[indexes[i+1]];
+			Vec3s v3 = points[indexes[i+2]];
+			Vec3s v4 = points[indexes[i+3]];
+			float e1 = (v1-v2).length();
+			float e2 = (v2-v3).length();
+			float e3 = (v3-v4).length();
+			float e4 = (v4-v1).length();
+
+			maxLength = std::max(maxLength,std::max(std::max(e1, e2), std::max(e3, e4)));
+			avg += e1 + e2 + e3 + e4;
+			count += 4;
+		}
+	}
+	avg /= count;
+	//std::cout << "Average Edge Length=" << avg << " Max Edge Length=" << maxLength << std::endl;
+	return avg;
 }
 void Mesh::draw(bool colorEnabled){
 	if (mVertexBuffer > 0){

@@ -9,12 +9,12 @@
 
 namespace imagesci {
 
-template<typename GridType> SpringlGrid<GridType>::SpringlGrid() {
+SpringlGrid::SpringlGrid() {
 	// TODO Auto-generated constructor stub
 
 }
 
-template<typename GridType> SpringlGrid<GridType>::~SpringlGrid() {
+SpringlGrid::~SpringlGrid() {
 	// TODO Auto-generated destructor stub
 }
 

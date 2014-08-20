@@ -7,6 +7,8 @@
 
 #ifndef IMAGESCIUTIL_H_
 #define IMAGESCIUTIL_H_
+#undef OPENVDB_REQUIRE_VERSION_NAME
+
 #include <openvdb/openvdb.h>
 namespace imagesci {
 static bool WriteToRawFile(openvdb::FloatGrid::Ptr grid,const std::string fileName);

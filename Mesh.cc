@@ -11,6 +11,16 @@
 #include <openvdb/tree/LeafManager.h>
 #include <openvdb/math/Operators.h>
 #include <boost/smart_ptr.hpp>
+#include <openvdb/Types.h>
+#include <openvdb/tree/Tree.h>
+#include <openvdb/tools/LevelSetUtil.h>
+#include <openvdb/tools/LevelSetSphere.h>
+#include <openvdb/tools/LevelSetAdvect.h>
+#include <openvdb/tools/LevelSetMeasure.h>
+#include <openvdb/tools/LevelSetMorph.h>
+#include <openvdb/tools/ValueTransformer.h>
+#include <openvdb/tools/VectorTransformer.h>
+#include <openvdb/util/Util.h>
 #include "ply_io.h"
 namespace imagesci {
 template<typename T> T clamp(T a,T min,T max){
@@ -70,7 +80,7 @@ PlyProperty faceProps[] = { // property information for a face
 
 
 Mesh::Mesh() :
-		mVertexBuffer(0), mNormalBuffer(0), mColorBuffer(0), mIndexBuffer(0),primType(PrimitiveType::TRIANGLES) {
+		mVertexBuffer(0), mNormalBuffer(0), mColorBuffer(0), mIndexBuffer(0),meshType(PrimitiveType::TRIANGLES) {
 }
 bool Mesh::save(const std::string& f){
 	int i, j, idx;
@@ -88,7 +98,7 @@ bool Mesh::save(const std::string& f){
 	// compute colors, if any
 	int numPts=points.size();
 
-	int npts=(primType==PrimitiveType::TRIANGLES)?3:4;
+	int npts=(meshType==PrimitiveType::TRIANGLES)?3:4;
 	int numPolys=indexes.size()/npts;
 	unsigned char* c;
 	if(colors.size()>0){
@@ -178,9 +188,13 @@ Mesh* Mesh::openGrid(const std::string& fileName){
     openvdb::io::File file(fileName);
       file.open();
       openvdb::GridPtrVecPtr grids = file.getGrids();
-      Mesh* mesh=new Mesh();
-      GridBase::Ptr ptr=grids[0];
-      mesh->create<GridBase>(ptr,PrimitiveType::QUADS);
+
+
+      openvdb::GridPtrVec allGrids;
+      allGrids.insert(allGrids.end(), grids->begin(), grids->end());
+      GridBase::Ptr ptr=allGrids[0];
+      Mesh* mesh=Mesh::create(boost::static_pointer_cast<FloatGrid>(ptr));
+      return mesh;
 }
 Mesh* Mesh::openMesh(const std::string& file){
 			int i, j, k;
@@ -312,9 +326,9 @@ Mesh* Mesh::openMesh(const std::string& file){
 							indexes.push_back(face.verts[k]);
 						}
 						if(face.nverts==3){
-							primType=PrimitiveType::TRIANGLES;
+							mesh->meshType=TRIANGLES;
 						} else {
-							primType=PrimitiveType::QUADS;
+							mesh->meshType=QUADS;
 						}
 						if (intensityAvailable)
 						{
@@ -342,38 +356,43 @@ Mesh* Mesh::openMesh(const std::string& file){
 				return NULL;
 			}
 }
-template<typename GridType> void Mesh::create(typename GridType::Ptr grid,PrimitiveType primType) {
+Mesh* Mesh::create(FloatGrid::Ptr grid) {
 	using openvdb::Index64;
 	openvdb::tools::VolumeToMesh mesher(
 			grid->getGridClass() == openvdb::GRID_LEVEL_SET ? 0.0 : 0.01);
 	mesher(*grid);
+	Mesh* mesh=new Mesh();
 	// Copy points and generate point normals.
-	points.resize(mesher.pointListSize() * 3);
-	normals.resize(mesher.pointListSize() * 3);
-	openvdb::tree::ValueAccessor<const typename GridType::TreeType> acc(
-			grid->tree());
+	mesh->points.resize(mesher.pointListSize() * 3);
+	mesh->normals.resize(mesher.pointListSize() * 3);
+
+	openvdb::tree::ValueAccessor<FloatGrid::TreeType> acc(grid->tree());
 
 	openvdb::math::GenericMap map(grid->transform());
 	openvdb::Coord ijk;
-	this->points = mesher.pointList();
+
+	mesh->points.resize(mesher.pointListSize());
+	for (Index64 n = 0, N = mesher.pointListSize(); n < N; ++n) {
+		mesh->points[n]=mesher.pointList()[n];
+	}
+
 	// Copy primitives
 	openvdb::tools::PolygonPoolList& polygonPoolList = mesher.polygonPoolList();
 	Index64 numQuads = 0;
 	for (Index64 n = 0, N = mesher.polygonPoolListSize(); n < N; ++n) {
 		numQuads += polygonPoolList[n].numQuads();
 	}
-	indexes.reserve(numQuads * 4);
+	mesh->indexes.reserve(numQuads * 4);
 	openvdb::Vec3d normal, e1, e2;
 	for (Index64 n = 0, N = mesher.polygonPoolListSize(); n < N; ++n) {
 		const openvdb::tools::PolygonPool& polygons = polygonPoolList[n];
-		std::cout << "Polygon " << polygons.numTriangles() << " "
-				<< polygons.numQuads() << std::endl;
+		//std::cout << "Polygon " << polygons.numTriangles() << " "<< polygons.numQuads() << std::endl;
 		for (Index64 i = 0, I = polygons.numQuads(); i < I; ++i) {
 			const openvdb::Vec4I& quad = polygons.quad(i);
-			indexes.push_back(quad[0]);
-			indexes.push_back(quad[1]);
-			indexes.push_back(quad[2]);
-			indexes.push_back(quad[3]);
+			mesh->indexes.push_back(quad[0]);
+			mesh->indexes.push_back(quad[1]);
+			mesh->indexes.push_back(quad[2]);
+			mesh->indexes.push_back(quad[3]);
 			e1 = mesher.pointList()[quad[1]];
 			e1 -= mesher.pointList()[quad[0]];
 			e2 = mesher.pointList()[quad[2]];
@@ -383,12 +402,12 @@ template<typename GridType> void Mesh::create(typename GridType::Ptr grid,Primit
 			if (length > 1.0e-7)
 				normal *= (1.0 / length);
 			for (Index64 v = 0; v < 4; ++v) {
-				normals[quad[v]] = -normal;
+				mesh->normals[quad[v]] = -normal;
 			}
 		}
 	}
-	primType=PrimitiveType::QUADS;
-	updateGL();
+	mesh->meshType=PrimitiveType::QUADS;
+	return mesh;
 }
 void Mesh::draw(bool colorEnabled){
 	if (mVertexBuffer > 0){

@@ -12,15 +12,14 @@
 #include <list>
 namespace imagesci {
 
-template<typename GridType> class SpringlGrid<GridType> {
+class SpringlGrid {
 public:
-	openvdb::Grid<GridType>::Ptr signedLevelSet;
-	openvdb::Grid<GridType>::Ptr unsignedLevelSet;
+	openvdb::FloatGrid::Ptr signedLevelSet;
+	openvdb::FloatGrid::Ptr unsignedLevelSet;
 	openvdb::Int32Grid::Ptr springlPointerGrid;
 	SpringlGrid();
 	virtual ~SpringlGrid();
 };
-typedef SpringlGrid<openvdb::FloatTree> FloatSGrid;
 
 }
 #endif /* TRACKINGGRID_H_ */

@@ -6,16 +6,22 @@
  */
 
 #include "ImageSciUtil.h"
-
+#include <openvdb/tools/Dense.h>
+#include <openvdb/tools/LevelSetUtil.h>
+#include <openvdb/tools/PointAdvect.h>
+#include <openvdb/tools/PointScatter.h>
+#include <openvdb/tools/ValueTransformer.h>
+#include <openvdb/tools/VectorTransformer.h>
 namespace imagesci {
 using namespace openvdb;
+using namespace openvdb::tools;
 bool WriteToRawFile(openvdb::FloatGrid::Ptr mGrid,const std::string fileName){
     std::ostringstream vstr;
     vstr << fileName<<".raw";
     FILE* f=fopen(vstr.str().c_str(),"wb");
 	openvdb::CoordBBox bbox = mGrid->evalActiveVoxelBoundingBox();
-	openvdb::tools::Dense<float> dense(bbox);//LayoutZYX is the default
-	tools::copyToDense(*mGrid, dense);
+	Dense<float> dense(bbox);//LayoutZYX is the default
+	copyToDense(*mGrid, dense);
 	std::cout<<"Grid size "<<dense.valueCount()<<std::endl;
 	Coord dims=bbox.max()-bbox.min()+Coord(1,1,1);
 	std::cout<<"Dimensions "<<dims<<std::endl;
@@ -70,14 +76,15 @@ bool WriteToRawFile(openvdb::FloatGrid::Ptr mGrid,const std::string fileName){
 	myfile << sstr.str();
 	myfile.close();
 	std::cout<<xmlFile.str()<<std::endl;
+	return true;
 }
 bool WriteToRawFile(openvdb::Int32Grid::Ptr mGrid,const std::string fileName){
     std::ostringstream vstr;
     vstr << fileName<<".raw";
     FILE* f=fopen(vstr.str().c_str(),"wb");
 	openvdb::CoordBBox bbox = mGrid->evalActiveVoxelBoundingBox();
-	openvdb::tools::Dense<float> dense(bbox);//LayoutZYX is the default
-	tools::copyToDense(*mGrid, dense);
+	Dense<Int32> dense(bbox);//LayoutZYX is the default
+	copyToDense(*mGrid, dense);
 	std::cout<<"Grid size "<<dense.valueCount()<<std::endl;
 	Coord dims=bbox.max()-bbox.min()+Coord(1,1,1);
 	std::cout<<"Dimensions "<<dims<<std::endl;
@@ -132,6 +139,7 @@ bool WriteToRawFile(openvdb::Int32Grid::Ptr mGrid,const std::string fileName){
 	myfile << sstr.str();
 	myfile.close();
 	std::cout<<xmlFile.str()<<std::endl;
+	return true;
 }
 
 } /* namespace imagesci */

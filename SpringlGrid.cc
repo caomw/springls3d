@@ -6,12 +6,10 @@
  */
 
 #include "SpringlGrid.h"
-
+using namespace openvdb;
 namespace imagesci {
 
 SpringlGrid::SpringlGrid() {
-	// TODO Auto-generated constructor stub
-
 }
 
 SpringlGrid::~SpringlGrid() {

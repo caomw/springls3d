@@ -69,15 +69,18 @@ main(int argc, char *argv[])
     std::string fileName(argv[1]);
     try {
     	if(argc>1){
-
 			openvdb::initialize();
 			imagesci::SpringlsViewer viewer;
-			std::string ext=boost::filesystem::extension(boost::filesystem::path(fileName));
-			if(ext==std::string("ply")){
-				viewer.openMesh(fileName);
-			} else if(ext==std::string("vdb")){
-				viewer.openGrid(fileName);
+			if(viewer.init(1280,720)){
+				std::string ext=boost::filesystem::extension(boost::filesystem::path(fileName));
+				if(ext==std::string("ply")){
+					if(viewer.openMesh(fileName))viewer.start();
+				} else if(ext==std::string("vdb")){
+					if(viewer.openGrid(fileName))viewer.start();
+				}
 			}
+    	} else {
+    		std::cout<<"Usage: "<<argv[0]<<" [*.ply|*.vdb]"<<std::endl;
     	}
     } catch (std::exception& e) {
     	std::cout<<e.what()<<std::endl;

@@ -56,6 +56,8 @@
 #include <thread>
 
 namespace imagesci {
+
+const float SpringlsViewer::dt=0.005f;
 void UpdateView(imagesci::SpringlsViewer* v){
 	while(v->update()){
 		std::this_thread::sleep_for(std::chrono::milliseconds(20 ));
@@ -127,35 +129,48 @@ SpringlsViewer::SpringlsViewer()
 	, mUpdates(1)
 {
 }
+void SpringlsViewer::start(){
+	simulationRunning=true;
+	simTime=0.0f;
+	simThread=std::thread(UpdateView,this);
+
+}
+SpringlsViewer::~SpringlsViewer(){
+	stop();
+}
+void SpringlsViewer::stop(){
+	simulationRunning=false;
+	if(simThread.joinable()){
+		simThread.join();
+	}
+}
 bool SpringlsViewer::openMesh(const std::string& fileName){
 	Mesh* mesh=Mesh::openMesh(fileName);
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
+
+    mClipBox->set(springlGrid.signedLevelSet);
 	return true;
 }
 bool SpringlsViewer::openGrid(const std::string& fileName){
 	Mesh* mesh=Mesh::openGrid(fileName);
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
+
+    mClipBox->set(springlGrid.signedLevelSet);
 	return true;
 }
-const float SpringlsViewer::dt=0.005f;
 bool SpringlsViewer::init(int width,int height){
-	if(simTime==0.0f){
-
-		advect=boost::shared_ptr<AdvectT>(new AdvectT(*springlGrid->signedLevelSet,field));
-		advect->setSpatialScheme(openvdb::math::HJWENO5_BIAS);//BiasedGradientScheme
-		advect->setTemporalScheme(openvdb::math::TVD_RK2);
-		advect->setTrackerSpatialScheme(openvdb::math::HJWENO5_BIAS);
-		advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
-	}
+	advect=boost::shared_ptr<AdvectT>(new AdvectT(springlGrid.signedLevelSet,field));
+	advect->setSpatialScheme(openvdb::math::HJWENO5_BIAS);
+	advect->setTemporalScheme(openvdb::math::TVD_RK2);
+	advect->setTrackerSpatialScheme(openvdb::math::HJWENO5_BIAS);
+	advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
 
    using namespace openvdb_viewer;
 
-	simTime=0.0f;
 	meshDirty=false;
     mGridName.clear();
-    mClipBox->set(springlGrid->signedLevelSet);
     // Create window
     if (!glfwOpenWindow(width, height,  // Window size
                        8, 8, 8, 8,      // # of R,G,B, & A bits
@@ -195,64 +210,46 @@ bool SpringlsViewer::init(int width,int height){
     glfwSetMouseWheelCallback(mouseWheelCB);
     glfwSetWindowSizeCallback(windowSizeCB);
     glfwSetWindowRefreshCallback(windowRefreshCB);
-
-
-    //////////
-
-    // Screen color
     glClearColor(0.85, 0.85, 0.85, 0.0f);
-
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_TEST);
     glShadeModel(GL_SMOOTH);
-
     glPointSize(4);
     glLineWidth(2);
-    //////////
-
-    // main loop
-
     size_t frame = 0;
     double time = glfwGetTime();
-
     glfwSwapInterval(1);
-
-    std::thread advect(UpdateView,this);
     do {
-        if(meshDirty){
-    		meshLock.lock();
-        	originalMesh->draw(false);
-        	meshDirty=false;
-        	meshLock.unlock();
-        	render();
+        if(meshDirty&&originalMesh.get()==nullptr){
+			meshLock.lock();
+			originalMesh->updateGL();
+			meshDirty=false;
+			meshLock.unlock();
         } else {
     		if(needsDisplay())render();
     	}
-        // eval fps
         ++frame;
         double elapsed = glfwGetTime() - time;
         if (elapsed > 1.0) {
             time = glfwGetTime();
-            setWindowTitle(/*fps=*/double(frame) / elapsed);
+            setWindowTitle(double(frame) / elapsed);
             frame = 0;
         }
-
         // Swap front and back buffers
         glfwSwapBuffers();
-
     // exit if the esc key is pressed or the window is closed.
     } while (!glfwGetKey(GLFW_KEY_ESC) && glfwGetWindowParam(GLFW_OPENED));
-
     glfwTerminate();
     return true;
 }
 bool SpringlsViewer::update(){
-
 	meshLock.lock();
 	advect->advect(simTime,simTime+dt);
+	meshDirty=true;
 	meshLock.unlock();
 	simTime+=dt;
-	return (simTime<=3.0f);
+	setNeedsDisplay();
+	return (simTime<=3.0f&&simulationRunning);
 }
 
 void

@@ -14,9 +14,9 @@ namespace imagesci {
 
 class SpringlGrid {
 public:
-	openvdb::FloatGrid::Ptr signedLevelSet;
-	openvdb::FloatGrid::Ptr unsignedLevelSet;
-	openvdb::Int32Grid::Ptr springlPointerGrid;
+	openvdb::FloatGrid signedLevelSet;
+	openvdb::FloatGrid unsignedLevelSet;
+	openvdb::Int32Grid springlPointerGrid;
 	SpringlGrid();
 	virtual ~SpringlGrid();
 };

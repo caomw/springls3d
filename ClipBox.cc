@@ -158,10 +158,10 @@ ClipBox::setBBox(const openvdb::BBoxd& bbox)
     mBBox = bbox;
     reset();
 }
-void ClipBox::set(openvdb::GridBase::Ptr grid){
+void ClipBox::set(const openvdb::GridBase& grid){
 	openvdb::BBoxd bbox(openvdb::Vec3d(0.0), openvdb::Vec3d(0.0));
-    bbox = worldSpaceBBox(grid->transform(), grid->evalActiveVoxelBoundingBox());
-    openvdb::Vec3d voxelSize = grid->voxelSize();
+    bbox = worldSpaceBBox(grid.transform(), grid.evalActiveVoxelBoundingBox());
+    openvdb::Vec3d voxelSize = grid.voxelSize();
     setStepSize(voxelSize);
     setBBox(bbox);
 }

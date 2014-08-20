@@ -416,7 +416,6 @@ void Mesh::draw(bool colorEnabled){
 		glEnableClientState(GL_INDEX_ARRAY);
 
 		if (colorEnabled)glEnableClientState(GL_COLOR_ARRAY);
-		int vertexCount = points.size();
 
 		glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
 		glVertexPointer(3, GL_FLOAT, 0, 0);

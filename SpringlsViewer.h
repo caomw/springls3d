@@ -65,19 +65,22 @@ protected:
 	static const float dt;
 	float simTime;
 	bool meshDirty;
+	bool simulationRunning;
 	std::mutex meshLock;
 	int mUpdates;
-	std::unique_ptr<Mesh> originalMesh;
-	std::unique_ptr<SpringlGrid> springlGrid;
+	boost::shared_ptr<Mesh> originalMesh;
+	SpringlGrid springlGrid;
 	std::unique_ptr<Constellation> constellation;
 
 	FieldT field;
 	boost::shared_ptr<AdvectT> advect;
+	std::thread simThread;
 public:
 	typedef std::unique_ptr<openvdb_viewer::Camera> CameraPtr;
 	typedef std::unique_ptr<openvdb_viewer::ClipBox> ClipBoxPtr;
 
 	SpringlsViewer();
+	~SpringlsViewer();
 	bool update();
 
 	bool openMesh(const std::string& fileName);
@@ -95,7 +98,8 @@ public:
 	void mouseWheelCallback(int pos);
 	void windowSizeCallback(int width, int height);
 	void windowRefreshCallback();
-
+	void start();
+	void stop();
 private:
 	CameraPtr mCamera;
 	ClipBoxPtr mClipBox;

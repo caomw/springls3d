@@ -131,6 +131,8 @@ ClipBox::ClipBox()
     , mZIsActive(false)
     , mShiftIsDown(false)
     , mCtrlIsDown(false)
+	, mMouseXPos(0)
+	, mMouseYPos(0)
 {
     GLdouble front [] = { 0.0, 0.0, 1.0, 0.0};
     std::copy(front, front + 4, mFrontPlane);

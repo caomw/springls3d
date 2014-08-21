@@ -29,6 +29,7 @@
 ///////////////////////////////////////////////////////////////////////////
 #undef OPENVDB_REQUIRE_VERSION_NAME
 #include "SpringlsViewer.h"
+#include "ImageSciUtil.h"
 #include <openvdb/util/Formats.h> // for formattedInt()
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,10 +56,16 @@
 #include <chrono>
 #include <thread>
 
-namespace imagesci {
 
+SpringlsViewer* viewer=NULL;
 const float SpringlsViewer::dt=0.005f;
-void UpdateView(imagesci::SpringlsViewer* v){
+using namespace imagesci;
+
+SpringlsViewer* SpringlsViewer::GetInstance(){
+	if(viewer==NULL)viewer=new SpringlsViewer();
+	return viewer;
+}
+void UpdateView(SpringlsViewer* v){
 	while(v->update()){
 		std::this_thread::sleep_for(std::chrono::milliseconds(20 ));
 
@@ -66,49 +73,45 @@ void UpdateView(imagesci::SpringlsViewer* v){
 }
 
 
-SpringlsViewer* sViewer = NULL;
-tbb::mutex sLock;
-
-
 void
 keyCB(int key, int action)
 {
-	if (sViewer) sViewer->keyCallback(key, action);
+	if (viewer) viewer->keyCallback(key, action);
 }
 
 
 void
 mouseButtonCB(int button, int action)
 {
-	if (sViewer) sViewer->mouseButtonCallback(button, action);
+	if (viewer) viewer->mouseButtonCallback(button, action);
 }
 
 
 void
 mousePosCB(int x, int y)
 {
-	if (sViewer) sViewer->mousePosCallback(x, y);
+	if (viewer) viewer->mousePosCallback(x, y);
 }
 
 
 void
 mouseWheelCB(int pos)
 {
-	if (sViewer) sViewer->mouseWheelCallback(pos);
+	if (viewer) viewer->mouseWheelCallback(pos);
 }
 
 
 void
 windowSizeCB(int width, int height)
 {
-	if (sViewer) sViewer->windowSizeCallback(width, height);
+	if (viewer) viewer->windowSizeCallback(width, height);
 }
 
 
 void
 windowRefreshCB()
 {
-	if (sViewer) sViewer->windowRefreshCallback();
+	if (viewer) viewer->windowRefreshCallback();
 }
 
 using namespace openvdb;
@@ -127,6 +130,7 @@ SpringlsViewer::SpringlsViewer()
 	, meshDirty(false)
 	, simTime(0.0f)
 	, mUpdates(1)
+	, simulationRunning(false)
 {
 }
 void SpringlsViewer::start(){
@@ -148,11 +152,17 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
 	Mesh* mesh=Mesh::openMesh(fileName);
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
-    openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform(mesh->EstimateVoxelSize());
-    std::cout<<"Voxel size "<<trans->voxelSize()<<std::endl;
+	originalMesh->scale(1.0f/originalMesh->EstimateVoxelSize());
+    openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
+    std::cout<<"Voxel size "<<trans->voxelSize()<<" "<<originalMesh->points.size()<<" "<<originalMesh->indexes.size()/3<<std::endl;
+    std::cout<<"Bounding box "<<originalMesh->bbox<<std::endl;
     springlGrid.create(*originalMesh,trans);
-    mClipBox->set(*springlGrid.signedLevelSet);
-	return true;
+    imagesci::WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/tmp/signedLevelSet");
+    imagesci::WriteToRawFile(springlGrid.springlPointerGrid,"/home/blake/tmp/springlIndex");
+    mClipBox->setBBox(originalMesh->bbox);
+    //(*springlGrid.signedLevelSet);
+	meshDirty=true;
+    return true;
 }
 bool SpringlsViewer::openGrid(const std::string& fileName){
 	Mesh* mesh=Mesh::openGrid(fileName);
@@ -160,6 +170,7 @@ bool SpringlsViewer::openGrid(const std::string& fileName){
 	originalMesh=std::unique_ptr<Mesh>(mesh);
 
     mClipBox->set(*springlGrid.signedLevelSet);
+
 	return true;
 }
 bool SpringlsViewer::init(int width,int height){
@@ -170,9 +181,10 @@ bool SpringlsViewer::init(int width,int height){
 	advect->setTrackerSpatialScheme(openvdb::math::HJWENO5_BIAS);
 	advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
 */
-   using namespace openvdb_viewer;
-
-	meshDirty=false;
+    if (glfwInit() != GL_TRUE) {
+        std::cout<<"GLFW Initialization Failed.";
+        return false;
+    }
     mGridName.clear();
     // Create window
     if (!glfwOpenWindow(width, height,  // Window size
@@ -181,16 +193,16 @@ bool SpringlsViewer::init(int width,int height){
                        GLFW_WINDOW))    // Window mode
     {
         glfwTerminate();
-        std::cout<<"Could not Open "<<width<<" "<<height<<std::endl;
         return false;
     }
+    using namespace openvdb_viewer;
 
     glfwSetWindowTitle(mProgName.c_str());
     glfwSwapBuffers();
 
     BitmapFont13::initialize();
 
-    openvdb::BBoxd bbox=mClipBox->GetBBox();
+    openvdb::BBoxd bbox=originalMesh->bbox;
     std::cout<<"Bounding Box "<<bbox<<std::endl;
     openvdb::Vec3d extents = bbox.extents();
     double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
@@ -216,11 +228,13 @@ bool SpringlsViewer::init(int width,int height){
     double time = glfwGetTime();
     glfwSwapInterval(1);
     do {
-        if(meshDirty&&originalMesh.get()==nullptr){
+       if(meshDirty&&originalMesh.get()!=nullptr){
 			meshLock.lock();
+			std::cout<<"Update GL"<<std::endl;
 			originalMesh->updateGL();
 			meshDirty=false;
 			meshLock.unlock();
+			render();
         } else {
     		if(needsDisplay())render();
     	}
@@ -253,7 +267,7 @@ SpringlsViewer::setWindowTitle(double fps)
 {
     std::ostringstream ss;
     ss  << mProgName << ": "
-        << (mGridName.empty() ? std::string("OpenVDB") : mGridName)
+        << (mGridName.empty() ? std::string("OpenVDB ") : mGridName)
         << std::setprecision(1) << std::fixed << fps << " fps";
     glfwSetWindowTitle(ss.str().c_str());
 }
@@ -265,13 +279,12 @@ SpringlsViewer::setWindowTitle(double fps)
 void
 SpringlsViewer::render()
 {
+
     mCamera->aim();
     using namespace openvdb_viewer;
-
     mClipBox->render();
     mClipBox->enableClipping();
     originalMesh->draw(false);
-
     mClipBox->disableClipping();
 
     // Render text
@@ -413,5 +426,3 @@ SpringlsViewer::setNeedsDisplay()
     mUpdates = 0;
 }
 
-
-}

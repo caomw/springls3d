@@ -57,9 +57,12 @@
 #include "Mesh.h"
 #include "SpringlGrid.h"
 #include "Constellation.h"
-namespace imagesci {
 typedef openvdb::tools::EnrightField<float> FieldT;
 typedef openvdb::tools::LevelSetAdvection<openvdb::FloatGrid, FieldT> AdvectT;
+class SpringlsViewer;
+
+
+
 class SpringlsViewer {
 protected:
 	static const float dt;
@@ -68,9 +71,9 @@ protected:
 	bool simulationRunning;
 	std::mutex meshLock;
 	int mUpdates;
-	boost::shared_ptr<Mesh> originalMesh;
-	SpringlGrid springlGrid;
-	std::unique_ptr<Constellation> constellation;
+	boost::shared_ptr<imagesci::Mesh> originalMesh;
+	imagesci::SpringlGrid springlGrid;
+	std::unique_ptr<imagesci::Constellation> constellation;
 
 	FieldT field;
 	boost::shared_ptr<AdvectT> advect;
@@ -80,6 +83,7 @@ public:
 	typedef std::unique_ptr<openvdb_viewer::Camera> CameraPtr;
 	typedef std::unique_ptr<openvdb_viewer::ClipBox> ClipBoxPtr;
 
+	static SpringlsViewer* GetInstance();
 	SpringlsViewer();
 	~SpringlsViewer();
 	bool update();
@@ -108,5 +112,4 @@ private:
 	int mWheelPos;
 	bool mShiftIsDown, mCtrlIsDown, mShowInfo;
 };
-}
 #endif

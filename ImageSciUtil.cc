@@ -15,13 +15,13 @@
 namespace imagesci {
 using namespace openvdb;
 using namespace openvdb::tools;
-bool WriteToRawFile(openvdb::FloatGrid::Ptr mGrid,const std::string& fileName){
+bool WriteToRawFile(openvdb::FloatGrid::Ptr grid,const std::string& fileName){
     std::ostringstream vstr;
     vstr << fileName<<".raw";
     FILE* f=fopen(vstr.str().c_str(),"wb");
-	openvdb::CoordBBox bbox = mGrid->evalActiveVoxelBoundingBox();
+	openvdb::CoordBBox bbox = grid->evalActiveVoxelBoundingBox();
 	Dense<float> dense(bbox);//LayoutZYX is the default
-	copyToDense(*mGrid, dense);
+	copyToDense(*grid, dense);
 	std::cout<<"Grid size "<<dense.valueCount()<<std::endl;
 	Coord dims=bbox.max()-bbox.min()+Coord(1,1,1);
 	std::cout<<"Dimensions "<<dims<<std::endl;
@@ -78,13 +78,13 @@ bool WriteToRawFile(openvdb::FloatGrid::Ptr mGrid,const std::string& fileName){
 	std::cout<<xmlFile.str()<<std::endl;
 	return true;
 }
-bool WriteToRawFile(openvdb::Int32Grid::Ptr mGrid,const std::string& fileName){
+bool WriteToRawFile(openvdb::Int32Grid::Ptr grid,const std::string& fileName){
     std::ostringstream vstr;
     vstr << fileName<<".raw";
     FILE* f=fopen(vstr.str().c_str(),"wb");
-	openvdb::CoordBBox bbox = mGrid->evalActiveVoxelBoundingBox();
-	Dense<Int32> dense(bbox);//LayoutZYX is the default
-	copyToDense(*mGrid, dense);
+	openvdb::CoordBBox bbox = grid->evalActiveVoxelBoundingBox();
+	Dense<Index32> dense(bbox);//LayoutZYX is the default
+	copyToDense(*grid, dense);
 	std::cout<<"Grid size "<<dense.valueCount()<<std::endl;
 	Coord dims=bbox.max()-bbox.min()+Coord(1,1,1);
 	std::cout<<"Dimensions "<<dims<<std::endl;
@@ -93,8 +93,8 @@ bool WriteToRawFile(openvdb::Int32Grid::Ptr mGrid,const std::string& fileName){
     	for (P[1] = bbox.min()[1]; P[1] <= bbox.max()[1]; ++P[1]) {
 
             for (P[0]=bbox.min()[0] ;P[0] <= bbox.max()[0]; ++P[0]) {
-        		float val=dense.getValue(P);
-        		fwrite(&val,sizeof(float),1,f);
+        		Index32 val=dense.getValue(P);
+        		fwrite(&val,sizeof(Index32),1,f);
     		}
      	}
     }

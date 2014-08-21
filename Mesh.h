@@ -26,14 +26,16 @@ class Mesh{
 		GLuint mNormalBuffer;
 		GLuint mColorBuffer;
 		GLuint mIndexBuffer;
-
+		openvdb::math::BBox<openvdb::Vec3d> bbox;
 		std::vector<openvdb::Vec3s> points;
 		std::vector<openvdb::Vec3s> colors;
 		std::vector<openvdb::Vec3s> normals;
 		std::vector<openvdb::Index32> indexes;
 		std::vector<openvdb::Vec4I> faces;
 		Mesh();
+		openvdb::math::BBox<openvdb::Vec3d>& updateBBox();
 		void draw(bool colorEnabled=false);
+		void scale(float sc);
 		void updateGL();
 		static Mesh* openMesh(const std::string& file);
 		static Mesh* openGrid(const std::string& file);

@@ -55,13 +55,16 @@
 #include <openvdb/math/Stats.h>
 #include <boost/filesystem.hpp>
 #include "Util.h"
+#include <tbb/mutex.h>
+
 #ifdef DWA_OPENVDB
 #include <logging_base/logging.h>
 #include <usagetrack.h>
+
 #endif
 
 using namespace openvdb;
-
+tbb::mutex sLock;
 int
 main(int argc, char *argv[])
 {
@@ -70,16 +73,19 @@ main(int argc, char *argv[])
     try {
     	if(argc>1){
 			openvdb::initialize();
-			imagesci::SpringlsViewer viewer;
+			tbb::mutex::scoped_lock(sLock);
+			OPENVDB_START_THREADSAFE_STATIC_WRITE
+			 SpringlsViewer* viewer = SpringlsViewer::GetInstance();
+			 OPENVDB_FINISH_THREADSAFE_STATIC_WRITE
 				std::string ext=boost::filesystem::extension(boost::filesystem::path(fileName));
 				std::cout<<"FILE  EXT "<<ext<<std::endl;
 				if(ext==std::string(".ply")){
-					viewer.openMesh(fileName);
+					viewer->openMesh(fileName);
 				} else if(ext==std::string(".vdb")){
-					viewer.openGrid(fileName);
+					viewer->openGrid(fileName);
 				}
 				std::cout<<"Try init "<<std::endl;
-			if(viewer.init(1280,720))viewer.start();
+			if(viewer->init(900,800))viewer->start();
     	} else {
     		std::cout<<"Usage: "<<argv[0]<<" [*.ply|*.vdb]"<<std::endl;
     	}

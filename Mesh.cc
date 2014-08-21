@@ -314,7 +314,7 @@ Mesh* Mesh::openMesh(const std::string& file){
 						ply_get_property(ply, elemName, &faceProps[4]);
 					}
 					indexes.clear();
-					indexes.reserve(numPolys *3);
+					indexes.reserve(numPolys *4);
 					for (j = 0; j < numPolys; j++)
 					{
 
@@ -350,18 +350,22 @@ Mesh* Mesh::openMesh(const std::string& file){
 			}//for all elements of the PLY file
 			free(elist); //allocated by ply_open_for_reading
 			close_ply(ply);
-
+			mesh->indexes.shrink_to_fit();
 			mesh->faces.resize(numPolys);
 			if(mesh->meshType==TRIANGLES){
 				int counter=0;
 				for(int i=0;i<numPolys;i++){
-					mesh->faces[i]=Vec4I(mesh->indexes[counter++],mesh->indexes[counter++],mesh->indexes[counter++],-1);
+					int vid1=mesh->indexes[counter++];
+					int vid2=mesh->indexes[counter++];
+					int vid3=mesh->indexes[counter++];
+					mesh->faces[i]=Vec4I(vid1,vid2,vid3,vid1);
 				}
 			} else {
 				mesh->faces.resize(numPolys);
 				memcpy(&mesh->faces[0],&mesh->indexes[0],sizeof(Vec4I)*numPolys);
 			}
 			if (points.size() > 0 && indexes.size() > 0){
+				mesh->updateBBox();
 				return mesh;
 			} else {
 				return NULL;
@@ -457,15 +461,37 @@ float Mesh::EstimateVoxelSize(int stride){
 		}
 	}
 	avg /= count;
-	//std::cout << "Average Edge Length=" << avg << " Max Edge Length=" << maxLength << std::endl;
+
+	std::cout << "Average Edge Length=" << avg << " Max Edge Length=" << maxLength << std::endl;
 	return avg;
+}
+openvdb::math::BBox<openvdb::Vec3d>& Mesh::updateBBox(){
+	Vec3s minPt(std::numeric_limits<float>::max(),std::numeric_limits<float>::max(),std::numeric_limits<float>::max());
+	Vec3s maxPt(std::numeric_limits<float>::min(),std::numeric_limits<float>::min(),std::numeric_limits<float>::min());
+	for(Vec3s pt:points){
+		minPt=openvdb::math::Min(minPt,pt);
+		maxPt=openvdb::math::Max(maxPt,pt);
+	}
+	bbox=openvdb::math::BBox<openvdb::Vec3d>(minPt,maxPt);
+	return bbox;
+}
+void Mesh::scale(float sc){
+	for(Vec3s& pt:points){
+		pt*=sc;
+	}
+	bbox.min()*=static_cast<double>(sc);
+	bbox.max()*=static_cast<double>(sc);
+
 }
 void Mesh::draw(bool colorEnabled){
 	if (mVertexBuffer > 0){
+	    glEnable(GL_LIGHTING);
+		glColor3f(0.6f,0.6f,0.6f);
+
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glEnableClientState(GL_NORMAL_ARRAY);
 		glEnableClientState(GL_INDEX_ARRAY);
-
+		glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
 		if (colorEnabled)glEnableClientState(GL_COLOR_ARRAY);
 
 		glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
@@ -480,12 +506,21 @@ void Mesh::draw(bool colorEnabled){
 		glNormalPointer(GL_FLOAT, 0, 0);
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,mIndexBuffer);
-		glDrawElements(GL_TRIANGLES, indexes.size(), GL_UNSIGNED_INT, NULL);
 
+		glDrawElements(meshType, indexes.size(), GL_UNSIGNED_INT, NULL);
+	    glLineWidth(2.0f);
+	    glDisable(GL_LIGHTING);
+	    glEnable(GL_LINE_SMOOTH);
+	    glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+	    glColor3f(0.8f,0.6f,0.1f);
+	    glDrawElements(meshType, indexes.size(),  GL_UNSIGNED_INT, 0);
+	    glEnable(GL_LIGHTING);
 		if (colorEnabled)glDisableClientState(GL_COLOR_ARRAY);
 		glDisableClientState(GL_INDEX_ARRAY);
 		glDisableClientState(GL_NORMAL_ARRAY);
 		glDisableClientState(GL_VERTEX_ARRAY);
+	    glBindBuffer(GL_ARRAY_BUFFER, 0);
+	    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
 }
 void Mesh::updateGL(){

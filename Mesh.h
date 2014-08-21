@@ -37,6 +37,8 @@ class Mesh{
 		void draw(bool colorEnabled=false);
 		void scale(float sc);
 		void updateGL();
+		void mapIntoBoundingBox(float voxelSize);
+		void mapOutOfBoundingBox(float voxelSize);
 		static Mesh* openMesh(const std::string& file);
 		static Mesh* openGrid(const std::string& file);
 		bool save(const std::string& file);

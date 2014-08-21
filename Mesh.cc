@@ -427,6 +427,8 @@ Mesh* Mesh::create(FloatGrid::Ptr grid) {
 	mesh->meshType=PrimitiveType::QUADS;
 	return mesh;
 }
+
+
 float Mesh::EstimateVoxelSize(int stride){
 	float avg = 0.0f;
 	int count = 0;
@@ -482,6 +484,20 @@ void Mesh::scale(float sc){
 	bbox.min()*=static_cast<double>(sc);
 	bbox.max()*=static_cast<double>(sc);
 
+}
+void Mesh::mapIntoBoundingBox(float voxelSize){
+	Vec3s minPt=bbox.min();
+	Vec3s maxPt=bbox.max();
+	for(Vec3s& pt:points){
+		pt=(pt-minPt)/voxelSize;
+	}
+}
+void Mesh::mapOutOfBoundingBox(float voxelSize){
+	Vec3s minPt=bbox.min();
+	Vec3s maxPt=bbox.max();
+	for(Vec3s& pt:points){
+		pt=pt*voxelSize+minPt;
+	}
 }
 void Mesh::draw(bool colorEnabled){
 	if (mVertexBuffer > 0){

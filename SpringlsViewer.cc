@@ -152,15 +152,15 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
 	Mesh* mesh=Mesh::openMesh(fileName);
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
-	originalMesh->scale(1.0f/originalMesh->EstimateVoxelSize());
+	originalMesh->mapIntoBoundingBox(originalMesh->EstimateVoxelSize());
     openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     std::cout<<"Voxel size "<<trans->voxelSize()<<" "<<originalMesh->points.size()<<" "<<originalMesh->indexes.size()/3<<std::endl;
     std::cout<<"Bounding box "<<originalMesh->bbox<<std::endl;
     springlGrid.create(*originalMesh,trans);
     imagesci::WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/tmp/signedLevelSet");
     imagesci::WriteToRawFile(springlGrid.springlPointerGrid,"/home/blake/tmp/springlIndex");
-    mClipBox->setBBox(originalMesh->bbox);
-    //(*springlGrid.signedLevelSet);
+    mClipBox->set(*springlGrid.signedLevelSet);
+    //
 	meshDirty=true;
     return true;
 }
@@ -202,7 +202,7 @@ bool SpringlsViewer::init(int width,int height){
 
     BitmapFont13::initialize();
 
-    openvdb::BBoxd bbox=originalMesh->bbox;
+    openvdb::BBoxd bbox=mClipBox->GetBBox();
     std::cout<<"Bounding Box "<<bbox<<std::endl;
     openvdb::Vec3d extents = bbox.extents();
     double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));

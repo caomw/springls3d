@@ -66,11 +66,8 @@ SpringlsViewer* SpringlsViewer::GetInstance(){
 	return viewer;
 }
 void UpdateView(SpringlsViewer* v){
-	std::this_thread::yield();
-	std::this_thread::sleep_for(std::chrono::milliseconds(500 ));
 	while(v->update()){
-		std::this_thread::sleep_for(std::chrono::milliseconds(20 ));
-
+		std::this_thread::yield();
 	}
 }
 
@@ -139,16 +136,17 @@ void SpringlsViewer::start(){
 	simTime=0.0f;
 
 	advect=boost::shared_ptr<AdvectT>(new AdvectT(*springlGrid.signedLevelSet,field));
-	/*
+
 	advect->setSpatialScheme(openvdb::math::HJWENO5_BIAS);
 	advect->setTemporalScheme(openvdb::math::TVD_RK2);
 	advect->setTrackerSpatialScheme(openvdb::math::HJWENO5_BIAS);
 	advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
-	*/
+	/*
 	advect->setSpatialScheme(openvdb::math::FIRST_BIAS);
 	advect->setTemporalScheme(openvdb::math::TVD_RK1);
 	advect->setTrackerSpatialScheme(openvdb::math::FIRST_BIAS);
 	advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
+	*/
 	renderBBox=BBoxd(Vec3s(-50,-50,-50),Vec3s(50,50,50));
 	simulationRunning=true;
 	simThread=std::thread(UpdateView,this);
@@ -167,7 +165,7 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
 	Mesh* mesh=Mesh::openMesh(fileName);
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
-	originalMesh->mapIntoBoundingBox(4*originalMesh->EstimateVoxelSize());
+	originalMesh->mapIntoBoundingBox(originalMesh->EstimateVoxelSize());
     openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     springlGrid.create(*originalMesh,trans);
     mClipBox->set(*springlGrid.signedLevelSet);
@@ -286,14 +284,16 @@ bool SpringlsViewer::init(int width,int height){
         // Swap front and back buffers
         glfwSwapBuffers();
     // exit if the esc key is pressed or the window is closed.
+		std::this_thread::sleep_for(std::chrono::milliseconds(20));
     } while (!glfwGetKey(GLFW_KEY_ESC) && glfwGetWindowParam(GLFW_OPENED));
     glfwTerminate();
     return true;
 }
 bool SpringlsViewer::update(){
-	meshLock.lock();
+
 	advect->advect(simTime,simTime+dt);
 	simTime+=dt;
+	meshLock.lock();
 	springlGrid.constellation->create(springlGrid.signedLevelSet);
 	meshDirty=true;
 	meshLock.unlock();

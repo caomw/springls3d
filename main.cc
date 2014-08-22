@@ -78,14 +78,13 @@ main(int argc, char *argv[])
 			 SpringlsViewer* viewer = SpringlsViewer::GetInstance();
 			 OPENVDB_FINISH_THREADSAFE_STATIC_WRITE
 				std::string ext=boost::filesystem::extension(boost::filesystem::path(fileName));
-				std::cout<<"FILE  EXT "<<ext<<std::endl;
 				if(ext==std::string(".ply")){
 					viewer->openMesh(fileName);
 				} else if(ext==std::string(".vdb")){
 					viewer->openGrid(fileName);
 				}
-				std::cout<<"Try init "<<std::endl;
-			if(viewer->init(900,800))viewer->start();
+				viewer->start();
+				viewer->init(800,800);
     	} else {
     		std::cout<<"Usage: "<<argv[0]<<" [*.ply|*.vdb]"<<std::endl;
     	}

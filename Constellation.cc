@@ -7,7 +7,7 @@
 
 #include "Constellation.h"
 namespace imagesci{
-	Constellation::Constellation() {
+	Constellation::Constellation():Mesh() {
 		// TODO Auto-generated constructor stub
 
 	}

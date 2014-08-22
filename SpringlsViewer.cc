@@ -60,12 +60,14 @@
 SpringlsViewer* viewer=NULL;
 const float SpringlsViewer::dt=0.005f;
 using namespace imagesci;
-
+using namespace openvdb_viewer;
 SpringlsViewer* SpringlsViewer::GetInstance(){
 	if(viewer==NULL)viewer=new SpringlsViewer();
 	return viewer;
 }
 void UpdateView(SpringlsViewer* v){
+	std::this_thread::yield();
+	std::this_thread::sleep_for(std::chrono::milliseconds(500 ));
 	while(v->update()){
 		std::this_thread::sleep_for(std::chrono::milliseconds(20 ));
 
@@ -134,8 +136,21 @@ SpringlsViewer::SpringlsViewer()
 {
 }
 void SpringlsViewer::start(){
-	simulationRunning=true;
 	simTime=0.0f;
+
+	advect=boost::shared_ptr<AdvectT>(new AdvectT(*springlGrid.signedLevelSet,field));
+	/*
+	advect->setSpatialScheme(openvdb::math::HJWENO5_BIAS);
+	advect->setTemporalScheme(openvdb::math::TVD_RK2);
+	advect->setTrackerSpatialScheme(openvdb::math::HJWENO5_BIAS);
+	advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
+	*/
+	advect->setSpatialScheme(openvdb::math::FIRST_BIAS);
+	advect->setTemporalScheme(openvdb::math::TVD_RK1);
+	advect->setTrackerSpatialScheme(openvdb::math::FIRST_BIAS);
+	advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
+	renderBBox=BBoxd(Vec3s(-50,-50,-50),Vec3s(50,50,50));
+	simulationRunning=true;
 	simThread=std::thread(UpdateView,this);
 
 }
@@ -152,15 +167,28 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
 	Mesh* mesh=Mesh::openMesh(fileName);
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
-	originalMesh->mapIntoBoundingBox(originalMesh->EstimateVoxelSize());
+	originalMesh->mapIntoBoundingBox(4*originalMesh->EstimateVoxelSize());
     openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
-    std::cout<<"Voxel size "<<trans->voxelSize()<<" "<<originalMesh->points.size()<<" "<<originalMesh->indexes.size()/3<<std::endl;
-    std::cout<<"Bounding box "<<originalMesh->bbox<<std::endl;
     springlGrid.create(*originalMesh,trans);
+    mClipBox->set(*springlGrid.signedLevelSet);
     imagesci::WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/tmp/signedLevelSet");
     imagesci::WriteToRawFile(springlGrid.springlPointerGrid,"/home/blake/tmp/springlIndex");
-    mClipBox->set(*springlGrid.signedLevelSet);
-    //
+	BBoxd bbox=mClipBox->GetBBox();
+	trans=springlGrid.signedLevelSet->transformPtr();
+    Vec3d extents=bbox.extents();
+	double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
+
+	double scale=1.0/max_extent;
+	const float radius = 0.15f;
+    const openvdb::Vec3f center(0.35f,0.35f,0.35f);
+
+	Vec3s t=-0.5f*(bbox.min()+bbox.max());
+	trans->postTranslate(t);
+	trans->postScale(scale*2*radius);
+	trans->postTranslate(center);
+	bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
+	mClipBox->setBBox(bbox);
+
 	meshDirty=true;
     return true;
 }
@@ -174,13 +202,8 @@ bool SpringlsViewer::openGrid(const std::string& fileName){
 	return true;
 }
 bool SpringlsViewer::init(int width,int height){
-	/*
-	advect=boost::shared_ptr<AdvectT>(new AdvectT(*springlGrid.signedLevelSet,field));
-	advect->setSpatialScheme(openvdb::math::HJWENO5_BIAS);
-	advect->setTemporalScheme(openvdb::math::TVD_RK2);
-	advect->setTrackerSpatialScheme(openvdb::math::HJWENO5_BIAS);
-	advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
-*/
+
+
     if (glfwInit() != GL_TRUE) {
         std::cout<<"GLFW Initialization Failed.";
         return false;
@@ -195,15 +218,12 @@ bool SpringlsViewer::init(int width,int height){
         glfwTerminate();
         return false;
     }
-    using namespace openvdb_viewer;
-
     glfwSetWindowTitle(mProgName.c_str());
     glfwSwapBuffers();
 
     BitmapFont13::initialize();
 
-    openvdb::BBoxd bbox=mClipBox->GetBBox();
-    std::cout<<"Bounding Box "<<bbox<<std::endl;
+    openvdb::BBoxd bbox=renderBBox;
     openvdb::Vec3d extents = bbox.extents();
     double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
 
@@ -221,17 +241,35 @@ bool SpringlsViewer::init(int width,int height){
     glClearColor(0.85, 0.85, 0.85, 0.0f);
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_TEST);
-    glShadeModel(GL_SMOOTH);
     glPointSize(4);
     glLineWidth(2);
+	const float ambient[]={0.2f,0.2f,0.2f,1.0f};
+	const float diffuse[]={0.8f,0.8f,0.8f,1.0f};
+	const float specular[]={0.9f,0.9f,0.9f,1.0f};
+	const float position[]={0.3f,0.5f,1.0f,0.0f};
+	glEnable(GL_POLYGON_SMOOTH);
+	glEnable( GL_BLEND );
+	glEnable(GL_NORMALIZE);
+	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+	glShadeModel(GL_SMOOTH);
+	glEnable (GL_LINE_SMOOTH);
+	glEnable( GL_COLOR_MATERIAL );
+	glEnable(GL_LIGHT0);
+	glEnable(GL_LIGHTING);
+	glLightfv(GL_LIGHT0, GL_AMBIENT,(GLfloat*)&ambient);
+	glLightfv(GL_LIGHT0, GL_SPECULAR,(GLfloat*)&specular);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE,(GLfloat*)&diffuse);
+	glLightfv(GL_LIGHT0, GL_POSITION,(GLfloat*)&position);
+	glMaterialf(GL_FRONT, GL_SHININESS, 5.0f);
     size_t frame = 0;
     double time = glfwGetTime();
     glfwSwapInterval(1);
     do {
        if(meshDirty&&originalMesh.get()!=nullptr){
 			meshLock.lock();
-			std::cout<<"Update GL"<<std::endl;
-			originalMesh->updateGL();
+				originalMesh->updateGL();
+				springlGrid.constellation->updateGL();
+
 			meshDirty=false;
 			meshLock.unlock();
 			render();
@@ -255,10 +293,12 @@ bool SpringlsViewer::init(int width,int height){
 bool SpringlsViewer::update(){
 	meshLock.lock();
 	advect->advect(simTime,simTime+dt);
+	simTime+=dt;
+	springlGrid.constellation->create(springlGrid.signedLevelSet);
 	meshDirty=true;
 	meshLock.unlock();
-	simTime+=dt;
 	setNeedsDisplay();
+	std::cout<<"Simulation Time "<<simTime<<std::endl;
 	return (simTime<=3.0f&&simulationRunning);
 }
 
@@ -281,12 +321,26 @@ SpringlsViewer::render()
 {
 
     mCamera->aim();
-    using namespace openvdb_viewer;
+
+    openvdb::BBoxd bbox=mClipBox->GetBBox();
+    openvdb::Vec3d extents = bbox.extents();
+    openvdb::Vec3d rextents=renderBBox.extents();
+
+    double scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));
+    Vec3s minPt=bbox.getCenter();
+    Vec3s rminPt=renderBBox.getCenter();
+
+    glPushMatrix();
+    glTranslatef(rminPt[0],rminPt[1],rminPt[2]);
+    glScalef(scale,scale,scale);
+    glTranslatef(-minPt[0],-minPt[1],-minPt[2]);
     mClipBox->render();
     mClipBox->enableClipping();
-    originalMesh->draw(false);
+	glColor3f(0.8f,0.8f,0.8f);
+    //originalMesh->draw(false);
+    springlGrid.draw(false);
     mClipBox->disableClipping();
-
+    glPopMatrix();
     // Render text
 
         BitmapFont13::enableFontRendering();

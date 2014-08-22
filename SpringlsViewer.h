@@ -71,6 +71,7 @@ protected:
 	bool simulationRunning;
 	std::mutex meshLock;
 	int mUpdates;
+	openvdb::BBoxd renderBBox;
 	boost::shared_ptr<imagesci::Mesh> originalMesh;
 	imagesci::SpringlGrid springlGrid;
 	std::unique_ptr<imagesci::Constellation> constellation;

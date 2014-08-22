@@ -80,7 +80,7 @@ PlyProperty faceProps[] = { // property information for a face
 
 
 Mesh::Mesh() :
-		mVertexBuffer(0), mNormalBuffer(0), mColorBuffer(0), mIndexBuffer(0),meshType(PrimitiveType::TRIANGLES) {
+		mVertexBuffer(0), mNormalBuffer(0), mColorBuffer(0), mIndexBuffer(0),elementCount(0),meshType(PrimitiveType::TRIANGLES) {
 }
 bool Mesh::save(const std::string& f){
 	int i, j, idx;
@@ -193,7 +193,8 @@ Mesh* Mesh::openGrid(const std::string& fileName){
       openvdb::GridPtrVec allGrids;
       allGrids.insert(allGrids.end(), grids->begin(), grids->end());
       GridBase::Ptr ptr=allGrids[0];
-      Mesh* mesh=Mesh::create(boost::static_pointer_cast<FloatGrid>(ptr));
+      Mesh* mesh=new Mesh();
+      mesh->create(boost::static_pointer_cast<FloatGrid>(ptr));
       return mesh;
 }
 Mesh* Mesh::openMesh(const std::string& file){
@@ -354,11 +355,20 @@ Mesh* Mesh::openMesh(const std::string& file){
 			mesh->faces.resize(numPolys);
 			if(mesh->meshType==TRIANGLES){
 				int counter=0;
+				Vec3s norm;
+				normals.resize(points.size());
 				for(int i=0;i<numPolys;i++){
 					int vid1=mesh->indexes[counter++];
 					int vid2=mesh->indexes[counter++];
 					int vid3=mesh->indexes[counter++];
-					mesh->faces[i]=Vec4I(vid1,vid2,vid3,vid1);
+					Vec3s norm=(points[vid2]-points[vid1]).cross(points[vid3]-points[vid1]);
+					normals[vid1]+=norm;
+					normals[vid2]+=norm;
+					normals[vid3]+=norm;
+					mesh->faces[i]=Vec4I(vid1,vid2,vid3,util::INVALID_IDX);
+				}
+				for(Vec3s& norm:normals){
+					norm.normalize(1E-6f);
 				}
 			} else {
 				mesh->faces.resize(numPolys);
@@ -371,26 +381,29 @@ Mesh* Mesh::openMesh(const std::string& file){
 				return NULL;
 			}
 }
-Mesh* Mesh::create(FloatGrid::Ptr grid) {
-	using openvdb::Index64;
+void Mesh::create(FloatGrid::Ptr grid) {
+
 	openvdb::tools::VolumeToMesh mesher(
 			grid->getGridClass() == openvdb::GRID_LEVEL_SET ? 0.0 : 0.01);
 	mesher(*grid);
-	Mesh* mesh=new Mesh();
 	// Copy points and generate point normals.
-	mesh->points.resize(mesher.pointListSize() * 3);
-	mesh->normals.resize(mesher.pointListSize() * 3);
 
 	openvdb::tree::ValueAccessor<FloatGrid::TreeType> acc(grid->tree());
 
 	openvdb::math::GenericMap map(grid->transform());
 	openvdb::Coord ijk;
+	points.clear();
+	normals.clear();
+	faces.clear();
+	indexes.clear();
 
-	mesh->points.resize(mesher.pointListSize());
-	for (Index64 n = 0, N = mesher.pointListSize(); n < N; ++n) {
-		mesh->points[n]=mesher.pointList()[n];
+	points.resize(mesher.pointListSize());
+	normals.resize(mesher.pointListSize());
+	Index64 N = mesher.pointListSize();
+	for (Index64 n = 0; n < N; ++n) {
+		points[n]=mesher.pointList()[n];
+		normals[n]=Vec3s(0.0f);
 	}
-
 	// Copy primitives
 	openvdb::tools::PolygonPoolList& polygonPoolList = mesher.polygonPoolList();
 
@@ -398,34 +411,32 @@ Mesh* Mesh::create(FloatGrid::Ptr grid) {
 	for (Index64 n = 0, N = mesher.polygonPoolListSize(); n < N; ++n) {
 		numQuads += polygonPoolList[n].numQuads();
 	}
-	mesh->indexes.reserve(numQuads * 4);
+	indexes.reserve(numQuads * 4);
 	openvdb::Vec3d normal, e1, e2;
-	mesh->faces.reserve(mesher.polygonPoolListSize());
+
+	faces.reserve(mesher.polygonPoolListSize());
 	for (Index64 n = 0, N = mesher.polygonPoolListSize(); n < N; ++n) {
 		const openvdb::tools::PolygonPool& polygons = polygonPoolList[n];
 		//std::cout << "Polygon " << polygons.numTriangles() << " "<< polygons.numQuads() << std::endl;
 		for (Index64 i = 0, I = polygons.numQuads(); i < I; ++i) {
 			const openvdb::Vec4I& quad = polygons.quad(i);
-			mesh->faces.push_back(quad);
-			mesh->indexes.push_back(quad[0]);
-			mesh->indexes.push_back(quad[1]);
-			mesh->indexes.push_back(quad[2]);
-			mesh->indexes.push_back(quad[3]);
-			e1 = mesher.pointList()[quad[1]];
-			e1 -= mesher.pointList()[quad[0]];
-			e2 = mesher.pointList()[quad[2]];
-			e2 -= mesher.pointList()[quad[1]];
-			normal = e1.cross(e2);
-			const double length = normal.length();
-			if (length > 1.0e-7)
-				normal *= (1.0 / length);
-			for (Index64 v = 0; v < 4; ++v) {
-				mesh->normals[quad[v]] = -normal;
-			}
+			faces.push_back(quad);
+			indexes.push_back(quad[0]);
+			indexes.push_back(quad[1]);
+			indexes.push_back(quad[2]);
+			indexes.push_back(quad[3]);
+			normal=(points[quad[2]]-points[quad[0]]).cross(points[quad[1]]-points[quad[0]]);
+			normals[quad[0]]+= normal;
+			normals[quad[1]]+= normal;
+			normals[quad[2]]+= normal;
+			normals[quad[3]]+= normal;
 		}
 	}
-	mesh->meshType=PrimitiveType::QUADS;
-	return mesh;
+	for(Vec3s& norm:normals){
+		norm.normalize(1E-6f);
+	}
+	meshType=PrimitiveType::QUADS;
+	updateBBox();
 }
 
 
@@ -471,8 +482,13 @@ openvdb::math::BBox<openvdb::Vec3d>& Mesh::updateBBox(){
 	Vec3s minPt(std::numeric_limits<float>::max(),std::numeric_limits<float>::max(),std::numeric_limits<float>::max());
 	Vec3s maxPt(std::numeric_limits<float>::min(),std::numeric_limits<float>::min(),std::numeric_limits<float>::min());
 	for(Vec3s pt:points){
-		minPt=openvdb::math::Min(minPt,pt);
-		maxPt=openvdb::math::Max(maxPt,pt);
+		minPt[0]=std::min(minPt[0],pt[0]);
+		minPt[1]=std::min(minPt[1],pt[1]);
+		minPt[2]=std::min(minPt[2],pt[2]);
+
+		maxPt[0]=std::max(maxPt[0],pt[0]);
+		maxPt[1]=std::max(maxPt[1],pt[1]);
+		maxPt[2]=std::max(maxPt[2],pt[2]);
 	}
 	bbox=openvdb::math::BBox<openvdb::Vec3d>(minPt,maxPt);
 	return bbox;
@@ -500,16 +516,13 @@ void Mesh::mapOutOfBoundingBox(float voxelSize){
 	}
 }
 void Mesh::draw(bool colorEnabled){
-	if (mVertexBuffer > 0){
+	if (mVertexBuffer > 0&&elementCount>0){
 	    glEnable(GL_LIGHTING);
-		glColor3f(0.6f,0.6f,0.6f);
-
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glEnableClientState(GL_NORMAL_ARRAY);
 		glEnableClientState(GL_INDEX_ARRAY);
 		glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
 		if (colorEnabled)glEnableClientState(GL_COLOR_ARRAY);
-
 		glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
 		glVertexPointer(3, GL_FLOAT, 0, 0);
 
@@ -523,13 +536,12 @@ void Mesh::draw(bool colorEnabled){
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,mIndexBuffer);
 
-		glDrawElements(meshType, indexes.size(), GL_UNSIGNED_INT, NULL);
-	    glLineWidth(2.0f);
+		glDrawElements(meshType, elementCount, GL_UNSIGNED_INT, NULL);
+	    glLineWidth(3.0f);
 	    glDisable(GL_LIGHTING);
-	    glEnable(GL_LINE_SMOOTH);
 	    glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
-	    glColor3f(0.8f,0.6f,0.1f);
-	    glDrawElements(meshType, indexes.size(),  GL_UNSIGNED_INT, 0);
+	    glColor3f(0.3f,0.3f,0.3f);
+	    glDrawElements(meshType,elementCount,  GL_UNSIGNED_INT, 0);
 	    glEnable(GL_LIGHTING);
 		if (colorEnabled)glDisableClientState(GL_COLOR_ARRAY);
 		glDisableClientState(GL_INDEX_ARRAY);
@@ -540,6 +552,7 @@ void Mesh::draw(bool colorEnabled){
 	}
 }
 void Mesh::updateGL(){
+	elementCount=0;
 	if (points.size() > 0) {
 		if (glIsBuffer(mVertexBuffer) == GL_TRUE)
 			glDeleteBuffers(1, &mVertexBuffer);
@@ -552,6 +565,8 @@ void Mesh::updateGL(){
 		if (GL_NO_ERROR != glGetError())
 			throw "Error: Unable to upload vertex buffer data";
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
 	}
 
 	if (colors.size() > 0) {
@@ -570,7 +585,6 @@ void Mesh::updateGL(){
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
-
 	if (indexes.size() > 0) {
 		// clear old buffer
 		if (glIsBuffer(mIndexBuffer) == GL_TRUE)
@@ -587,7 +601,7 @@ void Mesh::updateGL(){
 				&indexes[0], GL_STATIC_DRAW); // upload data
 		if (GL_NO_ERROR != glGetError())
 			throw "Error: Unable to upload index buffer data";
-
+		elementCount=indexes.size();
 		// release buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}

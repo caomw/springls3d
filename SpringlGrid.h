@@ -17,11 +17,13 @@ class SpringlGrid {
 public:
 	openvdb::FloatGrid::Ptr signedLevelSet;
 	openvdb::FloatGrid::Ptr unsignedLevelSet;
+	openvdb::VectorGrid::Ptr gradient;
 	openvdb::Int32Grid::Ptr springlPointerGrid;
 	boost::shared_ptr<Constellation> constellation;
 
 	void draw(bool colorEnabled);
-
+	void updateGradient();
+	void updateUnsignedLevelSet();
 	bool create(const Mesh& mesh,openvdb::math::Transform::Ptr& transform);
 	SpringlGrid();
 	virtual ~SpringlGrid();

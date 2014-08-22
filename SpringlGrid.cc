@@ -8,6 +8,7 @@
 #include "SpringlGrid.h"
 #include "ImageSciUtil.h"
 #include <openvdb/tools/MeshToVolume.h>
+#include <openvdb/tools/GridOperators.h>
 using namespace openvdb;
 using namespace openvdb::tools;
 namespace imagesci {
@@ -23,10 +24,20 @@ bool SpringlGrid::create(const Mesh& mesh,openvdb::math::Transform::Ptr& transfo
 	return true;
 }
 void SpringlGrid::draw(bool colorEnabled){
-	glColor3f(0.8f,0.3f,0.3f);
 	if(constellation.get()!=nullptr){
+		glColor3f(0.8f,0.3f,0.3f);
 		constellation->draw(colorEnabled);
 	}
+}
+void SpringlGrid::updateUnsignedLevelSet(){
+	openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
+	MeshToVolume<FloatGrid> mtol(trans,GENERATE_PRIM_INDEX_GRID);
+	mtol.convertToUnsignedDistanceField(constellation->points,constellation->faces,float(LEVEL_SET_HALF_WIDTH)*2);
+	unsignedLevelSet=mtol.distGridPtr();
+	springlPointerGrid=mtol.indexGridPtr();
+}
+void SpringlGrid::updateGradient(){
+	gradient = openvdb::tools::gradient(*unsignedLevelSet);
 }
 SpringlGrid::SpringlGrid() {
 }

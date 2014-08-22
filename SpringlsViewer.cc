@@ -293,8 +293,11 @@ bool SpringlsViewer::update(){
 
 	advect->advect(simTime,simTime+dt);
 	simTime+=dt;
+	openvdb::BBoxd bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
+	mClipBox->setBBox(bbox);
 	meshLock.lock();
 	springlGrid.constellation->create(springlGrid.signedLevelSet);
+
 	meshDirty=true;
 	meshLock.unlock();
 	setNeedsDisplay();

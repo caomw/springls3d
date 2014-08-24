@@ -268,7 +268,7 @@ bool SpringlsViewer::init(int width,int height){
        if(meshDirty&&originalMesh.get()!=nullptr){
 			meshLock.lock();
 				originalMesh->updateGL();
-				springlGrid.constellation->updateGL();
+				springlGrid.isoSurface->updateGL();
 
 			meshDirty=false;
 			meshLock.unlock();
@@ -298,7 +298,7 @@ bool SpringlsViewer::update(){
 	//openvdb::BBoxd bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
 	//mClipBox->setBBox(bbox);
 	meshLock.lock();
-	springlGrid.constellation->create(springlGrid.signedLevelSet);
+	springlGrid.isoSurface->create(springlGrid.signedLevelSet);
 
 	meshDirty=true;
 	meshLock.unlock();

@@ -74,7 +74,6 @@ protected:
 	openvdb::BBoxd renderBBox;
 	boost::shared_ptr<imagesci::Mesh> originalMesh;
 	imagesci::SpringlGrid springlGrid;
-	std::unique_ptr<imagesci::Constellation> constellation;
 
 	FieldT field;
 	boost::shared_ptr<AdvectT> advect;

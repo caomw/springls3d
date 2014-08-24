@@ -19,12 +19,13 @@ public:
 	openvdb::FloatGrid::Ptr unsignedLevelSet;
 	openvdb::VectorGrid::Ptr gradient;
 	openvdb::Int32Grid::Ptr springlPointerGrid;
-	boost::shared_ptr<Constellation> constellation;
+	boost::shared_ptr<Constellation<openvdb::Int32>> constellation;
+	boost::shared_ptr<Mesh> isoSurface;
 	std::vector<std::list<openvdb::Index32>> nearestNeighbors;
 	void draw(bool colorEnabled);
 	void updateGradient();
 	void updateUnsignedLevelSet();
-	void updateNearestNeighbors();
+	void updateNearestNeighbors(bool threaded=true);
 	bool create(const Mesh& mesh,openvdb::math::Transform::Ptr& transform);
 	SpringlGrid();
 	virtual ~SpringlGrid();

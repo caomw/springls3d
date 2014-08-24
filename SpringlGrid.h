@@ -20,10 +20,11 @@ public:
 	openvdb::VectorGrid::Ptr gradient;
 	openvdb::Int32Grid::Ptr springlPointerGrid;
 	boost::shared_ptr<Constellation> constellation;
-
+	std::vector<std::list<openvdb::Index32>> nearestNeighbors;
 	void draw(bool colorEnabled);
 	void updateGradient();
 	void updateUnsignedLevelSet();
+	void updateNearestNeighbors();
 	bool create(const Mesh& mesh,openvdb::math::Transform::Ptr& transform);
 	SpringlGrid();
 	virtual ~SpringlGrid();

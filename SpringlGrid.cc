@@ -7,8 +7,8 @@
 
 #include "SpringlGrid.h"
 #include "ImageSciUtil.h"
+#include "AdvectionForce.h"
 #include <openvdb/tools/MeshToVolume.h>
-#include <openvdb/tools/GridOperators.h>
 using namespace openvdb;
 using namespace openvdb::tools;
 namespace imagesci {
@@ -19,7 +19,6 @@ bool SpringlGrid::create(const Mesh& mesh,openvdb::math::Transform::Ptr& transfo
 	springlPointerGrid=mtol.indexGridPtr();
     Constellation* c=new Constellation();
 	c->create(signedLevelSet);
-
 	constellation=std::unique_ptr<Constellation>(c);
 	return true;
 }
@@ -29,15 +28,21 @@ void SpringlGrid::draw(bool colorEnabled){
 		constellation->draw(colorEnabled);
 	}
 }
+void SpringlGrid::updateNearestNeighbors(){
+
+}
 void SpringlGrid::updateUnsignedLevelSet(){
 	openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
 	MeshToVolume<FloatGrid> mtol(trans,GENERATE_PRIM_INDEX_GRID);
 	mtol.convertToUnsignedDistanceField(constellation->points,constellation->faces,float(LEVEL_SET_HALF_WIDTH)*2);
 	unsignedLevelSet=mtol.distGridPtr();
+	unsignedLevelSet->setBackground(float(LEVEL_SET_HALF_WIDTH)*2);
 	springlPointerGrid=mtol.indexGridPtr();
 }
 void SpringlGrid::updateGradient(){
-	gradient = openvdb::tools::gradient(*unsignedLevelSet);
+	//gradient = openvdb::tools::gradient(*unsignedLevelSet);
+	gradient = advectionForce(*unsignedLevelSet);
+
 }
 SpringlGrid::SpringlGrid() {
 }

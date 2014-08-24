@@ -141,12 +141,8 @@ void SpringlsViewer::start(){
 	advect->setTemporalScheme(openvdb::math::TVD_RK2);
 	advect->setTrackerSpatialScheme(openvdb::math::HJWENO5_BIAS);
 	advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
-	/*
-	advect->setSpatialScheme(openvdb::math::FIRST_BIAS);
-	advect->setTemporalScheme(openvdb::math::TVD_RK1);
-	advect->setTrackerSpatialScheme(openvdb::math::FIRST_BIAS);
-	advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
-	*/
+
+
 	renderBBox=BBoxd(Vec3s(-50,-50,-50),Vec3s(50,50,50));
 	simulationRunning=true;
 	simThread=std::thread(UpdateView,this);
@@ -165,12 +161,17 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
 	Mesh* mesh=Mesh::openMesh(fileName);
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
-	originalMesh->mapIntoBoundingBox(originalMesh->EstimateVoxelSize());
+	originalMesh->mapIntoBoundingBox(4*originalMesh->EstimateVoxelSize());
     openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     springlGrid.create(*originalMesh,trans);
     mClipBox->set(*springlGrid.signedLevelSet);
     imagesci::WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/tmp/signedLevelSet");
     imagesci::WriteToRawFile(springlGrid.springlPointerGrid,"/home/blake/tmp/springlIndex");
+	springlGrid.updateUnsignedLevelSet();
+	imagesci::WriteToRawFile(springlGrid.unsignedLevelSet,"/home/blake/tmp/unsignedLevelSet");
+	springlGrid.updateGradient();
+	imagesci::WriteToRawFile(springlGrid.gradient,"/home/blake/tmp/gradient");
+
 	BBoxd bbox=mClipBox->GetBBox();
 	trans=springlGrid.signedLevelSet->transformPtr();
     Vec3d extents=bbox.extents();
@@ -186,6 +187,7 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
 	trans->postTranslate(center);
 	bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
 	mClipBox->setBBox(bbox);
+
 
 	meshDirty=true;
     return true;
@@ -293,8 +295,8 @@ bool SpringlsViewer::update(){
 
 	advect->advect(simTime,simTime+dt);
 	simTime+=dt;
-	openvdb::BBoxd bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
-	mClipBox->setBBox(bbox);
+	//openvdb::BBoxd bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
+	//mClipBox->setBBox(bbox);
 	meshLock.lock();
 	springlGrid.constellation->create(springlGrid.signedLevelSet);
 

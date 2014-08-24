@@ -10,6 +10,7 @@
 #include <openvdb/openvdb.h>
 namespace imagesci {
 bool WriteToRawFile(openvdb::FloatGrid::Ptr grid,const std::string& fileName);
+bool WriteToRawFile(openvdb::VectorGrid::Ptr grid,const std::string& fileName);
 bool WriteToRawFile(openvdb::Int32Grid::Ptr grid,const std::string& fileName);
 }
 #endif /* IMAGESCIUTIL_H_ */

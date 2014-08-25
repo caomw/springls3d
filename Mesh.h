@@ -23,12 +23,16 @@ class Mesh{
 
 		PrimitiveType meshType;
 		GLuint mVertexBuffer;
+		GLuint mParticleBuffer;
 		GLuint mNormalBuffer;
+		GLuint mParticleNormalBuffer;
 		GLuint mColorBuffer;
 		GLuint mIndexBuffer;
 		GLuint elementCount;
 		openvdb::math::BBox<openvdb::Vec3d> bbox;
-		std::vector<openvdb::Vec3s> points;
+		std::vector<openvdb::Vec3s> particles;
+		std::vector<openvdb::Vec3s> particleNormals;
+		std::vector<openvdb::Vec3s> vertexes;
 		std::vector<openvdb::Vec3s> colors;
 		std::vector<openvdb::Vec3s> normals;
 		std::vector<openvdb::Index32> indexes;

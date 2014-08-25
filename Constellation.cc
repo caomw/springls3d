@@ -12,24 +12,33 @@ namespace imagesci{
 	Constellation<Description>::Constellation(Mesh& mesh) {
 		size_t faceCount=mesh.faces.size();
 		springls.clear();
-		springls.reserve(faceCount);
+		springls.resize(faceCount);
+
 		SpringlBase<Description> springl;
+		size_t counter=0;
+		size_t pcounter=0;
+		storage.faces.reserve(faceCount);
+		storage.vertexes.resize(mesh.indexes.size());
+		storage.particles.resize(mesh.vertexes.size());
 		for(openvdb::Vec4I face:mesh.faces){
 			if(face[3]!=util::INVALID_IDX){
-				springl=Springl<Description,4>();
-				springl[0]=mesh.points[face[0]];
-				springl[1]=mesh.points[face[1]];
-				springl[2]=mesh.points[face[2]];
-				springl[3]=mesh.points[face[3]];
+				springl=QuadSpringl<Description>();
+				storage.faces.push_back(openvdb::Vec4I(counter,counter+1,counter+2,counter+3));
+				springl.vertexes[0]=&storage.vertexes[counter++]=mesh.vertexes[face[0]];
+				springl.vertexes[1]=&storage.vertexes[counter++]=mesh.vertexes[face[1]];
+				springl.vertexes[2]=&storage.vertexes[counter++]=mesh.vertexes[face[2]];
+				springl.vertexes[3]=&storage.vertexes[counter++]=mesh.vertexes[face[3]];
+
 			} else {
-				springl=Springl<Description,3>();
-				springl[0]=mesh.points[face[0]];
-				springl[1]=mesh.points[face[1]];
-				springl[2]=mesh.points[face[2]];
+				springl=TriSpringl<Description>();
+				storage.faces.push_back(openvdb::Vec4I(counter,counter+1,counter+2,util::INVALID_IDX));
+				springl.vertexes[0]=&storage.vertexes[counter++]=mesh.vertexes[face[0]];
+				springl.vertexes[1]=&storage.vertexes[counter++]=mesh.vertexes[face[1]];
+				springl.vertexes[2]=&storage.vertexes[counter++]=mesh.vertexes[face[2]];
 			}
 			springl.id=springls.size();
-			springl.particle=springl.computeCentroid();
-			springl.normal=springl.computeNormal();
+			springl.particle=&storage.particles[pcounter]=springl.computeCentroid();
+			springl.normal=&storage.particleNormals[pcounter++]=springl.computeNormal();
 			springls.push_back(springl);
 		}
 	}
@@ -37,4 +46,3 @@ namespace imagesci{
 
 	}
 }
-

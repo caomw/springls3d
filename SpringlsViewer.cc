@@ -166,7 +166,7 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
     springlGrid.create(*originalMesh,trans);
     mClipBox->set(*springlGrid.signedLevelSet);
     imagesci::WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/tmp/signedLevelSet");
-    imagesci::WriteToRawFile(springlGrid.springlPointerGrid,"/home/blake/tmp/springlIndex");
+    imagesci::WriteToRawFile(springlGrid.springlIndexGrid,"/home/blake/tmp/springlIndex");
 	springlGrid.updateUnsignedLevelSet();
 	imagesci::WriteToRawFile(springlGrid.unsignedLevelSet,"/home/blake/tmp/unsignedLevelSet");
 	springlGrid.updateGradient();

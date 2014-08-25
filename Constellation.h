@@ -14,12 +14,32 @@
 #include <tbb/parallel_for.h>
 #include <vector>
 #include <list>
+typedef std::vector<std::list<openvdb::Index32>> NearestNeighborMap;
 namespace imagesci{
+template<typename Description> class Constellation;
+class SpringlGrid {
+public:
+	openvdb::FloatGrid::Ptr signedLevelSet;
+	openvdb::FloatGrid::Ptr unsignedLevelSet;
+	openvdb::VectorGrid::Ptr gradient;
+	openvdb::Int32Grid::Ptr springlIndexGrid;
+	boost::shared_ptr<Mesh> isoSurface;
+	boost::shared_ptr<Constellation<openvdb::Int32>> constellation;
+	NearestNeighborMap nearestNeighbors;
+	void draw(bool colorEnabled);
+	void updateGradient();
+	void updateUnsignedLevelSet();
+	void updateNearestNeighbors(bool threaded=true);
+	bool create(const Mesh& mesh,openvdb::math::Transform::Ptr& transform);
+	SpringlGrid();
+	virtual ~SpringlGrid();
+};
 template<typename Description> class SpringlBase {
 	public:
 		openvdb::Index32 id;
-		openvdb::Vec3s particle;
-		openvdb::Vec3s normal;
+		openvdb::Vec3s* particle;
+		openvdb::Vec3s* normal;
+		Description description;
 		virtual size_t size();
 		virtual openvdb::Vec3s& operator[](size_t idx);
 		virtual const openvdb::Vec3s& operator[](size_t idx) const;
@@ -27,17 +47,14 @@ template<typename Description> class SpringlBase {
 		virtual openvdb::Vec3s computeCentroid() const;
 		virtual openvdb::Vec3s computeNormal(const float eps=1E-6f) const;
 
-		SpringlBase():id(0),particle(openvdb::Vec3s(0.0f)){
+		SpringlBase():id(0),particle(NULL),normal(NULL){
 		}
 };
 template<typename Description,size_t K> class Springl: public SpringlBase<Description> {
-	protected:
-		std::array<openvdb::Vec3s,K> vertexes;
 	public:
-
-		Description description;
-		openvdb::Vec3s& operator[](size_t idx){return vertexes[idx];}
-		const openvdb::Vec3s& operator[](size_t idx) const {return vertexes[idx];}
+		std::array<openvdb::Vec3s*,K> vertexes;
+		openvdb::Vec3s& operator[](size_t idx){return (*vertexes[idx]);}
+		const openvdb::Vec3s& operator[](size_t idx) const {return *vertexes[idx];}
 		inline size_t size() const {return K;}
 		openvdb::Vec3s computeCentroid() const{
 			openvdb::Vec3s centroid=openvdb::Vec3s(0.0f,0.0f,0.0f);
@@ -53,19 +70,32 @@ template<typename Description,size_t K> class Springl: public SpringlBase<Descri
 			norm.normalize(eps);
 			return norm;
 		}
+
 		~Springl(){}
 };
 
+template<typename Description> using TriSpringl=Springl<Description,3> ;
+template<typename Description> using QuadSpringl=Springl<Description,4> ;
 
 template<typename Description> class Constellation {
 protected:
+		Mesh storage;
 		std::vector<SpringlBase<Description>> springls;
-		std::vector<std::list<openvdb::Index32>> neighborGraph;
 public:
 		Constellation(Mesh& mesh);
+		inline void draw(bool colorEnabled=false){
+			storage.draw(colorEnabled);
+		}
+		inline void updateGL(){
+			storage.updateGL();
+		}
 		virtual ~Constellation();
 		inline size_t size() const {return springls.size();}
 		SpringlBase<Description>& operator[](size_t idx)
+	    {
+	    	return springls[idx];
+	    }
+		const SpringlBase<Description>& operator[](size_t idx) const
 	    {
 	    	return springls[idx];
 	    }
@@ -90,7 +120,7 @@ public:
         /// Advance to the next leaf node.
         Iterator& operator++() { ++mPos; return *this; }
         /// Return a reference to the leaf node to which this iterator is pointing.
-        SpringlType& operator*() const { return mConstellation[mPos]; }
+        SpringlType& operator*() const { return mRange.mConstellation[mPos]; }
         /// Return a pointer to the leaf node to which this iterator is pointing.
         SpringlType* operator->() const { return &(this->operator*()); }
 
@@ -118,7 +148,7 @@ public:
     SpringlRange(size_t begin, size_t end, const ConstellationType& constellation, size_t grainSize=1):
         mEnd(end), mBegin(begin), mGrainSize(grainSize), mConstellation(constellation) {}
 
-    SpringlRange(const ConstellationType& constellation, size_t grainSize=1):
+    SpringlRange(ConstellationType& constellation, size_t grainSize=1):
         mEnd(constellation.size()), mBegin(0), mGrainSize(grainSize), mConstellation(constellation) {}
 
     Iterator begin() const {return Iterator(*this, mBegin);}
@@ -138,10 +168,10 @@ public:
     SpringlRange(SpringlRange& r, tbb::split):
         mEnd(r.mEnd), mBegin(doSplit(r)), mGrainSize(r.mGrainSize),
           mConstellation(r.mConstellation) {}
-
+    ConstellationType& mConstellation;
 private:
     size_t mEnd, mBegin, mGrainSize;
-    const ConstellationType& mConstellation;
+
 
     static size_t doSplit(SpringlRange& r)
     {
@@ -156,18 +186,16 @@ private:
 	class ConstellationOperator
 	{
 		typedef SpringlBase<Description> SpringlType;
-		typedef Constellation<Description> ConstellationType;
 	public:
-		const ConstellationType& constellation;
-
-		ConstellationOperator(const ConstellationType& _constellation,InterruptT _interrupt):constellation(_constellation),mInterrupt(_interrupt){
+		const SpringlGrid& mGrid;
+		ConstellationOperator(const SpringlGrid& grid,InterruptT* _interrupt):mGrid(grid),mInterrupt(_interrupt){
 		}
 
 		virtual ~ConstellationOperator() {}
 		void process(bool threaded = true)
 		{
 			if (mInterrupt) mInterrupt->start("Processing springls");
-			SpringlRange<Description> range(constellation);
+			SpringlRange<Description> range(*mGrid.constellation);
 			if (threaded) {
 				tbb::parallel_for(range, *this);
 			} else {
@@ -183,13 +211,48 @@ private:
 		{
 			if (openvdb::util::wasInterrupted(mInterrupt)) tbb::task::self().cancel_group_execution();
 			for (typename SpringlRange<Description>::Iterator springl=range.begin(); springl; ++springl) {
-				OperatorT::result(springl);
+				OperatorT::result(*springl);
 			}
 		}
 
 	protected:
 		InterruptT*         mInterrupt;
 
-	}; // end of ConstellationOperator class
+	};
+	template<typename Description>
+	struct NearestNeighborOperation
+	{
+	private:
+	    const openvdb::Int32Grid::Ptr& mSpringlGrid;
+	    NearestNeighborMap& mNearestNeighbors;
+	public:
+	    static void result(const SpringlBase<Description>& springl) {
+	    	//Do something
+	    }
+	};
+	// end of ConstellationOperator class
+	/// @brief Compute the gradient of a scalar grid.
+	template<
+	    typename Description,
+	    typename InterruptT = openvdb::util::NullInterrupter>
+	class NearestNeighbors
+	{
+	public:
+	    typedef Constellation<Description> ConstellationType;
+	    NearestNeighbors(
+	    			const SpringlGrid& grid,
+	    			InterruptT* interrupt = NULL):mGrid(grid),mInterrupt(interrupt)
+	    {
+	    }
+	    void process(bool threaded = true)
+	    {
+        	typedef NearestNeighborOperation<Description> OpT;
+	    	ConstellationOperator<Description,OpT,InterruptT> op(mGrid,mInterrupt);
+        	op.process(threaded);
+	    }
+	    const SpringlGrid& mGrid;
+	    InterruptT*          mInterrupt;
+	}; // end of Gradient class
+
 }
 #endif /* CONSTELLATION_H_ */

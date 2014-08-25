@@ -18,7 +18,7 @@
 typedef std::vector<std::list<openvdb::Index32>> NearestNeighborMap;
 namespace imagesci{
 template<typename Description> class Constellation;
-class SpringlGrid {
+class SpringLevelSet {
 public:
 	openvdb::FloatGrid::Ptr signedLevelSet;
 	openvdb::FloatGrid::Ptr unsignedLevelSet;
@@ -32,8 +32,8 @@ public:
 	void updateUnsignedLevelSet();
 	void updateNearestNeighbors(bool threaded=true);
 	bool create(const Mesh& mesh,openvdb::math::Transform::Ptr& transform);
-	SpringlGrid();
-	~SpringlGrid();
+	SpringLevelSet();
+	~SpringLevelSet();
 };
 template<typename Description> struct SpringlBase {
 	private:
@@ -247,8 +247,8 @@ private:
 	{
 		typedef SpringlBase<Description> SpringlType;
 	public:
-		SpringlGrid& mGrid;
-		ConstellationOperator(SpringlGrid& grid,InterruptT* _interrupt):mGrid(grid),mInterrupt(_interrupt){
+		SpringLevelSet& mGrid;
+		ConstellationOperator(SpringLevelSet& grid,InterruptT* _interrupt):mGrid(grid),mInterrupt(_interrupt){
 		}
 
 		virtual ~ConstellationOperator() {}
@@ -286,12 +286,12 @@ private:
 	private:
 
 	public:
-		static void init(SpringlGrid& mGrid){
+		static void init(SpringLevelSet& mGrid){
 			NearestNeighborMap& map=mGrid.nearestNeighbors;
 			map.clear();
 			map.resize(mGrid.constellation->size());
 		}
-	    static void result(const SpringlBase<Description>& springl,SpringlGrid& mGrid) {
+	    static void result(const SpringlBase<Description>& springl,SpringLevelSet& mGrid) {
 	    	const int width=2;
 	    	NearestNeighborMap& map=mGrid.nearestNeighbors;
 	    	openvdb::math::DenseStencil<openvdb::Int32Grid>  stencil=openvdb::math::DenseStencil<openvdb::Int32Grid>(*mGrid.springlIndexGrid, width);
@@ -326,7 +326,7 @@ private:
 	public:
 	    typedef Constellation<Description> ConstellationType;
 	    NearestNeighbors(
-	    			SpringlGrid& grid,
+	    			SpringLevelSet& grid,
 	    			InterruptT* interrupt = NULL):mGrid(grid),mInterrupt(interrupt)
 	    {
 	    }
@@ -336,7 +336,7 @@ private:
 	    	ConstellationOperator<Description,OpT,InterruptT> op(mGrid,mInterrupt);
         	op.process(threaded);
 	    }
-	    SpringlGrid& mGrid;
+	    SpringLevelSet& mGrid;
 	    InterruptT*          mInterrupt;
 	}; // end of Gradient class
 

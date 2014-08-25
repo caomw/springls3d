@@ -5,7 +5,7 @@
  *      Author: blake
  */
 
-#include "Constellation.h"
+#include "SpringLevelSet.h"
 #include "ImageSciUtil.h"
 #include "AdvectionForce.h"
 #include <openvdb/tools/MeshToVolume.h>
@@ -13,7 +13,7 @@
 using namespace openvdb;
 using namespace openvdb::tools;
 namespace imagesci {
-bool SpringlGrid::create(const Mesh& mesh,openvdb::math::Transform::Ptr& transform){
+bool SpringLevelSet::create(const Mesh& mesh,openvdb::math::Transform::Ptr& transform){
 	std::cout<<"Covert mesh to signed level set"<<std::endl;
 	MeshToVolume<FloatGrid> mtol(transform,GENERATE_PRIM_INDEX_GRID);
 	mtol.convertToLevelSet(mesh.vertexes,mesh.faces);
@@ -27,7 +27,7 @@ bool SpringlGrid::create(const Mesh& mesh,openvdb::math::Transform::Ptr& transfo
 	updateNearestNeighbors();
 	return true;
 }
-void SpringlGrid::draw(bool colorEnabled){
+void SpringLevelSet::draw(bool colorEnabled){
 
 	if(isoSurface.get()!=nullptr){
 		std::cout<<"ISO BOUNDING BOX "<<isoSurface->GetBBox()<<std::endl;
@@ -43,12 +43,12 @@ void SpringlGrid::draw(bool colorEnabled){
 
 	}
 }
-void SpringlGrid::updateNearestNeighbors(bool threaded){
+void SpringLevelSet::updateNearestNeighbors(bool threaded){
 	NearestNeighbors<openvdb::Int32> nn(*this);
 	nn.process();
 }
 
-void SpringlGrid::updateUnsignedLevelSet(){
+void SpringLevelSet::updateUnsignedLevelSet(){
 	openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
 	MeshToVolume<FloatGrid> mtol(trans,GENERATE_PRIM_INDEX_GRID);
 	mtol.convertToUnsignedDistanceField(isoSurface->vertexes,isoSurface->faces,float(LEVEL_SET_HALF_WIDTH)*2);
@@ -56,13 +56,13 @@ void SpringlGrid::updateUnsignedLevelSet(){
 	unsignedLevelSet->setBackground(float(LEVEL_SET_HALF_WIDTH)*2);
 	springlIndexGrid=mtol.indexGridPtr();
 }
-void SpringlGrid::updateGradient(){
+void SpringLevelSet::updateGradient(){
 	//gradient = openvdb::tools::gradient(*unsignedLevelSet);
 	gradient = advectionForce(*unsignedLevelSet);
 
 }
-SpringlGrid::SpringlGrid() {
+SpringLevelSet::SpringLevelSet() {
 }
-SpringlGrid::~SpringlGrid() {
+SpringLevelSet::~SpringLevelSet() {
 }
 } /* namespace imagesci */

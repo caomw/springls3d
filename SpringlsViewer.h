@@ -55,8 +55,7 @@
 #include "ClipBox.h"
 #include "Font.h"
 #include "Mesh.h"
-#include "SpringlGrid.h"
-#include "Constellation.h"
+#include "SpringLevelSet.h"
 typedef openvdb::tools::EnrightField<float> FieldT;
 typedef openvdb::tools::LevelSetAdvection<openvdb::FloatGrid, FieldT> AdvectT;
 class SpringlsViewer;
@@ -73,7 +72,7 @@ protected:
 	int mUpdates;
 	openvdb::BBoxd renderBBox;
 	boost::shared_ptr<imagesci::Mesh> originalMesh;
-	imagesci::SpringlGrid springlGrid;
+	imagesci::SpringLevelSet springlGrid;
 
 	FieldT field;
 	boost::shared_ptr<AdvectT> advect;

@@ -11,6 +11,7 @@
 #include "Mesh.h"
 #include <openvdb/util/Util.h>
 #include <openvdb/util/NullInterrupter.h>
+#include <openvdb/math/Stencils.h>
 #include <tbb/parallel_for.h>
 #include <vector>
 #include <list>
@@ -32,64 +33,114 @@ public:
 	void updateNearestNeighbors(bool threaded=true);
 	bool create(const Mesh& mesh,openvdb::math::Transform::Ptr& transform);
 	SpringlGrid();
-	virtual ~SpringlGrid();
+	~SpringlGrid();
 };
-template<typename Description> class SpringlBase {
+template<typename Description> struct SpringlBase {
+	private:
+		size_t K;
 	public:
 		openvdb::Index32 id;
+		openvdb::Vec3s* vertexes;//At most 4! So it's either a triangle or quad, NOTHING ELSE!
 		openvdb::Vec3s* particle;
 		openvdb::Vec3s* normal;
 		Description description;
-		virtual size_t size();
-		virtual openvdb::Vec3s& operator[](size_t idx);
-		virtual const openvdb::Vec3s& operator[](size_t idx) const;
-		virtual ~SpringlBase();
-		virtual openvdb::Vec3s computeCentroid() const;
-		virtual openvdb::Vec3s computeNormal(const float eps=1E-6f) const;
-
-		SpringlBase():id(0),particle(NULL),normal(NULL){
+		openvdb::Vec3s& operator[](size_t idx){return (vertexes[idx]);}
+		const openvdb::Vec3s& operator[](size_t idx) const {return vertexes[idx];}
+		void set(int index,openvdb::Vec3s* ptr){
+			vertexes[index]=ptr;
 		}
-};
-template<typename Description,size_t K> class Springl: public SpringlBase<Description> {
-	public:
-		std::array<openvdb::Vec3s*,K> vertexes;
-		openvdb::Vec3s& operator[](size_t idx){return (*vertexes[idx]);}
-		const openvdb::Vec3s& operator[](size_t idx) const {return *vertexes[idx];}
-		inline size_t size() const {return K;}
+		openvdb::Vec3s* get(int index){
+			return vertexes[index];
+		}
+		SpringlBase():vertexes(NULL),K(0),id(0),particle(NULL),normal(NULL){
+
+		}
+		SpringlBase(openvdb::Vec3s* storage,size_t k):vertexes(storage),K(k),id(0),particle(NULL),normal(NULL){
+
+		}
+		size_t size() const {return K;}
 		openvdb::Vec3s computeCentroid() const{
 			openvdb::Vec3s centroid=openvdb::Vec3s(0.0f,0.0f,0.0f);
-			for(openvdb::Vec3s v:vertexes){
-				centroid+=v;
+			for(int k=0;k<K;k++){
+				centroid+=(*this)[k];
 			}
 			centroid=(1.0/size())*centroid;
 			return centroid;
 		}
-		openvdb::Vec3s computeNormal(const float eps) const{
+		openvdb::Vec3s computeNormal(const float eps=1E-6f) const{
 			openvdb::Vec3s norm;
-			norm=(this[2]-this[0]).cross(this[1]-this[0]);
+			norm=(vertexes[2]-vertexes[0]).cross(vertexes[1]-vertexes[0]);
 			norm.normalize(eps);
 			return norm;
 		}
-
-		~Springl(){}
+		~SpringlBase(){
+		}
+};
+template<typename Description,size_t K> struct Springl : public SpringlBase<Description>{
+	public:
+		Springl(openvdb::Vec3s* vertexPointer):SpringlBase<Description>(vertexPointer,K){
+		}
 };
 
-template<typename Description> using TriSpringl=Springl<Description,3> ;
-template<typename Description> using QuadSpringl=Springl<Description,4> ;
 
 template<typename Description> class Constellation {
 protected:
 		Mesh storage;
 		std::vector<SpringlBase<Description>> springls;
 public:
-		Constellation(Mesh& mesh);
+		Constellation(Mesh* mesh){
+			size_t faceCount=mesh->faces.size();
+			springls.clear();
+			springls.resize(faceCount);
+
+			size_t counter=0;
+			size_t pcounter=0;
+			storage.faces.reserve(faceCount);
+			storage.vertexes.resize(mesh->indexes.size());
+			storage.particles.resize(mesh->vertexes.size());
+			for(openvdb::Vec4I face:mesh->faces){
+				if(face[3]!=openvdb::util::INVALID_IDX){
+
+					storage.faces.push_back(openvdb::Vec4I(counter,counter+1,counter+2,counter+3));
+					Springl<Description,4> springl(&storage.vertexes[counter]);
+					storage.vertexes[counter++]=mesh->vertexes[face[0]];
+					storage.vertexes[counter++]=mesh->vertexes[face[1]];
+					storage.vertexes[counter++]=mesh->vertexes[face[2]];
+					storage.vertexes[counter++]=mesh->vertexes[face[3]];
+
+					springl.id=springls.size();
+					storage.particles[pcounter]=springl.computeCentroid();
+					storage.particleNormals[pcounter]=springl.computeNormal();
+					springl.particle=&(storage.particles[pcounter]);
+					springl.normal=&(storage.normals[pcounter]);
+					pcounter++;
+					springls.push_back(springl);
+
+				} else {
+					storage.faces.push_back(openvdb::Vec4I(counter,counter+1,counter+2,openvdb::util::INVALID_IDX));
+					Springl<Description,3> springl(&storage.vertexes[counter]);
+					storage.vertexes[counter++]=mesh->vertexes[face[0]];
+					storage.vertexes[counter++]=mesh->vertexes[face[1]];
+					storage.vertexes[counter++]=mesh->vertexes[face[2]];
+
+					springl.id=springls.size();
+					storage.particles[pcounter]=springl.computeCentroid();
+					storage.particleNormals[pcounter]=springl.computeNormal();
+					springl.particle=&(storage.particles[pcounter]);
+					springl.normal=&(storage.normals[pcounter]);
+					pcounter++;
+					springls.push_back(springl);
+				}
+
+			}
+		}
 		inline void draw(bool colorEnabled=false){
 			storage.draw(colorEnabled);
 		}
 		inline void updateGL(){
 			storage.updateGL();
 		}
-		virtual ~Constellation();
+		virtual ~Constellation(){}
 		inline size_t size() const {return springls.size();}
 		SpringlBase<Description>& operator[](size_t idx)
 	    {
@@ -187,14 +238,15 @@ private:
 	{
 		typedef SpringlBase<Description> SpringlType;
 	public:
-		const SpringlGrid& mGrid;
-		ConstellationOperator(const SpringlGrid& grid,InterruptT* _interrupt):mGrid(grid),mInterrupt(_interrupt){
+		SpringlGrid& mGrid;
+		ConstellationOperator(SpringlGrid& grid,InterruptT* _interrupt):mGrid(grid),mInterrupt(_interrupt){
 		}
 
 		virtual ~ConstellationOperator() {}
 		void process(bool threaded = true)
 		{
 			if (mInterrupt) mInterrupt->start("Processing springls");
+			OperatorT::init(mGrid);
 			SpringlRange<Description> range(*mGrid.constellation);
 			if (threaded) {
 				tbb::parallel_for(range, *this);
@@ -211,7 +263,7 @@ private:
 		{
 			if (openvdb::util::wasInterrupted(mInterrupt)) tbb::task::self().cancel_group_execution();
 			for (typename SpringlRange<Description>::Iterator springl=range.begin(); springl; ++springl) {
-				OperatorT::result(*springl);
+				OperatorT::result(*springl,mGrid);
 			}
 		}
 
@@ -223,11 +275,36 @@ private:
 	struct NearestNeighborOperation
 	{
 	private:
-	    const openvdb::Int32Grid::Ptr& mSpringlGrid;
-	    NearestNeighborMap& mNearestNeighbors;
+
 	public:
-	    static void result(const SpringlBase<Description>& springl) {
-	    	//Do something
+		static void init(SpringlGrid& mGrid){
+			NearestNeighborMap& map=mGrid.nearestNeighbors;
+			map.clear();
+			map.resize(mGrid.constellation->size());
+		}
+	    static void result(const SpringlBase<Description>& springl,SpringlGrid& mGrid) {
+	    	const int width=2;
+	    	NearestNeighborMap& map=mGrid.nearestNeighbors;
+	    	openvdb::math::DenseStencil<openvdb::Int32Grid>  stencil=openvdb::math::DenseStencil<openvdb::Int32Grid>(*mGrid.springlIndexGrid, width);
+	        stencil.moveTo(openvdb::Coord(
+	        		static_cast<openvdb::Int32>(std::floor((*springl.particle)[0]+0.5f)),
+	        		static_cast<openvdb::Int32>(std::floor((*springl.particle)[1]+0.5f)),
+	        		static_cast<openvdb::Int32>(std::floor((*springl.particle)[2]+0.5f))));
+	        int sz=stencil.size();
+	        if(sz==0)return;
+	        std::vector<openvdb::Index32> stencilCopy(sz);
+
+	        for(int i=0;i<sz;i++){
+	        	stencilCopy[i]=stencil.getValue(i);
+	        }
+	        std::sort(stencilCopy.begin(),stencilCopy.end());
+	        openvdb::Index32 last=stencilCopy[0];
+	        for(int i=1;i<sz;i++){
+	        	if(last!=stencilCopy[i]){
+	        		if(last!=springl.id)map[springl.id].push_back(last);
+	        		last=stencilCopy[i];
+	        	}
+	        }
 	    }
 	};
 	// end of ConstellationOperator class
@@ -240,7 +317,7 @@ private:
 	public:
 	    typedef Constellation<Description> ConstellationType;
 	    NearestNeighbors(
-	    			const SpringlGrid& grid,
+	    			SpringlGrid& grid,
 	    			InterruptT* interrupt = NULL):mGrid(grid),mInterrupt(interrupt)
 	    {
 	    }
@@ -250,7 +327,7 @@ private:
 	    	ConstellationOperator<Description,OpT,InterruptT> op(mGrid,mInterrupt);
         	op.process(threaded);
 	    }
-	    const SpringlGrid& mGrid;
+	    SpringlGrid& mGrid;
 	    InterruptT*          mInterrupt;
 	}; // end of Gradient class
 

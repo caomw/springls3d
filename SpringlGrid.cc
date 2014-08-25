@@ -5,7 +5,7 @@
  *      Author: blake
  */
 
-#include "SpringlGrid.h"
+#include "Constellation.h"
 #include "ImageSciUtil.h"
 #include "AdvectionForce.h"
 #include <openvdb/tools/MeshToVolume.h>
@@ -18,9 +18,12 @@ bool SpringlGrid::create(const Mesh& mesh,openvdb::math::Transform::Ptr& transfo
 	mtol.convertToLevelSet(mesh.vertexes,mesh.faces);
 	signedLevelSet=mtol.distGridPtr();
 	springlIndexGrid=mtol.indexGridPtr();
-    Mesh* c=new Mesh();
-	c->create(signedLevelSet);
-	isoSurface=std::unique_ptr<Mesh>(c);
+    Mesh* m=new Mesh();
+	m->create(signedLevelSet);
+	isoSurface=std::unique_ptr<Mesh>(m);
+	Constellation<Int32>* c=new Constellation<openvdb::Int32>(m);
+	constellation=boost::shared_ptr<Constellation<openvdb::Int32>>(c);
+	updateNearestNeighbors();
 	return true;
 }
 void SpringlGrid::draw(bool colorEnabled){
@@ -49,9 +52,6 @@ void SpringlGrid::updateGradient(){
 }
 SpringlGrid::SpringlGrid() {
 }
-
 SpringlGrid::~SpringlGrid() {
-	// TODO Auto-generated destructor stub
 }
-
 } /* namespace imagesci */

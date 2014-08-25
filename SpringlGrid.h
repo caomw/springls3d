@@ -14,6 +14,5 @@
 #include "Constellation.h"
 namespace imagesci {
 
-
 }
 #endif /* TRACKINGGRID_H_ */

@@ -46,16 +46,16 @@ template<typename Description> struct SpringlBase {
 		Description description;
 		openvdb::Vec3s& operator[](size_t idx){return (vertexes[idx]);}
 		const openvdb::Vec3s& operator[](size_t idx) const {return vertexes[idx];}
-		void set(int index,openvdb::Vec3s* ptr){
+		void set(int index,openvdb::Vec3s ptr){
 			vertexes[index]=ptr;
 		}
-		openvdb::Vec3s* get(int index){
+		openvdb::Vec3s get(int index){
 			return vertexes[index];
 		}
 		SpringlBase():vertexes(NULL),K(0),id(0),particle(NULL),normal(NULL){
 
 		}
-		SpringlBase(openvdb::Vec3s* storage,size_t k):vertexes(storage),K(k),id(0),particle(NULL),normal(NULL){
+		SpringlBase(openvdb::Vec3s* ptr,size_t k):vertexes(ptr),K(k),id(0),particle(NULL),normal(NULL){
 
 		}
 		size_t size() const {return K;}
@@ -78,7 +78,7 @@ template<typename Description> struct SpringlBase {
 };
 template<typename Description,size_t K> struct Springl : public SpringlBase<Description>{
 	public:
-		Springl(openvdb::Vec3s* vertexPointer):SpringlBase<Description>(vertexPointer,K){
+		Springl(openvdb::Vec3s* ptr):SpringlBase<Description>(ptr,K){
 		}
 };
 

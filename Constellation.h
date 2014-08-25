@@ -64,7 +64,7 @@ template<typename Description> struct SpringlBase {
 			for(int k=0;k<K;k++){
 				centroid+=(*this)[k];
 			}
-			centroid=(1.0/size())*centroid;
+			centroid=(1.0/K)*centroid;
 			return centroid;
 		}
 		openvdb::Vec3s computeNormal(const float eps=1E-6f) const{
@@ -88,51 +88,60 @@ protected:
 		Mesh storage;
 		std::vector<SpringlBase<Description>> springls;
 public:
-		Constellation(Mesh* mesh){
+		inline openvdb::BBoxd GetBBox(){
+			return storage.GetBBox();
+		}
+		Constellation(Mesh* mesh):storage(){
 			size_t faceCount=mesh->faces.size();
-			springls.clear();
-			springls.resize(faceCount);
-
 			size_t counter=0;
 			size_t pcounter=0;
+			springls.reserve(faceCount);
 			storage.faces.reserve(faceCount);
 			storage.vertexes.resize(mesh->indexes.size());
-			storage.particles.resize(mesh->vertexes.size());
+			storage.particles.resize(faceCount);
+			storage.particleNormals.resize(faceCount);
+			storage.normals.resize(mesh->indexes.size());
 			for(openvdb::Vec4I face:mesh->faces){
 				if(face[3]!=openvdb::util::INVALID_IDX){
-
+					storage.meshType=Mesh::PrimitiveType::QUADS;
 					storage.faces.push_back(openvdb::Vec4I(counter,counter+1,counter+2,counter+3));
-					Springl<Description,4> springl(&storage.vertexes[counter]);
+					Springl<Description,4> springl(&(storage.vertexes[counter]));
 					storage.vertexes[counter++]=mesh->vertexes[face[0]];
 					storage.vertexes[counter++]=mesh->vertexes[face[1]];
 					storage.vertexes[counter++]=mesh->vertexes[face[2]];
 					storage.vertexes[counter++]=mesh->vertexes[face[3]];
-
 					springl.id=springls.size();
 					storage.particles[pcounter]=springl.computeCentroid();
-					storage.particleNormals[pcounter]=springl.computeNormal();
+					openvdb::Vec3s norm=springl.computeNormal();
+					storage.particleNormals[pcounter]=norm;
+					storage.normals[counter-1]=norm;
+					storage.normals[counter-2]=norm;
+					storage.normals[counter-3]=norm;
+					storage.normals[counter-4]=norm;
 					springl.particle=&(storage.particles[pcounter]);
-					springl.normal=&(storage.normals[pcounter]);
-					pcounter++;
+					springl.normal=&(storage.particleNormals[pcounter]);
 					springls.push_back(springl);
-
 				} else {
+					storage.meshType=Mesh::PrimitiveType::TRIANGLES;
 					storage.faces.push_back(openvdb::Vec4I(counter,counter+1,counter+2,openvdb::util::INVALID_IDX));
 					Springl<Description,3> springl(&storage.vertexes[counter]);
 					storage.vertexes[counter++]=mesh->vertexes[face[0]];
 					storage.vertexes[counter++]=mesh->vertexes[face[1]];
 					storage.vertexes[counter++]=mesh->vertexes[face[2]];
-
 					springl.id=springls.size();
-					storage.particles[pcounter]=springl.computeCentroid();
-					storage.particleNormals[pcounter]=springl.computeNormal();
+					openvdb::Vec3s norm=springl.computeNormal();
+					storage.particleNormals[pcounter]=norm;
+					storage.normals[counter-1]=norm;
+					storage.normals[counter-2]=norm;
+					storage.normals[counter-3]=norm;
+					storage.normals[pcounter]=storage.particleNormals[pcounter]=springl.computeNormal();
 					springl.particle=&(storage.particles[pcounter]);
-					springl.normal=&(storage.normals[pcounter]);
-					pcounter++;
+					springl.normal=&(storage.particleNormals[pcounter]);
 					springls.push_back(springl);
 				}
-
+				pcounter++;
 			}
+			storage.updateBBox();
 		}
 		inline void draw(bool colorEnabled=false){
 			storage.draw(colorEnabled);

@@ -374,7 +374,7 @@ Mesh* Mesh::openMesh(const std::string& file){
 				mesh->faces.resize(numPolys);
 				memcpy(&mesh->faces[0],&mesh->indexes[0],sizeof(Vec4I)*numPolys);
 			}
-			if (points.size() > 0 && indexes.size() > 0){
+			if (points.size() > 0){
 				mesh->updateBBox();
 				return mesh;
 			} else {
@@ -401,7 +401,7 @@ void Mesh::create(FloatGrid::Ptr grid) {
 	normals.resize(mesher.pointListSize());
 	Index64 N = mesher.pointListSize();
 	for (Index64 n = 0; n < N; ++n) {
-		vertexes[n]=mesher.pointList()[n];
+		vertexes[n]=map.applyInverseMap(mesher.pointList()[n]);
 		normals[n]=Vec3s(0.0f);
 	}
 	// Copy primitives
@@ -518,6 +518,11 @@ void Mesh::mapOutOfBoundingBox(float voxelSize){
 void Mesh::draw(bool colorEnabled){
 	if (mVertexBuffer > 0&&elementCount>0){
 	    glEnable(GL_LIGHTING);
+		if(indexes.size()>0){
+			glShadeModel(GL_SMOOTH);
+		} else {
+			glShadeModel(GL_FLAT);
+		}
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glEnableClientState(GL_NORMAL_ARRAY);
 		if(indexes.size()>0)glEnableClientState(GL_INDEX_ARRAY);

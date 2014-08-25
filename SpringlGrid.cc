@@ -14,6 +14,7 @@ using namespace openvdb;
 using namespace openvdb::tools;
 namespace imagesci {
 bool SpringlGrid::create(const Mesh& mesh,openvdb::math::Transform::Ptr& transform){
+	std::cout<<"Covert mesh to signed level set"<<std::endl;
 	MeshToVolume<FloatGrid> mtol(transform,GENERATE_PRIM_INDEX_GRID);
 	mtol.convertToLevelSet(mesh.vertexes,mesh.faces);
 	signedLevelSet=mtol.distGridPtr();
@@ -27,9 +28,19 @@ bool SpringlGrid::create(const Mesh& mesh,openvdb::math::Transform::Ptr& transfo
 	return true;
 }
 void SpringlGrid::draw(bool colorEnabled){
+
 	if(isoSurface.get()!=nullptr){
+		std::cout<<"ISO BOUNDING BOX "<<isoSurface->GetBBox()<<std::endl;
 		glColor3f(0.8f,0.3f,0.3f);
 		isoSurface->draw(colorEnabled);
+
+	}
+	if(constellation.get()!=nullptr){
+
+		std::cout<<"CONSTELLATION BOUNDING BOX "<<constellation->GetBBox()<<std::endl;
+		glColor3f(0.3f,0.3f,0.8f);
+		constellation->draw(colorEnabled);
+
 	}
 }
 void SpringlGrid::updateNearestNeighbors(bool threaded){

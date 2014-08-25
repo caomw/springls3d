@@ -16,6 +16,8 @@
 #include <GL/glfw.h>
 namespace imagesci {
 class Mesh{
+	private:
+		openvdb::math::BBox<openvdb::Vec3d> bbox;
 	public:
 		enum PrimitiveType {QUADS=GL_QUADS,TRIANGLES=GL_TRIANGLES};
 
@@ -29,7 +31,6 @@ class Mesh{
 		GLuint mColorBuffer;
 		GLuint mIndexBuffer;
 		GLuint elementCount;
-		openvdb::math::BBox<openvdb::Vec3d> bbox;
 		std::vector<openvdb::Vec3s> particles;
 		std::vector<openvdb::Vec3s> particleNormals;
 		std::vector<openvdb::Vec3s> vertexes;
@@ -38,6 +39,7 @@ class Mesh{
 		std::vector<openvdb::Index32> indexes;
 		std::vector<openvdb::Vec4I> faces;
 		Mesh();
+		inline openvdb::BBoxd GetBBox(){return bbox;}
 		openvdb::math::BBox<openvdb::Vec3d>& updateBBox();
 		void draw(bool colorEnabled=false);
 		void scale(float sc);

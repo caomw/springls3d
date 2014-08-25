@@ -131,10 +131,10 @@ SpringlsViewer::SpringlsViewer()
 	, mUpdates(1)
 	, simulationRunning(false)
 {
+	renderBBox=BBoxd(Vec3s(-50,-50,-50),Vec3s(50,50,50));
 }
 void SpringlsViewer::start(){
 	simTime=0.0f;
-
 	advect=boost::shared_ptr<AdvectT>(new AdvectT(*springlGrid.signedLevelSet,field));
 
 	advect->setSpatialScheme(openvdb::math::HJWENO5_BIAS);
@@ -143,7 +143,7 @@ void SpringlsViewer::start(){
 	advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
 
 
-	renderBBox=BBoxd(Vec3s(-50,-50,-50),Vec3s(50,50,50));
+
 	simulationRunning=true;
 	simThread=std::thread(UpdateView,this);
 
@@ -185,11 +185,11 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
 	trans->postTranslate(t);
 	trans->postScale(scale*2*radius);
 	trans->postTranslate(center);
-	bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
-	mClipBox->setBBox(bbox);
-
-
+	//bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
+	//mClipBox->setBBox(bbox);
+	std::cout<<"Mesh Size "<<springlGrid.isoSurface->vertexes.size()<<std::endl;
 	meshDirty=true;
+	setNeedsDisplay();
     return true;
 }
 bool SpringlsViewer::openGrid(const std::string& fileName){
@@ -265,11 +265,12 @@ bool SpringlsViewer::init(int width,int height){
     double time = glfwGetTime();
     glfwSwapInterval(1);
     do {
-       if(meshDirty&&originalMesh.get()!=nullptr){
-			meshLock.lock();
+       if(meshDirty){
+    	   std::cout<<"Update mesh"<<std::endl;
+    	   meshLock.lock();
 				originalMesh->updateGL();
 				springlGrid.isoSurface->updateGL();
-
+				springlGrid.constellation->updateGL();
 			meshDirty=false;
 			meshLock.unlock();
 			render();
@@ -344,7 +345,7 @@ SpringlsViewer::render()
 	glColor3f(0.8f,0.8f,0.8f);
     //originalMesh->draw(false);
     springlGrid.draw(false);
-    mClipBox->disableClipping();
+	mClipBox->disableClipping();
     glPopMatrix();
     // Render text
 

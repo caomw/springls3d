@@ -224,5 +224,27 @@ bool WriteToRawFile(openvdb::Int32Grid::Ptr grid,const std::string& fileName){
 	std::cout<<xmlFile.str()<<std::endl;
 	return true;
 }
-
+float DistanceToEdge(openvdb::Vec3s pt, openvdb::Vec3s pt1, openvdb::Vec3s pt2,openvdb::Vec3s* lastClosestSegmentPoint) {
+	using namespace openvdb;
+	using namespace openvdb::math;
+	Vec3s dir=pt2-pt1;
+	float len=dir.length();
+	dir.normalize(1E-6f);
+	Vec3s diff=pt-pt1;
+	float mSegmentParameter = dir.dot(diff);
+	if (0 < mSegmentParameter) {
+		if (mSegmentParameter < len) {
+			*lastClosestSegmentPoint=dir*mSegmentParameter+pt1;
+		} else {
+			*lastClosestSegmentPoint=pt2;
+		}
+	} else {
+		*lastClosestSegmentPoint=pt1;
+	}
+	return (pt-(*lastClosestSegmentPoint)).lengthSqr();
+}
+float DistanceToEdge(openvdb::Vec3s pt, openvdb::Vec3s pt1, openvdb::Vec3s pt2) {
+	openvdb::Vec3s tmp;
+	return DistanceToEdge(pt,pt1,pt2,&tmp);
+}
 } /* namespace imagesci */

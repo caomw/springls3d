@@ -30,7 +30,9 @@ class Mesh{
 		GLuint mParticleNormalBuffer;
 		GLuint mColorBuffer;
 		GLuint mIndexBuffer;
+		GLuint mLineBuffer;
 		GLuint elementCount;
+		std::vector<openvdb::Index32> lines;
 		std::vector<openvdb::Vec3s> particles;
 		std::vector<openvdb::Vec3s> particleNormals;
 		std::vector<openvdb::Vec3s> vertexes;

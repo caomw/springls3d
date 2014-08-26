@@ -1263,10 +1263,8 @@ void get_info_ply(PlyFile *ply, float *version, int *file_type)
 Compare two strings.  Returns 1 if they are the same, 0 if not.
 ******************************************************************************/
 
-int equal_strings(char *s1, char *s2)
+int equal_strings(char *s1,char *s2)
 {
-	int i;
-
 	while (*s1 && *s2)
 		if (*s1++ != *s2++)
 			return (0);
@@ -1322,7 +1320,7 @@ Exit:
 returns the element, or NULL if not found
 ******************************************************************************/
 
-PlyElement *find_element(PlyFile *plyfile, char *element)
+PlyElement *find_element(PlyFile *plyfile,char *element)
 {
 	int i;
 
@@ -1332,7 +1330,6 @@ PlyElement *find_element(PlyFile *plyfile, char *element)
 
 	return (NULL);
 }
-
 
 /******************************************************************************
 Find a property in the list of properties of a given element.
@@ -1346,7 +1343,7 @@ index - index to position in list
 returns a pointer to the property, or NULL if not found
 ******************************************************************************/
 
-PlyProperty *find_property(PlyElement *elem, char *prop_name, int *index)
+PlyProperty *find_property(PlyElement *elem,char *prop_name, int *index)
 {
 	int i;
 

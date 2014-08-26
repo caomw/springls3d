@@ -136,14 +136,10 @@ SpringlsViewer::SpringlsViewer()
 void SpringlsViewer::start(){
 	simTime=0.0f;
 	advect=boost::shared_ptr<AdvectT>(new AdvectT(*springlGrid.signedLevelSet,field));
-
 	advect->setSpatialScheme(openvdb::math::HJWENO5_BIAS);
 	advect->setTemporalScheme(openvdb::math::TVD_RK2);
 	advect->setTrackerSpatialScheme(openvdb::math::HJWENO5_BIAS);
 	advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
-
-
-
 	simulationRunning=true;
 	simThread=std::thread(UpdateView,this);
 
@@ -167,10 +163,10 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
     mClipBox->set(*springlGrid.signedLevelSet);
     imagesci::WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/tmp/signedLevelSet");
     imagesci::WriteToRawFile(springlGrid.springlIndexGrid,"/home/blake/tmp/springlIndex");
-	springlGrid.updateUnsignedLevelSet();
-	imagesci::WriteToRawFile(springlGrid.unsignedLevelSet,"/home/blake/tmp/unsignedLevelSet");
-	springlGrid.updateGradient();
-	imagesci::WriteToRawFile(springlGrid.gradient,"/home/blake/tmp/gradient");
+	//springlGrid.updateUnsignedLevelSet();
+	//imagesci::WriteToRawFile(springlGrid.unsignedLevelSet,"/home/blake/tmp/unsignedLevelSet");
+	//springlGrid.updateGradient();
+	//imagesci::WriteToRawFile(springlGrid.gradient,"/home/blake/tmp/gradient");
 
 	BBoxd bbox=mClipBox->GetBBox();
 	trans=springlGrid.signedLevelSet->transformPtr();
@@ -268,9 +264,13 @@ bool SpringlsViewer::init(int width,int height){
        if(meshDirty){
     	   std::cout<<"Update mesh"<<std::endl;
     	   meshLock.lock();
+    	   try {
 				originalMesh->updateGL();
 				springlGrid.isoSurface->updateGL();
 				springlGrid.constellation->updateGL();
+    	   } catch(std::exception* e){
+    		   std::cerr<<"UpdateGL Error: "<<e->what()<<std::endl;
+    	   }
 			meshDirty=false;
 			meshLock.unlock();
 			render();

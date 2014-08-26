@@ -15,11 +15,22 @@
 #include <tbb/parallel_for.h>
 #include <vector>
 #include <list>
-typedef std::vector<std::list<openvdb::Index32>> NearestNeighborMap;
 namespace imagesci{
 template<typename Description> class Constellation;
+template<typename Description,int8_t K> struct Springl;
+struct SpringlNeighbor{
+public:
+	openvdb::Index32 springlId;
+	int8_t edgeId;
+	SpringlNeighbor(openvdb::Index32 id=0,int8_t nbr=-1):springlId(id),edgeId(nbr){
+	}
+};
+
+typedef std::vector<std::list<SpringlNeighbor>> NearestNeighborMap;
 class SpringLevelSet {
 public:
+	static const float NEAREST_NEIGHBOR_RANGE;//voxel units
+	static const int MAX_NEAREST_NEIGHBORS;
 	openvdb::FloatGrid::Ptr signedLevelSet;
 	openvdb::FloatGrid::Ptr unsignedLevelSet;
 	openvdb::VectorGrid::Ptr gradient;
@@ -27,6 +38,12 @@ public:
 	boost::shared_ptr<Mesh> isoSurface;
 	boost::shared_ptr<Constellation<openvdb::Int32>> constellation;
 	NearestNeighborMap nearestNeighbors;
+	openvdb::Vec3s& GetParticle(openvdb::Index32 id);
+	openvdb::Vec3s& GetParticleNormal(openvdb::Index32 id);
+	openvdb::Vec3s& GetSpringlVertex(openvdb::Index32 id,int i);
+	inline std::list<SpringlNeighbor>& GetNearestNeighbors(openvdb::Index32 id){
+		return nearestNeighbors[id];
+	}
 	void draw(bool colorEnabled);
 	void updateGradient();
 	void updateUnsignedLevelSet();
@@ -35,12 +52,13 @@ public:
 	SpringLevelSet();
 	~SpringLevelSet();
 };
+
 template<typename Description> struct SpringlBase {
 	private:
-		size_t K;
+		int8_t K;
 	public:
 		openvdb::Index32 id;
-		openvdb::Vec3s* vertexes;//At most 4! So it's either a triangle or quad, NOTHING ELSE!
+		openvdb::Vec3s* vertexes;
 		openvdb::Vec3s* particle;
 		openvdb::Vec3s* normal;
 		Description description;
@@ -55,10 +73,10 @@ template<typename Description> struct SpringlBase {
 		SpringlBase():vertexes(NULL),K(0),id(0),particle(NULL),normal(NULL){
 
 		}
-		SpringlBase(openvdb::Vec3s* ptr,size_t k):vertexes(ptr),K(k),id(0),particle(NULL),normal(NULL){
+		SpringlBase(openvdb::Vec3s* ptr,int8_t k):vertexes(ptr),K(k),id(0),particle(NULL),normal(NULL){
 
 		}
-		size_t size() const {return K;}
+		int8_t size() const {return K;}
 		openvdb::Vec3s computeCentroid() const{
 			openvdb::Vec3s centroid=openvdb::Vec3s(0.0f,0.0f,0.0f);
 			for(int k=0;k<K;k++){
@@ -76,18 +94,18 @@ template<typename Description> struct SpringlBase {
 		~SpringlBase(){
 		}
 };
-template<typename Description,size_t K> struct Springl : public SpringlBase<Description>{
+template<typename Description,int8_t K> struct Springl : public SpringlBase<Description>{
 	public:
 		Springl(openvdb::Vec3s* ptr):SpringlBase<Description>(ptr,K){
 		}
 };
 
 
+
 template<typename Description> class Constellation {
-protected:
+public:
 		Mesh storage;
 		std::vector<SpringlBase<Description>> springls;
-public:
 		inline openvdb::BBoxd GetBBox(){
 			return storage.GetBBox();
 		}
@@ -280,41 +298,24 @@ private:
 		InterruptT*         mInterrupt;
 
 	};
+
 	template<typename Description>
 	struct NearestNeighborOperation
 	{
 	private:
 
 	public:
-		static void init(SpringLevelSet& mGrid){
-			NearestNeighborMap& map=mGrid.nearestNeighbors;
-			map.clear();
-			map.resize(mGrid.constellation->size());
-		}
-	    static void result(const SpringlBase<Description>& springl,SpringLevelSet& mGrid) {
-	    	const int width=2;
-	    	NearestNeighborMap& map=mGrid.nearestNeighbors;
-	    	openvdb::math::DenseStencil<openvdb::Int32Grid>  stencil=openvdb::math::DenseStencil<openvdb::Int32Grid>(*mGrid.springlIndexGrid, width);
-	        stencil.moveTo(openvdb::Coord(
-	        		static_cast<openvdb::Int32>(std::floor((*springl.particle)[0]+0.5f)),
-	        		static_cast<openvdb::Int32>(std::floor((*springl.particle)[1]+0.5f)),
-	        		static_cast<openvdb::Int32>(std::floor((*springl.particle)[2]+0.5f))));
-	        int sz=stencil.size();
-	        if(sz==0)return;
-	        std::vector<openvdb::Index32> stencilCopy(sz);
+		static void init(SpringLevelSet& mGrid);
+	    static void result(const SpringlBase<Description>& springl,SpringLevelSet& mGrid);
+	};
+	template<typename Description>
+	struct EdgeCoorespondenceOperation
+	{
+	private:
 
-	        for(int i=0;i<sz;i++){
-	        	stencilCopy[i]=stencil.getValue(i);
-	        }
-	        std::sort(stencilCopy.begin(),stencilCopy.end());
-	        openvdb::Index32 last=stencilCopy[0];
-	        for(int i=1;i<sz;i++){
-	        	if(last!=stencilCopy[i]){
-	        		if(last!=springl.id)map[springl.id].push_back(last);
-	        		last=stencilCopy[i];
-	        	}
-	        }
-	    }
+	public:
+		static void init(SpringLevelSet& mGrid);
+	    static void result(const SpringlBase<Description>& springl,SpringLevelSet& mGrid);
 	};
 	// end of ConstellationOperator class
 	/// @brief Compute the gradient of a scalar grid.

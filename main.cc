@@ -83,7 +83,7 @@ main(int argc, char *argv[])
 				} else if(ext==std::string(".vdb")){
 					viewer->openGrid(fileName);
 				}
-				viewer->start();
+				//viewer->start();
 				viewer->init(800,800);
     	} else {
     		std::cout<<"Usage: "<<argv[0]<<" [*.ply|*.vdb]"<<std::endl;

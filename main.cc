@@ -75,7 +75,7 @@ main(int argc, char *argv[])
 			openvdb::initialize();
 			tbb::mutex::scoped_lock(sLock);
 			OPENVDB_START_THREADSAFE_STATIC_WRITE
-			 SpringlsViewer* viewer = SpringlsViewer::GetInstance();
+			 imagesci::SpringlsViewer* viewer = imagesci::SpringlsViewer::GetInstance();
 			 OPENVDB_FINISH_THREADSAFE_STATIC_WRITE
 				std::string ext=boost::filesystem::extension(boost::filesystem::path(fileName));
 				if(ext==std::string(".ply")){

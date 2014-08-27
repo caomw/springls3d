@@ -58,9 +58,8 @@
 #include "SpringLevelSet.h"
 typedef openvdb::tools::EnrightField<float> FieldT;
 typedef openvdb::tools::LevelSetAdvection<openvdb::FloatGrid, FieldT> AdvectT;
-class SpringlsViewer;
-
-
+namespace imagesci{
+//template<typename Description> class SpringLevelSet;
 
 class SpringlsViewer {
 protected:
@@ -72,8 +71,7 @@ protected:
 	int mUpdates;
 	openvdb::BBoxd renderBBox;
 	boost::shared_ptr<imagesci::Mesh> originalMesh;
-	imagesci::SpringLevelSet springlGrid;
-
+	SpringLevelSet springlGrid;
 	FieldT field;
 	boost::shared_ptr<AdvectT> advect;
 	std::thread simThread;
@@ -111,4 +109,5 @@ private:
 	int mWheelPos;
 	bool mShiftIsDown, mCtrlIsDown, mShowInfo;
 };
+}
 #endif

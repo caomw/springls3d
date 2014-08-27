@@ -70,9 +70,9 @@ template<typename MapType, DScheme DiffScheme>
 struct AdvectionForce {
 	// random access version
 	template<typename Accessor>
-	static typename internal::ReturnValue<Accessor>::Vec3Type result(
+	static typename openvdb::math::internal::ReturnValue<Accessor>::Vec3Type result(
 			const MapType& map, const Accessor& grid, const Coord& ijk) {
-		typedef typename internal::ReturnValue<Accessor>::Vec3Type Vec3Type;
+		typedef typename openvdb::math::internal::ReturnValue<Accessor>::Vec3Type Vec3Type;
 
 		Vec3d iGradient(ISAdvectionForce<DiffScheme>::result(grid, ijk));
 		return Vec3Type(map.applyIJT(iGradient, ijk.asVec3d()));
@@ -80,9 +80,9 @@ struct AdvectionForce {
 
 	// stencil access version
 	template<typename StencilT>
-	static typename internal::ReturnValue<StencilT>::Vec3Type result(
+	static typename openvdb::math::internal::ReturnValue<StencilT>::Vec3Type result(
 			const MapType& map, const StencilT& stencil) {
-		typedef typename internal::ReturnValue<StencilT>::Vec3Type Vec3Type;
+		typedef typename openvdb::math::internal::ReturnValue<StencilT>::Vec3Type Vec3Type;
 
 		Vec3d iGradient(ISAdvectionForce<DiffScheme>::result(stencil));
 		return Vec3Type(
@@ -96,14 +96,14 @@ template<DScheme DiffScheme>
 struct AdvectionForce<TranslationMap, DiffScheme> {
 	// random access version
 	template<typename Accessor>
-	static typename internal::ReturnValue<Accessor>::Vec3Type result(
+	static typename openvdb::math::internal::ReturnValue<Accessor>::Vec3Type result(
 			const TranslationMap&, const Accessor& grid, const Coord& ijk) {
 		return ISAdvectionForce<DiffScheme>::result(grid, ijk);
 	}
 
 	// stencil access version
 	template<typename StencilT>
-	static typename internal::ReturnValue<StencilT>::Vec3Type result(
+	static typename openvdb::math::internal::ReturnValue<StencilT>::Vec3Type result(
 			const TranslationMap&, const StencilT& stencil) {
 		return ISAdvectionForce<DiffScheme>::result(stencil);
 	}
@@ -115,11 +115,11 @@ template<DScheme DiffScheme>
 struct AdvectionForce<UniformScaleMap, DiffScheme> {
 	// random access version
 	template<typename Accessor>
-	static typename internal::ReturnValue<Accessor>::Vec3Type result(
+	static typename openvdb::math::internal::ReturnValue<Accessor>::Vec3Type result(
 			const UniformScaleMap& map, const Accessor& grid,
 			const Coord& ijk) {
-		typedef typename internal::ReturnValue<Accessor>::ValueType ValueType;
-		typedef typename internal::ReturnValue<Accessor>::Vec3Type Vec3Type;
+		typedef typename openvdb::math::internal::ReturnValue<Accessor>::ValueType ValueType;
+		typedef typename openvdb::math::internal::ReturnValue<Accessor>::Vec3Type Vec3Type;
 
 		Vec3Type iGradient(ISAdvectionForce<DiffScheme>::result(grid, ijk));
 		ValueType inv2dx = ValueType(map.getInvTwiceScale()[0]);
@@ -128,10 +128,10 @@ struct AdvectionForce<UniformScaleMap, DiffScheme> {
 
 	// stencil access version
 	template<typename StencilT>
-	static typename internal::ReturnValue<StencilT>::Vec3Type result(
+	static typename openvdb::math::internal::ReturnValue<StencilT>::Vec3Type result(
 			const UniformScaleMap& map, const StencilT& stencil) {
-		typedef typename internal::ReturnValue<StencilT>::ValueType ValueType;
-		typedef typename internal::ReturnValue<StencilT>::Vec3Type Vec3Type;
+		typedef typename openvdb::math::internal::ReturnValue<StencilT>::ValueType ValueType;
+		typedef typename openvdb::math::internal::ReturnValue<StencilT>::Vec3Type Vec3Type;
 
 		Vec3Type iGradient(ISAdvectionForce<DiffScheme>::result(stencil));
 		ValueType inv2dx = ValueType(map.getInvTwiceScale()[0]);
@@ -145,11 +145,11 @@ template<DScheme DiffScheme>
 struct AdvectionForce<UniformScaleTranslateMap, DiffScheme> {
 	// random access version
 	template<typename Accessor>
-	static typename internal::ReturnValue<Accessor>::Vec3Type result(
+	static typename openvdb::math::internal::ReturnValue<Accessor>::Vec3Type result(
 			const UniformScaleTranslateMap& map, const Accessor& grid,
 			const Coord& ijk) {
-		typedef typename internal::ReturnValue<Accessor>::ValueType ValueType;
-		typedef typename internal::ReturnValue<Accessor>::Vec3Type Vec3Type;
+		typedef typename openvdb::math::internal::ReturnValue<Accessor>::ValueType ValueType;
+		typedef typename openvdb::math::internal::ReturnValue<Accessor>::Vec3Type Vec3Type;
 
 		Vec3Type iGradient(ISAdvectionForce<DiffScheme>::result(grid, ijk));
 		ValueType inv2dx = ValueType(map.getInvTwiceScale()[0]);
@@ -158,10 +158,10 @@ struct AdvectionForce<UniformScaleTranslateMap, DiffScheme> {
 
 	// stencil access version
 	template<typename StencilT>
-	static typename internal::ReturnValue<StencilT>::Vec3Type result(
+	static typename openvdb::math::internal::ReturnValue<StencilT>::Vec3Type result(
 			const UniformScaleTranslateMap& map, const StencilT& stencil) {
-		typedef typename internal::ReturnValue<StencilT>::ValueType ValueType;
-		typedef typename internal::ReturnValue<StencilT>::Vec3Type Vec3Type;
+		typedef typename openvdb::math::internal::ReturnValue<StencilT>::ValueType ValueType;
+		typedef typename openvdb::math::internal::ReturnValue<StencilT>::Vec3Type Vec3Type;
 
 		Vec3Type iGradient(ISAdvectionForce<DiffScheme>::result(stencil));
 		ValueType inv2dx = ValueType(map.getInvTwiceScale()[0]);
@@ -175,10 +175,10 @@ template<DScheme DiffScheme>
 struct AdvectionForce<ScaleMap, DiffScheme> {
 	// random access version
 	template<typename Accessor>
-	static typename internal::ReturnValue<Accessor>::Vec3Type result(
+	static typename openvdb::math::internal::ReturnValue<Accessor>::Vec3Type result(
 			const ScaleMap& map, const Accessor& grid, const Coord& ijk) {
-		typedef typename internal::ReturnValue<Accessor>::ValueType ValueType;
-		typedef typename internal::ReturnValue<Accessor>::Vec3Type Vec3Type;
+		typedef typename openvdb::math::internal::ReturnValue<Accessor>::ValueType ValueType;
+		typedef typename openvdb::math::internal::ReturnValue<Accessor>::Vec3Type Vec3Type;
 
 		Vec3Type iGradient(ISAdvectionForce<DiffScheme>::result(grid, ijk));
 		return Vec3Type(ValueType(iGradient[0] * map.getInvTwiceScale()[0]),
@@ -188,10 +188,10 @@ struct AdvectionForce<ScaleMap, DiffScheme> {
 
 	// stencil access version
 	template<typename StencilT>
-	static typename internal::ReturnValue<StencilT>::Vec3Type result(
+	static typename openvdb::math::internal::ReturnValue<StencilT>::Vec3Type result(
 			const ScaleMap& map, const StencilT& stencil) {
-		typedef typename internal::ReturnValue<StencilT>::ValueType ValueType;
-		typedef typename internal::ReturnValue<StencilT>::Vec3Type Vec3Type;
+		typedef typename openvdb::math::internal::ReturnValue<StencilT>::ValueType ValueType;
+		typedef typename openvdb::math::internal::ReturnValue<StencilT>::Vec3Type Vec3Type;
 
 		Vec3Type iGradient(ISAdvectionForce<DiffScheme>::result(stencil));
 		return Vec3Type(ValueType(iGradient[0] * map.getInvTwiceScale()[0]),
@@ -206,11 +206,11 @@ template<DScheme DiffScheme>
 struct AdvectionForce<ScaleTranslateMap, DiffScheme> {
 	// random access version
 	template<typename Accessor>
-	static typename internal::ReturnValue<Accessor>::Vec3Type result(
+	static typename openvdb::math::internal::ReturnValue<Accessor>::Vec3Type result(
 			const ScaleTranslateMap& map, const Accessor& grid,
 			const Coord& ijk) {
-		typedef typename internal::ReturnValue<Accessor>::ValueType ValueType;
-		typedef typename internal::ReturnValue<Accessor>::Vec3Type Vec3Type;
+		typedef typename openvdb::math::internal::ReturnValue<Accessor>::ValueType ValueType;
+		typedef typename openvdb::math::internal::ReturnValue<Accessor>::Vec3Type Vec3Type;
 
 		Vec3Type iGradient(ISAdvectionForce<DiffScheme>::result(grid, ijk));
 		return Vec3Type(ValueType(iGradient[0] * map.getInvTwiceScale()[0]),
@@ -220,10 +220,10 @@ struct AdvectionForce<ScaleTranslateMap, DiffScheme> {
 
 	// Stencil access version
 	template<typename StencilT>
-	static typename internal::ReturnValue<StencilT>::Vec3Type result(
+	static typename openvdb::math::internal::ReturnValue<StencilT>::Vec3Type result(
 			const ScaleTranslateMap& map, const StencilT& stencil) {
-		typedef typename internal::ReturnValue<StencilT>::ValueType ValueType;
-		typedef typename internal::ReturnValue<StencilT>::Vec3Type Vec3Type;
+		typedef typename openvdb::math::internal::ReturnValue<StencilT>::ValueType ValueType;
+		typedef typename openvdb::math::internal::ReturnValue<StencilT>::Vec3Type Vec3Type;
 
 		Vec3Type iGradient(ISAdvectionForce<DiffScheme>::result(stencil));
 		return Vec3Type(ValueType(iGradient[0] * map.getInvTwiceScale()[0]),

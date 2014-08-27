@@ -27,9 +27,9 @@
 // LIABILITY FOR ALL CLAIMS REGARDLESS OF THEIR BASIS EXCEED US$250.00.
 //
 ///////////////////////////////////////////////////////////////////////////
-#undef OPENVDB_REQUIRE_VERSION_NAME
+
 #include "SpringlsViewer.h"
-#include "ImageSciUtil.h"
+
 #include <openvdb/util/Formats.h> // for formattedInt()
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,8 +56,9 @@
 #include <chrono>
 #include <thread>
 
-
+namespace imagesci{
 SpringlsViewer* viewer=NULL;
+
 const float SpringlsViewer::dt=0.005f;
 using namespace imagesci;
 using namespace openvdb_viewer;
@@ -119,6 +120,7 @@ using namespace openvdb::tools;
 void SpringlsViewer::windowRefreshCallback(){
 	setNeedsDisplay();
 }
+
 SpringlsViewer::SpringlsViewer()
     : mCamera(new openvdb_viewer::Camera)
     , mClipBox(new openvdb_viewer::ClipBox)
@@ -158,9 +160,9 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
 	originalMesh->mapIntoBoundingBox(4*originalMesh->EstimateVoxelSize());
-    openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
-    springlGrid.create(*originalMesh,trans);
-    mClipBox->set(*springlGrid.signedLevelSet);
+    openvdb::math::Transform::Ptr trans;
+    springlGrid.create(mesh);
+    mClipBox->set(*(springlGrid.signedLevelSet));
     imagesci::WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/tmp/signedLevelSet");
     imagesci::WriteToRawFile(springlGrid.springlIndexGrid,"/home/blake/tmp/springlIndex");
 	//springlGrid.updateUnsignedLevelSet();
@@ -485,4 +487,4 @@ SpringlsViewer::setNeedsDisplay()
 {
     mUpdates = 0;
 }
-
+}

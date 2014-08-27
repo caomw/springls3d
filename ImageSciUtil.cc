@@ -8,13 +8,51 @@
 #include "ImageSciUtil.h"
 #include <openvdb/tools/Dense.h>
 #include <openvdb/tools/LevelSetUtil.h>
-#include <openvdb/tools/PointAdvect.h>
-#include <openvdb/tools/PointScatter.h>
-#include <openvdb/tools/ValueTransformer.h>
-#include <openvdb/tools/VectorTransformer.h>
 namespace imagesci {
 using namespace openvdb;
 using namespace openvdb::tools;
+openvdb::math::Mat3<float> CreateAxisAngle(Vec3s a1,float angle){
+	 openvdb::math::Mat3<float> M;
+     float mag = std::sqrt( a1[0]*a1[0] + a1[1]*a1[1] + a1[2]*a1[2]);
+     if( mag < 1E-6f ) {
+		 M[0][0] = 1.0f;
+		 M[0][1] = 0.0f;
+		 M[0][2] = 0.0f;
+
+		 M[1][0] = 0.0f;
+		 M[1][1] = 1.0f;
+		 M[1][2] = 0.0f;
+
+		 M[1][0] = 0.0f;
+	 	 M[1][1] = 0.0f;
+		 M[1][2] = 1.0f;
+     } else {
+	 	mag = 1.0f/mag;
+         float ax = a1[0]*mag;
+         float ay = a1[0]*mag;
+         float az = a1[0]*mag;
+         float sinTheta = (float)sin(angle);
+         float cosTheta = (float)cos(angle);
+         float t = 1.0f - cosTheta;
+
+         float xz = ax * az;
+         float xy = ax * ay;
+         float yz = ay * az;
+
+         M[0][0] = t * ax * ax + cosTheta;
+         M[0][1] = t * xy - sinTheta * az;
+         M[0][2] = t * xz + sinTheta * ay;
+
+         M[1][0] = t * xy + sinTheta * az;
+         M[1][1] = t * ay * ay + cosTheta;
+         M[1][2] = t * yz - sinTheta * ax;
+
+         M[1][0] = t * xz - sinTheta * ay;
+         M[1][1] = t * yz + sinTheta * ax;
+         M[1][2] = t * az * az + cosTheta;
+      }
+      return M;
+}
 bool WriteToRawFile(openvdb::FloatGrid::Ptr grid,const std::string& fileName){
     std::ostringstream vstr;
     vstr << fileName<<".raw";

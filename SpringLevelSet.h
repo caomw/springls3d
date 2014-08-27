@@ -37,6 +37,11 @@ class SpringLevelSet {
 public:
 	static const float NEAREST_NEIGHBOR_RANGE;//voxel units
 	static const int MAX_NEAREST_NEIGHBORS;
+	static const float PARTICLE_RADIUS;
+	static const float MAX_VEXT;
+	static const float SHARPNESS;
+	static const float SPRING_CONSTANT;
+	static const float RELAX_TIMESTEP;
 	openvdb::FloatGrid::Ptr signedLevelSet;
 	openvdb::FloatGrid::Ptr unsignedLevelSet;
 	openvdb::VectorGrid::Ptr gradient;
@@ -44,6 +49,8 @@ public:
 	boost::shared_ptr<Mesh> isoSurface;
 	boost::shared_ptr<Constellation> constellation;
 	NearestNeighborMap nearestNeighbors;
+	std::vector<openvdb::Vec3s> vertexDisplacement;
+	std::vector<openvdb::Vec3s> particleDisplacement;
 	SpringlBase& GetSpringl(const openvdb::Index32 id);
 	openvdb::Vec3s& GetParticle(const openvdb::Index32 id);
 	openvdb::Vec3s& GetParticleNormal(const openvdb::Index32 id);

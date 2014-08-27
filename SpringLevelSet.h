@@ -49,9 +49,7 @@ public:
 	openvdb::Vec3s& GetParticleNormal(const openvdb::Index32 id);
 	openvdb::Vec3s& GetSpringlVertex(const openvdb::Index32 id,const int i);
 	openvdb::Vec3s& GetSpringlVertex(const openvdb::Index32 gid);
-	inline std::list<SpringlNeighbor>& GetNearestNeighbors(openvdb::Index32 id){
-		return nearestNeighbors[id];
-	}
+	std::list<SpringlNeighbor>& GetNearestNeighbors(openvdb::Index32 id,int8_t e);
 	void draw(bool colorEnabled);
 	void updateGradient();
 	void updateUnsignedLevelSet();
@@ -66,6 +64,7 @@ struct SpringlBase {
 		int8_t K;
 	public:
 		openvdb::Index32 id;
+		openvdb::Index32 offset;
 		openvdb::Vec3s* vertexes;
 		openvdb::Vec3s* particle;
 		openvdb::Vec3s* normal;
@@ -77,10 +76,10 @@ struct SpringlBase {
 		openvdb::Vec3s get(int index){
 			return vertexes[index];
 		}
-		SpringlBase():vertexes(NULL),K(0),id(0),particle(NULL),normal(NULL){
+		SpringlBase():vertexes(NULL),K(0),id(0),particle(NULL),normal(NULL),offset(0){
 
 		}
-		SpringlBase(openvdb::Vec3s* ptr,int8_t k):vertexes(ptr),K(k),id(0),particle(NULL),normal(NULL){
+		SpringlBase(openvdb::Vec3s* ptr,int8_t k):vertexes(ptr),K(k),id(0),particle(NULL),normal(NULL),offset(0){
 
 		}
 
@@ -259,6 +258,14 @@ private:
 		static void init(SpringLevelSet& mGrid);
 	    static void result(const SpringlBase& springl,SpringLevelSet& mGrid);
 	};
+	struct RelaxOperation
+	{
+	private:
+
+	public:
+		static void init(SpringLevelSet& mGrid);
+	    static void result(const SpringlBase& springl,SpringLevelSet& mGrid);
+	};
 	// end of ConstellationOperator class
 	/// @brief Compute the gradient of a scalar grid.
 	template<typename InterruptT = openvdb::util::NullInterrupter>
@@ -280,7 +287,26 @@ private:
 	    InterruptT*          mInterrupt;
 	}; // end of Gradient class
 
-
+	// end of ConstellationOperator class
+	/// @brief Compute the gradient of a scalar grid.
+	template<typename InterruptT = openvdb::util::NullInterrupter>
+	class Relax
+	{
+	public:
+	    Relax(
+	    			SpringLevelSet& grid,
+	    			InterruptT* interrupt = NULL):mGrid(grid),mInterrupt(interrupt)
+	    {
+	    }
+	    void process(bool threaded = true)
+	    {
+        	typedef RelaxOperation OpT;
+	    	ConstellationOperator<OpT,InterruptT> op(mGrid,mInterrupt);
+        	op.process(threaded);
+	    }
+	    SpringLevelSet& mGrid;
+	    InterruptT*          mInterrupt;
+	}; // end of Gradient class
 }
 
 #endif /* CONSTELLATION_H_ */

@@ -11,10 +11,13 @@ std::ostream& operator<<(std::ostream& ostr, const SpringlNeighbor& classname)
     ostr << "{"<<classname.springlId<<"|"<<static_cast<int>(classname.edgeId)<<"}";
     return ostr;
 }
+
 int8_t SpringlBase::size() const {return K;}
+
 float SpringlBase::distance(const openvdb::Vec3s& pt){
 	return ((*particle)-pt).length();
 }
+
 float SpringlBase::distanceSqr(const openvdb::Vec3s& pt){
 	return ((*particle)-pt).lengthSqr();
 }
@@ -70,6 +73,12 @@ SpringlBase& SpringLevelSet::GetSpringl(const openvdb::Index32 id) {
 	return constellation->springls[id];
 }
 
+void RelaxOperation::init(SpringLevelSet& mGrid) {
+}
+void RelaxOperation::result(const SpringlBase& springl,
+		SpringLevelSet& mGrid) {
+
+}
 void NearestNeighborOperation::init(SpringLevelSet& mGrid) {
 	NearestNeighborMap& map = mGrid.nearestNeighbors;
 	map.clear();
@@ -77,7 +86,7 @@ void NearestNeighborOperation::init(SpringLevelSet& mGrid) {
 }
 void NearestNeighborOperation::result(const SpringlBase& springl,
 		SpringLevelSet& mGrid) {
-	std::list<SpringlNeighbor>& mapList = mGrid.GetNearestNeighbors(springl.id);
+
 	openvdb::math::DenseStencil<openvdb::Int32Grid> stencil =
 			openvdb::math::DenseStencil<openvdb::Int32Grid>(
 					*mGrid.springlIndexGrid,
@@ -107,7 +116,7 @@ void NearestNeighborOperation::result(const SpringlBase& springl,
 		return;
 	std::sort(stencilCopy.begin(), stencilCopy.end());
 	openvdb::Index32 last = stencilCopy[0].second;
-	mapList.clear();
+
 	last = -1;
 	sz = stencilCopy.size();
 	float smallest;
@@ -116,6 +125,7 @@ void NearestNeighborOperation::result(const SpringlBase& springl,
 		openvdb::Index32 nbrId = stencilCopy[i].second;
 		if (last != nbrId) {
 			for(int k=0;k<springl.size();k++){
+				std::list<SpringlNeighbor>& mapList = mGrid.GetNearestNeighbors(springl.id,k);
 				refPoint=springl[k];
 				SpringlBase& snbr = mGrid.GetSpringl(nbrId);
 				smallest=D2;
@@ -141,15 +151,16 @@ void SpringLevelSet::updateNearestNeighbors(bool threaded) {
 	std::vector<Index32>& lines = constellation->storage.lines;
 	lines.clear();
 	Index32 fCount = 0;
-	for (std::list<SpringlNeighbor>& nbrs : nearestNeighbors) {
+	for (Index32 i=0;i<constellation->getNumSpringls();i++) {
 		std::cout << "P " << fCount << "={";
-		Vec3s refPoint = GetSpringlVertex(fCount);
-		for (SpringlNeighbor nbr : nbrs) {
-			lines.push_back(fCount);
-			lines.push_back(nbr.springlId);
-			Vec3s nbrPt = GetParticle(nbr.springlId);
-			float d = (refPoint - nbrPt).lengthSqr();
-			std::cout << nbr << " ";
+		SpringlBase& springl=constellation->springls[i];
+		for(int k=0;k<springl.size();k++){
+			for (SpringlNeighbor nbr : GetNearestNeighbors(i,k)) {
+				lines.push_back(i);
+				lines.push_back(nbr.springlId);
+				Vec3s nbrPt = GetParticle(nbr.springlId);
+				std::cout << nbr << " ";
+			}
 		}
 		std::cout << "}" << std::endl;
 		fCount++;
@@ -174,7 +185,9 @@ void SpringLevelSet::updateGradient() {
 	gradient = advectionForce(*unsignedLevelSet);
 
 }
-
+std::list<SpringlNeighbor>& SpringLevelSet::GetNearestNeighbors(openvdb::Index32 id,int8_t e){
+		return nearestNeighbors[constellation->springls[id].offset+e];
+}
 void SpringLevelSet::create(Mesh* mesh) {
 	openvdb::math::Transform::Ptr trans =
 			openvdb::math::Transform::createLinearTransform(1.0);
@@ -210,6 +223,7 @@ Constellation::Constellation(Mesh* mesh) :
 					openvdb::Vec4I(counter, counter + 1, counter + 2,
 							counter + 3));
 			Springl<4> springl(&(storage.vertexes[counter]));
+			springl.offset=counter;
 			storage.vertexes[counter++] = mesh->vertexes[face[0]];
 			storage.vertexes[counter++] = mesh->vertexes[face[1]];
 			storage.vertexes[counter++] = mesh->vertexes[face[2]];
@@ -231,6 +245,7 @@ Constellation::Constellation(Mesh* mesh) :
 					openvdb::Vec4I(counter, counter + 1, counter + 2,
 							openvdb::util::INVALID_IDX));
 			Springl<3> springl(&storage.vertexes[counter]);
+			springl.offset=counter;
 			storage.vertexes[counter++] = mesh->vertexes[face[0]];
 			storage.vertexes[counter++] = mesh->vertexes[face[1]];
 			storage.vertexes[counter++] = mesh->vertexes[face[2]];

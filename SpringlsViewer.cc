@@ -159,12 +159,16 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
 	Mesh* mesh=Mesh::openMesh(fileName);
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
-	originalMesh->mapIntoBoundingBox(4*originalMesh->EstimateVoxelSize());
+	originalMesh->mapIntoBoundingBox(originalMesh->EstimateVoxelSize());
     openvdb::math::Transform::Ptr trans;
     springlGrid.create(mesh);
     mClipBox->set(*(springlGrid.signedLevelSet));
-    imagesci::WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/tmp/signedLevelSet");
-    imagesci::WriteToRawFile(springlGrid.springlIndexGrid,"/home/blake/tmp/springlIndex");
+
+    //springlGrid.isoSurface->save("/home/blake/tmp/isosurface.ply");
+    //springlGrid.constellation->storage.save("/home/blake/tmp/constellation.ply");
+
+    //imagesci::WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/tmp/signedLevelSet");
+   // imagesci::WriteToRawFile(springlGrid.springlIndexGrid,"/home/blake/tmp/springlIndex");
 	//springlGrid.updateUnsignedLevelSet();
 	//imagesci::WriteToRawFile(springlGrid.unsignedLevelSet,"/home/blake/tmp/unsignedLevelSet");
 	//springlGrid.updateGradient();
@@ -236,7 +240,7 @@ bool SpringlsViewer::init(int width,int height){
     glfwSetMouseWheelCallback(mouseWheelCB);
     glfwSetWindowSizeCallback(windowSizeCB);
     glfwSetWindowRefreshCallback(windowRefreshCB);
-    glClearColor(0.85, 0.85, 0.85, 0.0f);
+    glClearColor(0.0f,0.0f,0.0f,1.0f);
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_TEST);
     glPointSize(4);
@@ -328,7 +332,7 @@ void
 SpringlsViewer::render()
 {
 
-    mCamera->aim();
+
 
     openvdb::BBoxd bbox=mClipBox->GetBBox();
     openvdb::Vec3d extents = bbox.extents();
@@ -338,6 +342,11 @@ SpringlsViewer::render()
     Vec3s minPt=bbox.getCenter();
     Vec3s rminPt=renderBBox.getCenter();
 
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    int width,height;
+    glfwGetWindowSize(&width, &height);
+    mCamera->aim(0,0,width/2,height);
     glPushMatrix();
     glTranslatef(rminPt[0],rminPt[1],rminPt[2]);
     glScalef(scale,scale,scale);
@@ -345,12 +354,24 @@ SpringlsViewer::render()
     mClipBox->render();
     mClipBox->enableClipping();
 	glColor3f(0.8f,0.8f,0.8f);
-    //originalMesh->draw(false);
-    springlGrid.draw(false);
+    springlGrid.draw(false,true,false,false);
 	mClipBox->disableClipping();
     glPopMatrix();
-    // Render text
 
+    mCamera->aim(width/2,0,width/2,height);
+    glPushMatrix();
+    glTranslatef(rminPt[0],rminPt[1],rminPt[2]);
+    glScalef(scale,scale,scale);
+    glTranslatef(-minPt[0],-minPt[1],-minPt[2]);
+    mClipBox->render();
+    mClipBox->enableClipping();
+	glColor3f(0.8f,0.8f,0.8f);
+	originalMesh->draw(false,false,false,false);
+	mClipBox->disableClipping();
+    glPopMatrix();
+    //
+    // Render text
+    /*
         BitmapFont13::enableFontRendering();
 
         glColor3f (0.2, 0.2, 0.2);
@@ -363,6 +384,7 @@ SpringlsViewer::render()
         BitmapFont13::print(10, height - 13 - 50, mTreeInfo);
 
         BitmapFont13::disableFontRendering();
+        */
 }
 
 

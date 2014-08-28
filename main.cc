@@ -84,7 +84,7 @@ main(int argc, char *argv[])
 					viewer->openGrid(fileName);
 				}
 				//viewer->start();
-				viewer->init(800,800);
+				viewer->init(1600,800);
     	} else {
     		std::cout<<"Usage: "<<argv[0]<<" [*.ply|*.vdb]"<<std::endl;
     	}

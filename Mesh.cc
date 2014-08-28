@@ -511,7 +511,7 @@ void Mesh::mapOutOfBoundingBox(float voxelSize) {
 		pt = pt * voxelSize + minPt;
 	}
 }
-void Mesh::draw(bool colorEnabled) {
+void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showParticleNormals) {
 	if (mVertexBuffer > 0) {
 		glEnable(GL_LIGHTING);
 		if (indexes.size() > 0) {
@@ -542,18 +542,20 @@ void Mesh::draw(bool colorEnabled) {
 		} else {
 			glDrawArrays(meshType, 0, elementCount);
 		}
-		glLineWidth(3.0f);
+		glLineWidth(1.0f);
 
 		glDisableClientState(GL_NORMAL_ARRAY);
 		glDisable(GL_LIGHTING);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		glColor3f(0.3f, 0.3f, 0.3f);
-		if (indexes.size() > 0) {
-			glDrawElements(meshType, elementCount, GL_UNSIGNED_INT, 0);
-		} else {
-			glDrawArrays(meshType, 0, elementCount);
+		if(wireframe){
+			if (indexes.size() > 0) {
+				glDrawElements(meshType, elementCount, GL_UNSIGNED_INT, 0);
+			} else {
+				glDrawArrays(meshType, 0, elementCount);
+			}
 		}
-		if (particles.size() > 0) {
+		if (showParticles&&particles.size() > 0) {
 			glColor3f(0.3f, 1.0f, 0.3f);
 			glPointParameteri(GL_POINT_SMOOTH,GL_TRUE);
 			glPointSize(4.0f);
@@ -561,6 +563,7 @@ void Mesh::draw(bool colorEnabled) {
 			glVertexPointer(3, GL_FLOAT, 0, 0);
 			glDrawArrays(GL_POINTS, 0, particles.size());
 		}
+
 		if (lines.size() > 0) {
 			glColor3f(0.5f, 0.5f, 0.5f);
 			glEnable(GL_LINE_SMOOTH);
@@ -582,7 +585,6 @@ void Mesh::draw(bool colorEnabled) {
 	}
 }
 void Mesh::updateGL() {
-	std::cout<<"Update GL ..."<<std::endl;
 	elementCount = 0;
 	if (vertexes.size() > 0) {
 		if (glIsBuffer(mVertexBuffer) == GL_TRUE)
@@ -701,8 +703,6 @@ void Mesh::updateGL() {
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
-
-	std::cout<<"Done."<<std::endl;
 }
 Mesh::~Mesh() {
 	// TODO Auto-generated destructor stub

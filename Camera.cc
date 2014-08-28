@@ -111,21 +111,20 @@ Camera::setTarget(const openvdb::Vec3d& p, double dist)
     mTarget = p;
     mTargetDistance = dist;
 }
-
-
-void
-Camera::aim()
-{
+void Camera::aim(){
     // Get the window size
     int width, height;
     glfwGetWindowSize(&width, &height);
+    height=std::max(1,height);
+    width=std::max(1,width);
+    aim(0,0,width,height);
+}
 
-    // Make sure that height is non-zero to avoid division by zero
-    height = std::max(1, height);
+void Camera::aim(int x,int y,int width,int height){
 
-    glViewport(0, 0, width, height);
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glViewport(x,y, width, height);
+
 
     // Set up the projection matrix
     glMatrixMode(GL_PROJECTION);

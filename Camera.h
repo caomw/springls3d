@@ -44,7 +44,9 @@ class Camera
 public:
     Camera();
 
+
     void aim();
+    void aim(int x,int y,int width,int height);
 
     void lookAt(const openvdb::Vec3d& p, double dist = 1.0);
     void lookAtTarget();

@@ -7,10 +7,8 @@
 
 #ifndef SPRINGLEVELSET_H_
 #define SPRINGLEVELSET_H_
-#include <openvdb/util/Util.h>
 #include <openvdb/util/NullInterrupter.h>
-#include <openvdb/math/Stencils.h>
-#include <openvdb/tools/MeshToVolume.h>
+
 #include <tbb/parallel_for.h>
 #include <vector>
 #include <list>
@@ -28,12 +26,15 @@ struct SpringlNeighbor{
 public:
 	openvdb::Index32 springlId;
 	int8_t edgeId;
-	SpringlNeighbor(openvdb::Index32 id=0,int8_t nbr=-1):springlId(id),edgeId(nbr){
+	float distance;
+	SpringlNeighbor(openvdb::Index32 id=0,int8_t nbr=-1,float _distance=0):springlId(id),edgeId(nbr),distance(_distance){
 	}
 };
 std::ostream& operator<<(std::ostream& ostr, const SpringlNeighbor& classname);
 typedef std::vector<std::list<SpringlNeighbor>> NearestNeighborMap;
 class SpringLevelSet {
+private:
+	float angle(openvdb::Vec3s& v0,openvdb::Vec3s& v1,openvdb::Vec3s& v2);
 public:
 	static const float NEAREST_NEIGHBOR_RANGE;//voxel units
 	static const int MAX_NEAREST_NEIGHBORS;
@@ -42,6 +43,10 @@ public:
 	static const float SHARPNESS;
 	static const float SPRING_CONSTANT;
 	static const float RELAX_TIMESTEP;
+	static const float MAX_ANGLE_TOLERANCE;
+	static const float MIN_ANGLE_TOLERANCE;
+	static const float MIN_AREA;
+
 	openvdb::FloatGrid::Ptr signedLevelSet;
 	openvdb::FloatGrid::Ptr unsignedLevelSet;
 	openvdb::VectorGrid::Ptr gradient;
@@ -57,9 +62,11 @@ public:
 	openvdb::Vec3s& GetSpringlVertex(const openvdb::Index32 id,const int i);
 	openvdb::Vec3s& GetSpringlVertex(const openvdb::Index32 gid);
 	std::list<SpringlNeighbor>& GetNearestNeighbors(openvdb::Index32 id,int8_t e);
-	void draw(bool colorEnabled);
+	void draw(bool colorEnabled=false,bool wireframe=true,bool particles=false,bool particleNormals=false);
+	void clean();
 	void updateGradient();
 	void updateUnsignedLevelSet();
+	void relax(int iters=10);
 	void updateNearestNeighbors(bool threaded=true);
 	void create(Mesh* mesh);
 	SpringLevelSet(){}
@@ -91,6 +98,7 @@ struct SpringlBase {
 		}
 
 		int8_t size() const;
+		float area() const;
 		float distance(const openvdb::Vec3s& pt);
 		float distanceSqr(const openvdb::Vec3s& pt);
 		float distanceEdgeSqr(const openvdb::Vec3s& pt,int8_t e);
@@ -115,8 +123,9 @@ public:
 			return storage.GetBBox();
 		}
 		Constellation(Mesh* mesh);
-		inline void draw(bool colorEnabled=false){
-			storage.draw(colorEnabled);
+
+		inline void draw(bool colorEnabled,bool wireframe,bool particles,bool particleNormals){
+			storage.draw(colorEnabled,wireframe,particles,particleNormals);
 		}
 		inline void updateGL(){
 			storage.updateGL();
@@ -263,7 +272,7 @@ private:
 
 	public:
 		static void init(SpringLevelSet& mGrid);
-	    static void result(const SpringlBase& springl,SpringLevelSet& mGrid);
+	    static void result(SpringlBase& springl,SpringLevelSet& mGrid);
 	};
 	struct RelaxOperation
 	{
@@ -271,7 +280,15 @@ private:
 
 	public:
 		static void init(SpringLevelSet& mGrid);
-	    static void result(const SpringlBase& springl,SpringLevelSet& mGrid);
+	    static void result(SpringlBase& springl,SpringLevelSet& mGrid);
+	};
+	struct AdvectVertexOperation
+	{
+	private:
+
+	public:
+		static void init(SpringLevelSet& mGrid);
+	    static void result(SpringlBase& springl,SpringLevelSet& mGrid);
 	};
 	// end of ConstellationOperator class
 	/// @brief Compute the gradient of a scalar grid.
@@ -294,8 +311,6 @@ private:
 	    InterruptT*          mInterrupt;
 	}; // end of Gradient class
 
-	// end of ConstellationOperator class
-	/// @brief Compute the gradient of a scalar grid.
 	template<typename InterruptT = openvdb::util::NullInterrupter>
 	class Relax
 	{
@@ -313,7 +328,25 @@ private:
 	    }
 	    SpringLevelSet& mGrid;
 	    InterruptT*          mInterrupt;
-	}; // end of Gradient class
+	};
+	template<typename InterruptT = openvdb::util::NullInterrupter>
+	class AdvectVertex
+	{
+	public:
+		AdvectVertex(
+	    			SpringLevelSet& grid,
+	    			InterruptT* interrupt = NULL):mGrid(grid),mInterrupt(interrupt)
+	    {
+	    }
+	    void process(bool threaded = true)
+	    {
+        	typedef AdvectVertexOperation OpT;
+	    	ConstellationOperator<OpT,InterruptT> op(mGrid,mInterrupt);
+        	op.process(threaded);
+	    }
+	    SpringLevelSet& mGrid;
+	    InterruptT*          mInterrupt;
+	};
 }
 
 #endif /* CONSTELLATION_H_ */

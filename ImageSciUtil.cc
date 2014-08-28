@@ -13,7 +13,7 @@ using namespace openvdb;
 using namespace openvdb::tools;
 openvdb::math::Mat3<float> CreateAxisAngle(Vec3s a1,float angle){
 	 openvdb::math::Mat3<float> M;
-     float mag = std::sqrt( a1[0]*a1[0] + a1[1]*a1[1] + a1[2]*a1[2]);
+     float mag = a1.length();
      if( mag < 1E-6f ) {
 		 M[0][0] = 1.0f;
 		 M[0][1] = 0.0f;
@@ -23,14 +23,14 @@ openvdb::math::Mat3<float> CreateAxisAngle(Vec3s a1,float angle){
 		 M[1][1] = 1.0f;
 		 M[1][2] = 0.0f;
 
-		 M[1][0] = 0.0f;
-	 	 M[1][1] = 0.0f;
-		 M[1][2] = 1.0f;
+		 M[2][0] = 0.0f;
+	 	 M[2][1] = 0.0f;
+		 M[2][2] = 1.0f;
      } else {
 	 	mag = 1.0f/mag;
          float ax = a1[0]*mag;
-         float ay = a1[0]*mag;
-         float az = a1[0]*mag;
+         float ay = a1[1]*mag;
+         float az = a1[2]*mag;
          float sinTheta = (float)sin(angle);
          float cosTheta = (float)cos(angle);
          float t = 1.0f - cosTheta;
@@ -47,9 +47,9 @@ openvdb::math::Mat3<float> CreateAxisAngle(Vec3s a1,float angle){
          M[1][1] = t * ay * ay + cosTheta;
          M[1][2] = t * yz - sinTheta * ax;
 
-         M[1][0] = t * xz - sinTheta * ay;
-         M[1][1] = t * yz + sinTheta * ax;
-         M[1][2] = t * az * az + cosTheta;
+         M[2][0] = t * xz - sinTheta * ay;
+         M[2][1] = t * yz + sinTheta * ax;
+         M[2][2] = t * az * az + cosTheta;
       }
       return M;
 }

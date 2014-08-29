@@ -19,26 +19,25 @@ class Mesh{
 	private:
 		openvdb::math::BBox<openvdb::Vec3d> bbox;
 	public:
-		enum PrimitiveType {QUADS=GL_QUADS,TRIANGLES=GL_TRIANGLES};
-
-		std::mutex drawLock;
-
-		PrimitiveType meshType;
+		enum PrimitiveType {QUADS=4,TRIANGLES=3};
 		GLuint mVertexBuffer;
 		GLuint mParticleBuffer;
 		GLuint mNormalBuffer;
 		GLuint mParticleNormalBuffer;
 		GLuint mColorBuffer;
-		GLuint mIndexBuffer;
+		GLuint mTriIndexBuffer;
+		GLuint mQuadIndexBuffer;
 		GLuint mLineBuffer;
-		GLuint elementCount;
+		GLuint triangleCount;
+		GLuint quadCount;
 		std::vector<openvdb::Index32> lines;
 		std::vector<openvdb::Vec3s> particles;
 		std::vector<openvdb::Vec3s> particleNormals;
 		std::vector<openvdb::Vec3s> vertexes;
 		std::vector<openvdb::Vec3s> colors;
-		std::vector<openvdb::Vec3s> normals;
-		std::vector<openvdb::Index32> indexes;
+		std::vector<openvdb::Vec3s> vertexNormals;
+		std::vector<openvdb::Index32> quadIndexes;
+		std::vector<openvdb::Index32> triIndexes;
 		std::vector<openvdb::Vec4I> faces;
 		Mesh();
 		inline openvdb::BBoxd GetBBox(){return bbox;}
@@ -46,6 +45,7 @@ class Mesh{
 		void draw(bool colorEnabled=false,bool wireframe=true,bool particles=false,bool particleNormals=false);
 		void scale(float sc);
 		void updateGL();
+		void updateVertexNormals();
 		void mapIntoBoundingBox(float voxelSize);
 		void mapOutOfBoundingBox(float voxelSize);
 		static Mesh* openMesh(const std::string& file);
@@ -53,8 +53,7 @@ class Mesh{
 		bool save(const std::string& file);
 		void create(openvdb::FloatGrid::Ptr grid);
 		float EstimateVoxelSize(int stride=4);
-		virtual ~Mesh();
-
+		~Mesh();
 };
 }
 #endif /* MESH_H_ */

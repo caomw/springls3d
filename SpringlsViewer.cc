@@ -157,6 +157,7 @@ void SpringlsViewer::stop(){
 }
 bool SpringlsViewer::openMesh(const std::string& fileName){
 	Mesh* mesh=Mesh::openMesh(fileName);
+	std::cout<<"Opened mesh "<<mesh->vertexes.size()<<" "<<mesh->faces.size()<<std::endl;
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
 	originalMesh->mapIntoBoundingBox(originalMesh->EstimateVoxelSize());
@@ -189,7 +190,6 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
 	trans->postTranslate(center);
 	//bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
 	//mClipBox->setBBox(bbox);
-	std::cout<<"Mesh Size "<<springlGrid.isoSurface->vertexes.size()<<std::endl;
 	meshDirty=true;
 	setNeedsDisplay();
     return true;
@@ -354,7 +354,7 @@ SpringlsViewer::render()
     mClipBox->render();
     mClipBox->enableClipping();
 	glColor3f(0.8f,0.8f,0.8f);
-    springlGrid.draw(false,true,false,false);
+	springlGrid.draw(false,true,false,false);
 	mClipBox->disableClipping();
     glPopMatrix();
 

@@ -19,27 +19,25 @@
 #undef OPENVDB_REQUIRE_VERSION_NAME
 namespace imagesci{
 
-template<int8_t K> struct Springl;
 class Constellation;
-struct SpringlBase;
+struct Springl;
 struct SpringlNeighbor{
 public:
 	openvdb::Index32 springlId;
-	int8_t edgeId;
+	int edgeId;
 	float distance;
-	SpringlNeighbor(openvdb::Index32 id=0,int8_t nbr=-1,float _distance=0):springlId(id),edgeId(nbr),distance(_distance){
+	SpringlNeighbor(openvdb::Index32 id=0,int nbr=-1,float _distance=0):springlId(id),edgeId(nbr),distance(_distance){
 	}
 };
 std::ostream& operator<<(std::ostream& ostr, const SpringlNeighbor& classname);
 typedef std::vector<std::list<SpringlNeighbor>> NearestNeighborMap;
 class SpringLevelSet {
-private:
-	float angle(openvdb::Vec3s& v0,openvdb::Vec3s& v1,openvdb::Vec3s& v2);
 public:
 	static const float NEAREST_NEIGHBOR_RANGE;//voxel units
 	static const int MAX_NEAREST_NEIGHBORS;
 	static const float PARTICLE_RADIUS;
 	static const float MAX_VEXT;
+	static const float FILL_DISTANCE;
 	static const float SHARPNESS;
 	static const float SPRING_CONSTANT;
 	static const float RELAX_TIMESTEP;
@@ -56,7 +54,7 @@ public:
 	NearestNeighborMap nearestNeighbors;
 	std::vector<openvdb::Vec3s> vertexDisplacement;
 	std::vector<openvdb::Vec3s> particleDisplacement;
-	SpringlBase& GetSpringl(const openvdb::Index32 id);
+	Springl& GetSpringl(const openvdb::Index32 id);
 	openvdb::Vec3s& GetParticle(const openvdb::Index32 id);
 	openvdb::Vec3s& GetParticleNormal(const openvdb::Index32 id);
 	openvdb::Vec3s& GetSpringlVertex(const openvdb::Index32 id,const int i);
@@ -64,6 +62,7 @@ public:
 	std::list<SpringlNeighbor>& GetNearestNeighbors(openvdb::Index32 id,int8_t e);
 	void draw(bool colorEnabled=false,bool wireframe=true,bool particles=false,bool particleNormals=false);
 	void clean();
+	void fill();
 	void updateGradient();
 	void updateUnsignedLevelSet();
 	void relax(int iters=10);
@@ -73,44 +72,34 @@ public:
 	~SpringLevelSet(){}
 };
 
-struct SpringlBase {
+struct Springl {
 	private:
-		int8_t K;
+		Mesh* mesh;
 	public:
 		openvdb::Index32 id;
 		openvdb::Index32 offset;
-		openvdb::Vec3s* vertexes;
-		openvdb::Vec3s* particle;
-		openvdb::Vec3s* normal;
-		openvdb::Vec3s& operator[](size_t idx){return (vertexes[idx]);}
-		const openvdb::Vec3s& operator[](size_t idx) const {return vertexes[idx];}
-		void set(int index,openvdb::Vec3s ptr){
-			vertexes[index]=ptr;
-		}
-		openvdb::Vec3s get(int index){
-			return vertexes[index];
-		}
-		SpringlBase():vertexes(NULL),K(0),id(0),particle(NULL),normal(NULL),offset(0){
+
+		openvdb::Vec3s& normal() const {return mesh->particleNormals[id];}
+		openvdb::Vec3s& particle() const {return mesh->particles[id];}
+		openvdb::Vec3s& operator[](size_t idx){return mesh->vertexes[offset+idx];}
+		const openvdb::Vec3s& operator[](size_t idx) const {return mesh->vertexes[offset+idx];}
+		Springl():id(0),offset(0),mesh(NULL){
 
 		}
-		SpringlBase(openvdb::Vec3s* ptr,int8_t k):vertexes(ptr),K(k),id(0),particle(NULL),normal(NULL),offset(0){
-
+		Springl(Mesh* _mesh):id(0),offset(0),mesh(_mesh){
 		}
 
-		int8_t size() const;
+		int size() const;
 		float area() const;
-		float distance(const openvdb::Vec3s& pt);
-		float distanceSqr(const openvdb::Vec3s& pt);
-		float distanceEdgeSqr(const openvdb::Vec3s& pt,int8_t e);
-		float distanceEdge(const openvdb::Vec3s& pt,int8_t e);
+		float distanceToFace(const openvdb::Vec3s& pt);
+		float distanceToFaceSqr(const openvdb::Vec3s& pt);
+		float distanceToParticle(const openvdb::Vec3s& pt);
+		float distanceToParticleSqr(const openvdb::Vec3s& pt);
+		float distanceEdgeSqr(const openvdb::Vec3s& pt,int e);
+		float distanceEdge(const openvdb::Vec3s& pt,int e);
 		openvdb::Vec3s computeCentroid() const;
 		openvdb::Vec3s computeNormal(const float eps=1E-6f) const;
-		~SpringlBase(){
-		}
-};
-template<int8_t k> struct Springl : public SpringlBase{
-	public:
-		Springl(openvdb::Vec3s* ptr):SpringlBase(ptr,k){
+		~Springl(){
 		}
 };
 
@@ -118,7 +107,7 @@ template<int8_t k> struct Springl : public SpringlBase{
 class Constellation {
 public:
 		Mesh storage;
-		std::vector<SpringlBase> springls;
+		std::vector<Springl> springls;
 		inline openvdb::BBoxd GetBBox(){
 			return storage.GetBBox();
 		}
@@ -134,11 +123,11 @@ public:
 		inline size_t getNumSpringls() const {return springls.size();}
 		inline size_t getNumVertexes() const {return storage.vertexes.size();}
 
-		SpringlBase& operator[](size_t idx)
+		Springl& operator[](size_t idx)
 	    {
 	    	return springls[idx];
 	    }
-		const SpringlBase& operator[](size_t idx) const
+		const Springl& operator[](size_t idx) const
 	    {
 	    	return springls[idx];
 	    }
@@ -165,9 +154,9 @@ public:
         /// Advance to the next leaf node.
         Iterator& operator++() { ++mPos; return *this; }
         /// Return a reference to the leaf node to which this iterator is pointing.
-        SpringlBase& operator*() const { return mRange.mConstellation[mPos]; }
+        Springl& operator*() const { return mRange.mConstellation[mPos]; }
         /// Return a pointer to the leaf node to which this iterator is pointing.
-        SpringlBase* operator->() const { return &(this->operator*()); }
+        Springl* operator->() const { return &(this->operator*()); }
 
         /// Return the index into the leaf array of the current leaf node.
         size_t pos() const { return mPos; }
@@ -230,7 +219,7 @@ private:
 	template<typename OperatorT,typename InterruptT = openvdb::util::NullInterrupter>
 	class ConstellationOperator
 	{
-		typedef SpringlBase SpringlType;
+		typedef Springl SpringlType;
 	public:
 		SpringLevelSet& mGrid;
 		ConstellationOperator(SpringLevelSet& grid,InterruptT* _interrupt):mGrid(grid),mInterrupt(_interrupt){
@@ -272,7 +261,7 @@ private:
 
 	public:
 		static void init(SpringLevelSet& mGrid);
-	    static void result(SpringlBase& springl,SpringLevelSet& mGrid);
+	    static void result(Springl& springl,SpringLevelSet& mGrid);
 	};
 	struct RelaxOperation
 	{
@@ -280,7 +269,7 @@ private:
 
 	public:
 		static void init(SpringLevelSet& mGrid);
-	    static void result(SpringlBase& springl,SpringLevelSet& mGrid);
+	    static void result(Springl& springl,SpringLevelSet& mGrid);
 	};
 	struct AdvectVertexOperation
 	{
@@ -288,7 +277,7 @@ private:
 
 	public:
 		static void init(SpringLevelSet& mGrid);
-	    static void result(SpringlBase& springl,SpringLevelSet& mGrid);
+	    static void result(Springl& springl,SpringLevelSet& mGrid);
 	};
 	// end of ConstellationOperator class
 	/// @brief Compute the gradient of a scalar grid.

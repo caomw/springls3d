@@ -85,10 +85,16 @@ PlyProperty faceProps[] = { // property information for a face
 				0, 0, 0, 0 }, };
 
 Mesh::Mesh() :
-		mVertexBuffer(0), mNormalBuffer(0), mColorBuffer(0), mIndexBuffer(0), mLineBuffer(0),mParticleBuffer(0),mParticleNormalBuffer(0),elementCount(
-				0), meshType(PrimitiveType::TRIANGLES) {
+		mVertexBuffer(0),
+		mNormalBuffer(0),
+		mColorBuffer(0),
+		mTriIndexBuffer(0),
+		mQuadIndexBuffer(0),
+		mLineBuffer(0),mParticleBuffer(0),mParticleNormalBuffer(0),
+		quadCount(0),triangleCount(0) {
 }
 bool Mesh::save(const std::string& f) {
+	/*
 	int i, j, idx;
 	const char* fileName = f.c_str();
 	unsigned char *pointColors = NULL;
@@ -186,6 +192,7 @@ bool Mesh::save(const std::string& f) {
 		delete[] pointColors;
 	// close the PLY file
 	close_ply(ply);
+	*/
 	return true;
 }
 Mesh* Mesh::openGrid(const std::string& fileName) {
@@ -235,11 +242,8 @@ Mesh* Mesh::openMesh(const std::string& file) {
 	// triplet red, green, blue.
 	unsigned char intensityAvailable = false, RGBCellsAvailable = false,
 			RGBPointsAvailable = false;
-	std::vector<Vec3s>& colors = mesh->colors;
-	std::vector<Vec3s>& points = mesh->vertexes;
-	std::vector<Vec3s>& normals = mesh->normals;
-	std::vector<Index32>& indexes = mesh->indexes;
-
+	mesh->triIndexes.clear();
+	mesh->quadIndexes.clear();
 	if ((elem = find_element(ply, "face")) != NULL
 			&& find_property(elem, "intensity", &index) != NULL) {
 		intensityAvailable = true;
@@ -272,23 +276,23 @@ Mesh* Mesh::openMesh(const std::string& file) {
 		if (elemName && !strcmp("vertex", elemName)) {
 			// Create a list of points
 			numPts = numElems;
-			points.resize(numPts);
+			mesh->vertexes.resize(numPts,Vec3s(0.0f));
 			// Setup to read the PLY elements
 			ply_get_property(ply, elemName, &vertProps[0]);
 			ply_get_property(ply, elemName, &vertProps[1]);
 			ply_get_property(ply, elemName, &vertProps[2]);
 
 			if (RGBPointsAvailable) {
-				colors.resize(numPts);
+				mesh->colors.resize(numPts);
 				ply_get_property(ply, elemName, &vertProps[3]);
 				ply_get_property(ply, elemName, &vertProps[4]);
 				ply_get_property(ply, elemName, &vertProps[5]);
 			}
 			for (j = 0; j < numPts; j++) {
 				get_element_ply(ply, &vertex);
-				points[j] = Vec3s(vertex.x[0], vertex.x[1], vertex.x[2]);
+				mesh->vertexes[j] = Vec3s(vertex.x[0], vertex.x[1], vertex.x[2]);
 				if (RGBPointsAvailable) {
-					colors[j] = Vec3s(vertex.red / 255.0f,
+					mesh->colors[j] = Vec3s(vertex.red / 255.0f,
 							vertex.green / 255.0f, vertex.blue / 255.0f);
 				}
 			}
@@ -296,7 +300,6 @@ Mesh* Mesh::openMesh(const std::string& file) {
 		else if (elemName && !strcmp("face", elemName)) {
 			// Create a polygonal array
 			numPolys = numElems;
-
 			// Get the face properties
 			ply_get_property(ply, elemName, &faceProps[0]);
 			if (intensityAvailable) {
@@ -307,20 +310,22 @@ Mesh* Mesh::openMesh(const std::string& file) {
 				ply_get_property(ply, elemName, &faceProps[3]);
 				ply_get_property(ply, elemName, &faceProps[4]);
 			}
-			indexes.clear();
-			indexes.reserve(numPolys * 4);
 			for (j = 0; j < numPolys; j++) {
 
 				//grab and element from the file
 				face.verts = &verts[0];
 				get_element_ply(ply, &face);
-				for (k = 0; k < face.nverts; k++) {
-					indexes.push_back(face.verts[k]);
-				}
-				if (face.nverts == 3) {
-					mesh->meshType = TRIANGLES;
-				} else {
-					mesh->meshType = QUADS;
+
+				if(face.nverts==4){
+					for (k = 0; k < face.nverts; k++) {
+						mesh->quadIndexes.push_back(face.verts[k]);
+					}
+					mesh->faces.push_back(openvdb::Vec4I(face.verts[0],face.verts[1],face.verts[2],face.verts[3]));
+				} else if(face.nverts==3){
+					for (k = 0; k < face.nverts; k++) {
+						mesh->triIndexes.push_back(face.verts[k]);
+					}
+					mesh->faces.push_back(openvdb::Vec4I(face.verts[0],face.verts[1],face.verts[2],openvdb::util::INVALID_IDX));
 				}
 				if (intensityAvailable) {
 					//Not used!
@@ -340,31 +345,9 @@ Mesh* Mesh::openMesh(const std::string& file) {
 	} //for all elements of the PLY file
 	free(elist); //allocated by ply_open_for_reading
 	close_ply(ply);
-	mesh->indexes.shrink_to_fit();
-	mesh->faces.resize(numPolys);
-	if (mesh->meshType == TRIANGLES) {
-		int counter = 0;
-		Vec3s norm;
-		normals.resize(points.size());
-		for (int i = 0; i < numPolys; i++) {
-			int vid1 = mesh->indexes[counter++];
-			int vid2 = mesh->indexes[counter++];
-			int vid3 = mesh->indexes[counter++];
-			Vec3s norm = (points[vid2] - points[vid1]).cross(
-					points[vid3] - points[vid1]);
-			normals[vid1] += norm;
-			normals[vid2] += norm;
-			normals[vid3] += norm;
-			mesh->faces[i] = Vec4I(vid1, vid2, vid3, util::INVALID_IDX);
-		}
-		for (Vec3s& norm : normals) {
-			norm.normalize(1E-6f);
-		}
-	} else {
-		mesh->faces.resize(numPolys);
-		memcpy(&mesh->faces[0], &mesh->indexes[0], sizeof(Vec4I) * numPolys);
-	}
-	if (points.size() > 0) {
+	mesh->updateVertexNormals();
+	std::cout<<"Mesh "<<mesh->triIndexes.size()<<" "<<mesh->quadIndexes.size()<<" "<<mesh->vertexes.size()<<" "<<mesh->vertexNormals.size()<<" "<<mesh->faces.size()<<std::endl;
+	if (mesh->vertexes.size() > 0) {
 		mesh->updateBBox();
 		return mesh;
 	} else {
@@ -372,74 +355,90 @@ Mesh* Mesh::openMesh(const std::string& file) {
 	}
 }
 void Mesh::create(FloatGrid::Ptr grid) {
-
-	openvdb::tools::VolumeToMesh mesher(
-			grid->getGridClass() == openvdb::GRID_LEVEL_SET ? 0.0 : 0.01);
+	openvdb::tools::VolumeToMesh mesher(0.0);
 	mesher(*grid);
 	// Copy points and generate point normals.
 
 	openvdb::tree::ValueAccessor<FloatGrid::TreeType> acc(grid->tree());
 
 	openvdb::math::GenericMap map(grid->transform());
-	openvdb::Coord ijk;
 	vertexes.clear();
-	normals.clear();
+	vertexNormals.clear();
 	faces.clear();
-	indexes.clear();
+	triIndexes.clear();
+	quadIndexes.clear();
 
 	vertexes.resize(mesher.pointListSize());
-	normals.resize(mesher.pointListSize());
+	vertexNormals.resize(mesher.pointListSize());
 	Index64 N = mesher.pointListSize();
 	for (Index64 n = 0; n < N; ++n) {
 		vertexes[n] = map.applyInverseMap(mesher.pointList()[n]);
-		normals[n] = Vec3s(0.0f);
 	}
 	// Copy primitives
 	openvdb::tools::PolygonPoolList& polygonPoolList = mesher.polygonPoolList();
-
-	Index64 numQuads = 0;
-	for (Index64 n = 0, N = mesher.polygonPoolListSize(); n < N; ++n) {
-		numQuads += polygonPoolList[n].numQuads();
-	}
-	indexes.reserve(numQuads * 4);
-	openvdb::Vec3d normal, e1, e2;
-
-	faces.reserve(mesher.polygonPoolListSize());
 	for (Index64 n = 0, N = mesher.polygonPoolListSize(); n < N; ++n) {
 		const openvdb::tools::PolygonPool& polygons = polygonPoolList[n];
 		//std::cout << "Polygon " << polygons.numTriangles() << " "<< polygons.numQuads() << std::endl;
 		for (Index64 i = 0, I = polygons.numQuads(); i < I; ++i) {
 			const openvdb::Vec4I& quad = polygons.quad(i);
-			faces.push_back(quad);
-			indexes.push_back(quad[0]);
-			indexes.push_back(quad[1]);
-			indexes.push_back(quad[2]);
-			indexes.push_back(quad[3]);
-			normal = (vertexes[quad[2]] - vertexes[quad[0]]).cross(
-					vertexes[quad[1]] - vertexes[quad[0]]);
-			normals[quad[0]] += normal;
-			normals[quad[1]] += normal;
-			normals[quad[2]] += normal;
-			normals[quad[3]] += normal;
+			faces.push_back(openvdb::Vec4I(quad[3],quad[2],quad[1],quad[0]));
+			quadIndexes.push_back(quad[3]);
+			quadIndexes.push_back(quad[2]);
+			quadIndexes.push_back(quad[1]);
+			quadIndexes.push_back(quad[0]);
+		}
+		for (Index64 i = 0, I = polygons.numTriangles(); i < I; ++i) {
+			const openvdb::Vec3I& quad = polygons.triangle(i);
+			faces.push_back(openvdb::Vec4I(quad[2],quad[1],quad[0],openvdb::util::INVALID_IDX));
+			triIndexes.push_back(quad[2]);
+			triIndexes.push_back(quad[1]);
+			triIndexes.push_back(quad[0]);
 		}
 	}
-	for (Vec3s& norm : normals) {
-		norm.normalize(1E-6f);
-	}
-	meshType = PrimitiveType::QUADS;
+	updateVertexNormals();
 	updateBBox();
 }
-
+void Mesh::updateVertexNormals(){
+	vertexNormals.resize(vertexes.size(),Vec3s(0.0f));
+	Index32 sz=triIndexes.size();
+	Vec3s pt,norm;
+	for (Index32 i = 0; i < sz; i += 3) {
+		Vec3s v1 = vertexes[triIndexes[i]];
+		Vec3s v2 = vertexes[triIndexes[i + 1]];
+		Vec3s v3 = vertexes[triIndexes[i + 2]];
+		norm=(v2-v1).cross(v3-v1);
+		vertexNormals[triIndexes[i]]+=norm;
+		vertexNormals[triIndexes[i+1]]+=norm;
+		vertexNormals[triIndexes[i+2]]+=norm;
+	}
+	sz=quadIndexes.size();
+	for (int i = 0; i < sz; i += 4) {
+		Vec3s v1 = vertexes[quadIndexes[i]];
+		Vec3s v2 = vertexes[quadIndexes[i + 1]];
+		Vec3s v3 = vertexes[quadIndexes[i + 2]];
+		Vec3s v4 = vertexes[quadIndexes[i + 3]];
+		norm =(v1-pt).cross(v2-pt);
+		norm+=(v2-pt).cross(v3-pt);
+		norm+=(v3-pt).cross(v4-pt);
+		norm+=(v4-pt).cross(v1-pt);
+		vertexNormals[quadIndexes[i]]+=norm;
+		vertexNormals[quadIndexes[i+1]]+=norm;
+		vertexNormals[quadIndexes[i+2]]+=norm;
+		vertexNormals[quadIndexes[i+3]]+=norm;
+	}
+	for (Vec3s& norm : vertexNormals) {
+		norm.normalize(1E-6f);
+	}
+}
 float Mesh::EstimateVoxelSize(int stride) {
 	float avg = 0.0f;
 	int count = 0;
 	float maxLength = 0.0f;
-	int sz = indexes.size();
-	if (meshType == TRIANGLES) {
+	int sz = triIndexes.size();
 		for (int i = 0; i < sz; i += 3 * stride) {
-			Vec3s v1 = vertexes[indexes[i]];
-			Vec3s v2 = vertexes[indexes[i + 1]];
-			Vec3s v3 = vertexes[indexes[i + 2]];
+			Vec3s v1 = vertexes[triIndexes[i]];
+			Vec3s v2 = vertexes[triIndexes[i + 1]];
+			Vec3s v3 = vertexes[triIndexes[i + 2]];
 			float e1 = (v1 - v2).length();
 			float e2 = (v1 - v3).length();
 			float e3 = (v2 - v3).length();
@@ -447,12 +446,12 @@ float Mesh::EstimateVoxelSize(int stride) {
 			avg += e1 + e2 + e3;
 			count += 3;
 		}
-	} else {
+		sz=quadIndexes.size();
 		for (int i = 0; i < sz; i += 4 * stride) {
-			Vec3s v1 = vertexes[indexes[i]];
-			Vec3s v2 = vertexes[indexes[i + 1]];
-			Vec3s v3 = vertexes[indexes[i + 2]];
-			Vec3s v4 = vertexes[indexes[i + 3]];
+			Vec3s v1 = vertexes[quadIndexes[i]];
+			Vec3s v2 = vertexes[quadIndexes[i + 1]];
+			Vec3s v3 = vertexes[quadIndexes[i + 2]];
+			Vec3s v4 = vertexes[quadIndexes[i + 3]];
 			float e1 = (v1 - v2).length();
 			float e2 = (v2 - v3).length();
 			float e3 = (v3 - v4).length();
@@ -463,7 +462,6 @@ float Mesh::EstimateVoxelSize(int stride) {
 			avg += e1 + e2 + e3 + e4;
 			count += 4;
 		}
-	}
 	avg /= count;
 
 	std::cout << "Average Edge Length=" << avg << " Max Edge Length="
@@ -514,7 +512,7 @@ void Mesh::mapOutOfBoundingBox(float voxelSize) {
 void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showParticleNormals) {
 	if (mVertexBuffer > 0) {
 		glEnable(GL_LIGHTING);
-		if (indexes.size() > 0) {
+		if (quadIndexes.size()+triIndexes.size() > 0) {
 			glShadeModel(GL_SMOOTH);
 		} else {
 			glShadeModel(GL_FLAT);
@@ -536,12 +534,21 @@ void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showPar
 		glBindBuffer(GL_ARRAY_BUFFER, mNormalBuffer);
 		glNormalPointer(GL_FLOAT, 0, 0);
 
-		if (indexes.size() > 0) {
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIndexBuffer);
-			glDrawElements(meshType, elementCount, GL_UNSIGNED_INT, NULL);
-		} else {
-			glDrawArrays(meshType, 0, elementCount);
+		if (quadIndexes.size() > 0) {
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
+			glDrawElements(GL_QUADS, quadCount, GL_UNSIGNED_INT, NULL);
+		} else if(quadCount>0){
+			glDrawArrays(GL_QUADS, 0, quadCount);
 		}
+
+		if (triIndexes.size() > 0) {
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mTriIndexBuffer);
+			glDrawElements(GL_TRIANGLES, triangleCount, GL_UNSIGNED_INT, NULL);
+			//std::cout<<"DRAW TRIANGLE "<<triangleCount<<" "<<mTriIndexBuffer<<" "<<triIndexes.size()<<std::endl;
+		} else if(triangleCount>0){
+			glDrawArrays(GL_TRIANGLES, 0, triangleCount);
+		}
+
 		glLineWidth(1.0f);
 
 		glDisableClientState(GL_NORMAL_ARRAY);
@@ -549,10 +556,17 @@ void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showPar
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		glColor3f(0.3f, 0.3f, 0.3f);
 		if(wireframe){
-			if (indexes.size() > 0) {
-				glDrawElements(meshType, elementCount, GL_UNSIGNED_INT, 0);
-			} else {
-				glDrawArrays(meshType, 0, elementCount);
+			if (quadIndexes.size() > 0) {
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
+				glDrawElements(GL_QUADS, quadCount, GL_UNSIGNED_INT, NULL);
+			} else if(quadCount>0){
+				glDrawArrays(GL_QUADS, 0, quadCount);
+			}
+			if (triIndexes.size() > 0) {
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mTriIndexBuffer);
+				glDrawElements(GL_TRIANGLES, triangleCount, GL_UNSIGNED_INT, NULL);
+			} else if(triangleCount>0){
+				glDrawArrays(GL_TRIANGLES, 0, triangleCount);
 			}
 		}
 		if (showParticles&&particles.size() > 0) {
@@ -585,7 +599,8 @@ void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showPar
 	}
 }
 void Mesh::updateGL() {
-	elementCount = 0;
+	quadCount=0;
+	triangleCount=0;
 	if (vertexes.size() > 0) {
 		if (glIsBuffer(mVertexBuffer) == GL_TRUE)
 			glDeleteBuffers(1, &mVertexBuffer);
@@ -647,28 +662,49 @@ void Mesh::updateGL() {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		std::cout<<"Disable Lines "<<std::endl;
 	}
-	if (indexes.size() > 0) {
+	if (triIndexes.size() > 0) {
 		// clear old buffer
-		if (glIsBuffer(mIndexBuffer) == GL_TRUE)
-			glDeleteBuffers(1, &mIndexBuffer);
+		if (glIsBuffer(mTriIndexBuffer) == GL_TRUE)
+			glDeleteBuffers(1, &mTriIndexBuffer);
 
 		// gen new buffer
-		glGenBuffers(1, &mIndexBuffer);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mIndexBuffer);
-		if (glIsBuffer(mIndexBuffer) == GL_FALSE)
+		glGenBuffers(1, &mTriIndexBuffer);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mTriIndexBuffer);
+		if (glIsBuffer(mTriIndexBuffer) == GL_FALSE)
 			throw "Error: Unable to create index buffer";
 
 		// upload data
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * indexes.size(),
-				&indexes[0], GL_STATIC_DRAW); // upload data
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * triIndexes.size(),
+				&triIndexes[0], GL_STATIC_DRAW); // upload data
+
+
 		if (GL_NO_ERROR != glGetError())
 			throw "Error: Unable to upload index buffer data";
 
-		elementCount = indexes.size();
+		triangleCount = triIndexes.size();
 		// release buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	} else {
-		elementCount = vertexes.size();
+	}
+	if (quadIndexes.size() > 0) {
+		// clear old buffer
+		if (glIsBuffer(mQuadIndexBuffer) == GL_TRUE)
+			glDeleteBuffers(1, &mQuadIndexBuffer);
+
+		// gen new buffer
+		glGenBuffers(1, &mQuadIndexBuffer);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
+		if (glIsBuffer(mQuadIndexBuffer) == GL_FALSE)
+			throw "Error: Unable to create index buffer";
+
+		// upload data
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * quadIndexes.size(),
+				&quadIndexes[0], GL_STATIC_DRAW); // upload data
+		if (GL_NO_ERROR != glGetError())
+			throw "Error: Unable to upload index buffer data";
+
+		quadCount = quadIndexes.size();
+		// release buffer
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
 	if (particleNormals.size() > 0) {
 		if (glIsBuffer(mParticleNormalBuffer) == GL_TRUE)
@@ -687,7 +723,7 @@ void Mesh::updateGL() {
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
-	if (normals.size() > 0) {
+	if (vertexNormals.size() > 0) {
 		if (glIsBuffer(mNormalBuffer) == GL_TRUE)
 			glDeleteBuffers(1, &mNormalBuffer);
 
@@ -696,8 +732,8 @@ void Mesh::updateGL() {
 		if (glIsBuffer(mNormalBuffer) == GL_FALSE)
 			throw "Error: Unable to create normal buffer";
 
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * normals.size(),
-				&normals[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * vertexNormals.size(),
+				&vertexNormals[0], GL_STATIC_DRAW);
 		if (GL_NO_ERROR != glGetError())
 			throw "Error: Unable to upload normal buffer data";
 

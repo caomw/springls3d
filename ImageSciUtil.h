@@ -15,8 +15,24 @@ namespace imagesci {
 	bool WriteToRawFile(openvdb::FloatGrid::Ptr grid,const std::string& fileName);
 	bool WriteToRawFile(openvdb::VectorGrid::Ptr grid,const std::string& fileName);
 	bool WriteToRawFile(openvdb::Int32Grid::Ptr grid,const std::string& fileName);
-	float DistanceToEdge(const openvdb::Vec3s& pt,const openvdb::Vec3s& pt1,const openvdb::Vec3s& pt2,openvdb::Vec3s* lastClosestSegmentPoint);
-	float DistanceToEdge(const openvdb::Vec3s& pt,const openvdb::Vec3s& pt1,const openvdb::Vec3s& pt2);
+	float DistanceToEdgeSqr(const openvdb::Vec3s& pt,const openvdb::Vec3s& pt1,const openvdb::Vec3s& pt2,openvdb::Vec3s* lastClosestSegmentPoint);
+	float DistanceToEdgeSqr(const openvdb::Vec3s& pt,const openvdb::Vec3s& pt1,const openvdb::Vec3s& pt2);
+	float DistanceToTriangleSqr(
+			const openvdb::Vec3s& p,
+			const openvdb::Vec3s& v0,
+			const openvdb::Vec3s& v1,
+			const openvdb::Vec3s& v2,
+			openvdb::Vec3s* closestPoint);
+	float DistanceToQuadSqr(
+			const openvdb::Vec3s& p,
+			const openvdb::Vec3s& v0,
+			const openvdb::Vec3s& v1,
+			const openvdb::Vec3s& v2,
+			const openvdb::Vec3s& v3,
+			const openvdb::Vec3s& normal,
+			openvdb::Vec3s* closestPoint);
+	float Angle(openvdb::Vec3s& v0, openvdb::Vec3s& v1,
+			openvdb::Vec3s& v2);
 	openvdb::math::Mat3<float> CreateAxisAngle(openvdb::Vec3s axis,float angle);
 }
 #endif /* IMAGESCIUTIL_H_ */

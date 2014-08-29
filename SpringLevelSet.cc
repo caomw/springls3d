@@ -9,6 +9,7 @@
 #include <openvdb/util/Util.h>
 #include <openvdb/math/Stencils.h>
 #include <openvdb/tools/MeshToVolume.h>
+#include <openvdb/tools/VolumeToMesh.h>
 #include <openvdb/openvdb.h>
 namespace imagesci {
 using namespace openvdb;
@@ -21,60 +22,89 @@ std::ostream& operator<<(std::ostream& ostr, const SpringlNeighbor& classname) {
 	return ostr;
 }
 
-int8_t SpringlBase::size() const {
-	return K;
+int Springl::size() const {
+	return ((mesh->faces[id][3] == openvdb::util::INVALID_IDX) ? 3 : 4);
 }
 
-float SpringlBase::distance(const openvdb::Vec3s& pt) {
-	return ((*particle) - pt).length();
+float Springl::distanceToParticle(const openvdb::Vec3s& pt) {
+	return ((particle()) - pt).length();
 }
 
-float SpringlBase::distanceSqr(const openvdb::Vec3s& pt) {
-	return ((*particle) - pt).lengthSqr();
+float Springl::distanceToParticleSqr(const openvdb::Vec3s& pt) {
+	return ((particle()) - pt).lengthSqr();
 }
-float SpringlBase::distanceEdgeSqr(const openvdb::Vec3s& pt, int8_t e) {
-	return DistanceToEdge(pt, vertexes[e], vertexes[(e + 1) % K]);
+float Springl::distanceToFace(const openvdb::Vec3s& pt) {
+	return std::sqrt(distanceToFaceSqr(pt));
 }
-float SpringlBase::distanceEdge(const openvdb::Vec3s& pt, int8_t e) {
-	return std::sqrt(DistanceToEdge(pt, vertexes[e], vertexes[(e + 1) % K]));
+
+float Springl::distanceToFaceSqr(const openvdb::Vec3s& pt) {
+	Vec3s closest;
+	if (size() == 3) {
+		return DistanceToTriangleSqr(pt, (*this)[0], (*this)[1], (*this)[2],
+				&closest);
+	} else {
+		return DistanceToQuadSqr(pt, (*this)[0], (*this)[1], (*this)[2],
+				(*this)[3], normal(), &closest);
+	}
 }
-openvdb::Vec3s SpringlBase::computeCentroid() const {
+float Springl::distanceEdgeSqr(const openvdb::Vec3s& pt, int e) {
+	return DistanceToEdgeSqr(pt, (*this)[e], (*this)[(e + 1) % size()]);
+}
+float Springl::distanceEdge(const openvdb::Vec3s& pt, int e) {
+	return std::sqrt(
+			DistanceToEdgeSqr(pt, (*this)[e], (*this)[(e + 1) % size()]));
+}
+
+openvdb::Vec3s Springl::computeCentroid() const {
 	openvdb::Vec3s centroid = openvdb::Vec3s(0.0f, 0.0f, 0.0f);
+	int K = size();
 	for (int k = 0; k < K; k++) {
 		centroid += (*this)[k];
 	}
 	centroid = (1.0 / K) * centroid;
 	return centroid;
 }
-openvdb::Vec3s SpringlBase::computeNormal(const float eps) const {
+openvdb::Vec3s Springl::computeNormal(const float eps) const {
 	openvdb::Vec3s norm(0.0f);
+	int K = size();
+	openvdb::Vec3s pt = particle();
 	for (int k = 0; k < K; k++) {
-		norm += (vertexes[(k + 1) % K] - (*particle)).cross(
-				vertexes[k] - (*particle));
+		norm += ((*this)[k] - pt).cross((*this)[(k + 1) % K] - pt);
 	}
+
 	norm.normalize(eps);
 	return norm;
 }
-float SpringlBase::area() const {
+float Springl::area() const {
 	openvdb::Vec3s norm(0.0f);
+	int K = size();
 	for (int k = 0; k < K; k++) {
-		norm += (vertexes[(k + 1) % K] - (*particle)).cross(
-				vertexes[k] - (*particle));
+		norm += ((*this)[k] - (particle())).cross(
+				(*this)[(k + 1) % K] - (particle()));
 	}
-	return 0.5f*norm.length();
+	return 0.5f * norm.length();
 }
 void SpringLevelSet::draw(bool colorEnabled, bool wireframe, bool particles,
 		bool particleNormals) {
+	/*
+	 if (isoSurface.get() != nullptr) {
+	 glColor3f(0.8f,0.3f, 0.3f);
+	 isoSurface->draw(colorEnabled, wireframe, particles,
+	 particleNormals);
+	 }
+	 */
 	if (constellation.get() != nullptr) {
 		glColor3f(0.3f, 0.3f, 0.8f);
 		constellation->draw(colorEnabled, wireframe, particles,
 				particleNormals);
 	}
+
 }
 const float SpringLevelSet::NEAREST_NEIGHBOR_RANGE = 1.5f;
 const float SpringLevelSet::PARTICLE_RADIUS = 0.05f;
 const float SpringLevelSet::MAX_VEXT = 0.5f;
 const int SpringLevelSet::MAX_NEAREST_NEIGHBORS = 8;
+const float SpringLevelSet::FILL_DISTANCE = 0.25f;
 const float SpringLevelSet::SHARPNESS = 5.0f;
 const float SpringLevelSet::SPRING_CONSTANT = 0.3f;
 const float SpringLevelSet::RELAX_TIMESTEP = 0.1f;
@@ -82,10 +112,10 @@ const float SpringLevelSet::MAX_ANGLE_TOLERANCE = M_PI;
 const float SpringLevelSet::MIN_ANGLE_TOLERANCE = 20 * M_PI / 180.0f;
 const float SpringLevelSet::MIN_AREA = 0.05f;
 openvdb::Vec3s& SpringLevelSet::GetParticle(const openvdb::Index32 id) {
-	return *(constellation->springls[id].particle);
+	return (constellation->springls[id].particle());
 }
 openvdb::Vec3s& SpringLevelSet::GetParticleNormal(const openvdb::Index32 id) {
-	return *(constellation->springls[id].normal);
+	return (constellation->springls[id].normal());
 }
 openvdb::Vec3s& SpringLevelSet::GetSpringlVertex(const openvdb::Index32 id,
 		const int i) {
@@ -94,26 +124,22 @@ openvdb::Vec3s& SpringLevelSet::GetSpringlVertex(const openvdb::Index32 id,
 openvdb::Vec3s& SpringLevelSet::GetSpringlVertex(const openvdb::Index32 id) {
 	return constellation->storage.vertexes[id];
 }
-SpringlBase& SpringLevelSet::GetSpringl(const openvdb::Index32 id) {
+Springl& SpringLevelSet::GetSpringl(const openvdb::Index32 id) {
 	return constellation->springls[id];
 }
 void AdvectVertexOperation::init(SpringLevelSet& mGrid) {
 
 }
-void AdvectVertexOperation::result(SpringlBase& springl,
-		SpringLevelSet& mGrid) {
+void AdvectVertexOperation::result(Springl& springl, SpringLevelSet& mGrid) {
 	int K = springl.size();
-	//std::cout<<"Displacement ";
 	for (int k = 0; k < K; k++) {
-		//std::cout<<mGrid.vertexDisplacement[springl.offset+k]<<" ";
 		springl[k] = mGrid.vertexDisplacement[springl.offset + k];
 	}
-	//std::cout<<std::endl;
 }
 void RelaxOperation::init(SpringLevelSet& mGrid) {
 	mGrid.vertexDisplacement.resize(mGrid.constellation->getNumVertexes());
 }
-void RelaxOperation::result(SpringlBase& springl, SpringLevelSet& mGrid) {
+void RelaxOperation::result(Springl& springl, SpringLevelSet& mGrid) {
 	float w, len;
 	Vec3s tanget;
 	Vec3s dir;
@@ -122,7 +148,7 @@ void RelaxOperation::result(SpringlBase& springl, SpringLevelSet& mGrid) {
 	std::vector<Vec3s> tangets(K);
 	std::vector<float> springForce(K);
 	std::vector<float> tangetLengths(K);
-	Vec3s particlePt = *springl.particle;
+	Vec3s particlePt = springl.particle();
 	Vec3s startVelocity = Vec3s(0);
 	Vec3s resultantMoment = Vec3s(0);
 	const float MAX_FORCE = 0.999f;
@@ -145,16 +171,15 @@ void RelaxOperation::result(SpringlBase& springl, SpringLevelSet& mGrid) {
 		//unroll loop
 		for (SpringlNeighbor ci : map) {
 			//Closest point should be recomputed each time and does not need to be stored
-			SpringlBase& nbr = mGrid.GetSpringl(ci.springlId);
-			DistanceToEdge(start, nbr[ci.edgeId],
+
+			Springl& nbr = mGrid.GetSpringl(ci.springlId);
+			DistanceToEdgeSqr(start, nbr[ci.edgeId],
 					nbr[(ci.edgeId + 1) % nbr.size()], &pt2);
 			dir = (pt2 - start);
 			len = dir.length();
 			w = ((len - 2 * SpringLevelSet::PARTICLE_RADIUS)
 					/ (SpringLevelSet::MAX_VEXT
 							+ 2 * SpringLevelSet::PARTICLE_RADIUS));
-
-			//std::cout<<ci.springlId<<"W "<<w<<" "<<len<<" "<<pt2<<" "<<start<<std::endl;
 
 			w = atanh(MAX_FORCE * clamp(w, -1.0f, 1.0f));
 			startVelocity += (w * dir);
@@ -189,10 +214,10 @@ void RelaxOperation::result(SpringlBase& springl, SpringLevelSet& mGrid) {
 void NearestNeighborOperation::init(SpringLevelSet& mGrid) {
 	NearestNeighborMap& map = mGrid.nearestNeighbors;
 	map.clear();
-	map.resize(mGrid.constellation->getNumVertexes());
+	map.resize(mGrid.constellation->getNumVertexes(),
+			std::list<SpringlNeighbor>());
 }
-void NearestNeighborOperation::result(SpringlBase& springl,
-		SpringLevelSet& mGrid) {
+void NearestNeighborOperation::result(Springl& springl, SpringLevelSet& mGrid) {
 	const float D2 = SpringLevelSet::NEAREST_NEIGHBOR_RANGE
 			* SpringLevelSet::NEAREST_NEIGHBOR_RANGE;
 
@@ -200,19 +225,22 @@ void NearestNeighborOperation::result(SpringlBase& springl,
 			openvdb::math::DenseStencil<openvdb::Int32Grid>(
 					*mGrid.springlIndexGrid,
 					ceil(SpringLevelSet::NEAREST_NEIGHBOR_RANGE));
-	openvdb::Vec3f refPoint = *(springl.particle);
+	openvdb::Vec3s refPoint = springl.particle();
 
-	stencil.moveTo(Coord(
-			std::floor(refPoint[0]+0.5f),
-			std::floor(refPoint[1]+0.5f),
-			std::floor(refPoint[2]+0.5f)));
+	stencil.moveTo(
+			Coord(std::floor(refPoint[0] + 0.5f),
+					std::floor(refPoint[1] + 0.5f),
+					std::floor(refPoint[2] + 0.5f)));
 
 	int sz = stencil.size();
 	if (sz == 0)
 		return;
+	Index32 N = mGrid.constellation->getNumSpringls();
 	std::vector<std::pair<float, openvdb::Index32>> stencilCopy;
 	for (int i = 0; i < sz; i++) {
 		openvdb::Index32 id = stencil.getValue(i);
+		if (id >= N)
+			continue;
 		openvdb::Vec3s nbr = mGrid.GetParticle(id);
 		float d = (refPoint - nbr).lengthSqr();
 		if (id != springl.id) {
@@ -237,7 +265,7 @@ void NearestNeighborOperation::result(SpringlBase& springl,
 			openvdb::Index32 nbrId = stencilCopy[i].second;
 			if (nbrId == last)
 				continue;
-			SpringlBase& snbr = mGrid.GetSpringl(nbrId);
+			Springl& snbr = mGrid.GetSpringl(nbrId);
 			for (int8_t n = 0; n < snbr.size(); n++) {
 				float d = snbr.distanceEdgeSqr(refPoint, n);
 				if (d <= bestNbr.distance) {
@@ -248,7 +276,7 @@ void NearestNeighborOperation::result(SpringlBase& springl,
 			}
 			last = nbrId;
 		}
-		if (bestNbr.springlId >= 0)
+		if (bestNbr.springlId >= 0 && bestNbr.springlId < N)
 			mapList.push_back(bestNbr);
 	}
 }
@@ -287,12 +315,12 @@ void SpringLevelSet::relax(int iters) {
 }
 void SpringLevelSet::updateUnsignedLevelSet() {
 	openvdb::math::Transform::Ptr trans =
-			openvdb::math::Transform::createLinearTransform();
+			openvdb::math::Transform::createLinearTransform(1.0f);
 	using namespace openvdb::tools;
 	using namespace openvdb;
 	MeshToVolume<FloatGrid> mtol(trans, GENERATE_PRIM_INDEX_GRID);
-	mtol.convertToUnsignedDistanceField(isoSurface->vertexes, isoSurface->faces,
-			float(LEVEL_SET_HALF_WIDTH) * 2);
+	mtol.convertToUnsignedDistanceField(constellation->storage.vertexes,
+			constellation->storage.faces, float(LEVEL_SET_HALF_WIDTH) * 2);
 	unsignedLevelSet = mtol.distGridPtr();
 	unsignedLevelSet->setBackground(float(LEVEL_SET_HALF_WIDTH) * 2);
 	springlIndexGrid = mtol.indexGridPtr();
@@ -322,158 +350,371 @@ void SpringLevelSet::create(Mesh* mesh) {
 	constellation = boost::shared_ptr<Constellation>(c);
 	std::cout << "Update unsigned level set ..." << std::endl;
 	updateUnsignedLevelSet();
-	std::cout << "Update gradient ..." << std::endl;
-	updateGradient();
+
+	//WriteToRawFile(unsignedLevelSet,"/home/blake/tmp/unsignedLevelSet");
+	//std::cout << "Update gradient ..." << std::endl;
+	//updateGradient();
 	std::cout << "Update nearest neighbors ..." << std::endl;
 	updateNearestNeighbors();
 	std::cout << "Relax springls ..." << std::endl;
 	relax(10);
-	std::cout<<"Clean ..."<<std::endl;
+	std::cout << "Clean ..." << std::endl;
 	clean();
+	updateUnsignedLevelSet();
+	//WriteToRawFile(unsignedLevelSet,"/home/blake/tmp/unsigned_constl");
+	//WriteToRawFile(springlIndexGrid,"/home/blake/tmp/index");
+	std::cout << "Fill ..." << std::endl;
+	fill();
+
 	std::cout << "done." << std::endl;
+}
+void SpringLevelSet::fill() {
+
+	openvdb::tools::VolumeToMesh mesher(0.0f);
+	mesher(*signedLevelSet);
+
+	openvdb::tree::ValueAccessor<FloatGrid::TreeType> acc(
+			signedLevelSet->tree());
+	openvdb::math::GenericMap map(signedLevelSet->transform());
+
+	openvdb::math::DenseStencil<openvdb::Int32Grid> stencil =
+			openvdb::math::DenseStencil<openvdb::Int32Grid>(*springlIndexGrid,
+					ceil(FILL_DISTANCE));
+
+	Index64 N = mesher.pointListSize();
+	openvdb::tools::PolygonPoolList& polygonPoolList = mesher.polygonPoolList();
+	Vec3s p[4];
+	Vec3s refPoint;
+
+	Mesh& storage = constellation->storage;
+	Index32 springlsCount = constellation->getNumSpringls();
+	Index32 pcounter = constellation->getNumSpringls();
+	Index32 counter = constellation->getNumVertexes();
+
+	int added = 0;
+	float levelSetValue;
+	std::vector<openvdb::Index32> stencilCopy;
+	Index32 last;
+	const float D2 = FILL_DISTANCE * FILL_DISTANCE;
+	std::list<Index64> addList;
+	for (Index64 n = 0, N = mesher.polygonPoolListSize(); n < N; ++n) {
+		const openvdb::tools::PolygonPool& polygons = polygonPoolList[n];
+		for (Index64 i = 0, I = polygons.numQuads(); i < I; ++i) {
+			const openvdb::Vec4I& quad = polygons.quad(i);
+			p[0] = mesher.pointList()[quad[3]];
+			p[1] = mesher.pointList()[quad[2]];
+			p[2] = mesher.pointList()[quad[1]];
+			p[3] = mesher.pointList()[quad[0]];
+			refPoint = 0.25f * (p[0] + p[1] + p[2] + p[3]);
+			stencil.moveTo(
+					Coord(std::floor(refPoint[0] + 0.5f),
+							std::floor(refPoint[1] + 0.5f),
+							std::floor(refPoint[2] + 0.5f)));
+			int sz = stencil.size();
+			levelSetValue = std::numeric_limits<float>::max();
+			stencilCopy.clear();
+			last = -1;
+			for (unsigned int nn = 0; nn < sz; nn++) {
+				openvdb::Index32 id = stencil.getValue(nn);
+				if (id >= springlsCount)
+					continue;
+				stencilCopy.push_back(id);
+			}
+			sz = stencilCopy.size();
+			sort(stencilCopy.begin(), stencilCopy.end());
+			for (unsigned int nn = 0; nn < sz; nn++) {
+				openvdb::Index32 id = stencilCopy[nn];
+				if (last != id) {
+					float d = constellation->springls[id].distanceToFaceSqr(
+							refPoint);
+					if (d < levelSetValue) {
+						levelSetValue = d;
+					}
+				}
+				last = id;
+			}
+			if (levelSetValue > D2) {
+				added++;
+				storage.quadIndexes.push_back(counter);
+				storage.vertexes.push_back(p[0]);
+				storage.quadIndexes.push_back(counter + 1);
+				storage.vertexes.push_back(p[1]);
+				storage.quadIndexes.push_back(counter + 2);
+				storage.vertexes.push_back(p[2]);
+				storage.quadIndexes.push_back(counter + 3);
+				storage.vertexes.push_back(p[3]);
+
+				Springl springl(&storage);
+				springl.offset = counter;
+				springl.id = constellation->springls.size();
+				constellation->storage.faces.push_back(
+						Vec4I(counter, counter + 1, counter + 2, counter + 3));
+				storage.particles.push_back(springl.computeCentroid());
+				openvdb::Vec3s norm = springl.computeNormal();
+				storage.particleNormals.push_back(norm);
+				storage.vertexNormals.push_back(norm);
+				storage.vertexNormals.push_back(norm);
+				storage.vertexNormals.push_back(norm);
+				storage.vertexNormals.push_back(norm);
+				constellation->springls.push_back(springl);
+				pcounter++;
+				counter += 4;
+			}
+		}
+		for (Index64 i = 0, I = polygons.numTriangles(); i < I; ++i) {
+			const openvdb::Vec3I& tri = polygons.triangle(i);
+			p[0] = mesher.pointList()[tri[2]];
+			p[1] = mesher.pointList()[tri[1]];
+			p[2] = mesher.pointList()[tri[0]];
+			refPoint = 0.25f * (p[0] + p[1] + p[2]);
+			stencil.moveTo(
+					Coord(std::floor(refPoint[0] + 0.5f),
+							std::floor(refPoint[1] + 0.5f),
+							std::floor(refPoint[2] + 0.5f)));
+			int sz = stencil.size();
+			levelSetValue = std::numeric_limits<float>::max();
+			stencilCopy.clear();
+			last = -1;
+			for (unsigned int nn = 0; nn < sz; nn++) {
+				openvdb::Index32 id = stencil.getValue(nn);
+				if (id >= springlsCount)
+					continue;
+				stencilCopy.push_back(id);
+			}
+			sz = stencilCopy.size();
+			sort(stencilCopy.begin(), stencilCopy.end());
+			for (unsigned int nn = 0; nn < sz; nn++) {
+				openvdb::Index32 id = stencilCopy[nn];
+				if (last != id) {
+					float d = constellation->springls[id].distanceToFaceSqr(
+							refPoint);
+					if (d < levelSetValue) {
+						levelSetValue = d;
+					}
+				}
+				last = id;
+			}
+			if (levelSetValue > D2) {
+				added++;
+				storage.triIndexes.push_back(counter);
+				storage.vertexes.push_back(p[0]);
+				storage.triIndexes.push_back(counter + 1);
+				storage.vertexes.push_back(p[1]);
+				storage.triIndexes.push_back(counter + 2);
+				storage.vertexes.push_back(p[2]);
+				Springl springl(&storage);
+				springl.offset = counter;
+				springl.id = constellation->springls.size();
+
+				constellation->storage.faces.push_back(
+						Vec4I(counter, counter + 1, counter + 2,
+								openvdb::util::INVALID_IDX));
+				storage.particles.push_back(springl.computeCentroid());
+				openvdb::Vec3s norm = springl.computeNormal();
+
+				storage.particleNormals.push_back(norm);
+				storage.vertexNormals.push_back(norm);
+				storage.vertexNormals.push_back(norm);
+				storage.vertexNormals.push_back(norm);
+				constellation->springls.push_back(springl);
+				pcounter++;
+				counter += 3;
+			}
+		}
+	}
+	std::cout << "Added " << addList.size() << std::endl;
 }
 Constellation::Constellation(Mesh* mesh) :
 		storage() {
 	size_t faceCount = mesh->faces.size();
 	size_t counter = 0;
 	size_t pcounter = 0;
-	springls.reserve(faceCount);
-	storage.faces.reserve(faceCount);
-	storage.vertexes.resize(mesh->indexes.size());
+	springls.clear();
+	storage.faces.clear();
+	storage.quadIndexes.clear();
+	storage.triIndexes.clear();
+	storage.vertexes.resize(mesh->quadIndexes.size() + mesh->triIndexes.size());
 	storage.particles.resize(faceCount);
 	storage.particleNormals.resize(faceCount);
-	storage.normals.resize(mesh->indexes.size());
+	storage.vertexNormals.resize(storage.vertexes.size());
 	for (openvdb::Vec4I face : mesh->faces) {
+		Springl springl(&storage);
+		springl.offset = counter;
+		springl.id = springls.size();
 		if (face[3] != openvdb::util::INVALID_IDX) {
-			storage.meshType = Mesh::PrimitiveType::QUADS;
 			storage.faces.push_back(
 					openvdb::Vec4I(counter, counter + 1, counter + 2,
 							counter + 3));
-			Springl<4> springl(&(storage.vertexes[counter]));
-			springl.offset = counter;
+			storage.quadIndexes.push_back(counter);
+			storage.quadIndexes.push_back(counter + 1);
+			storage.quadIndexes.push_back(counter + 2);
+			storage.quadIndexes.push_back(counter + 3);
 			storage.vertexes[counter++] = mesh->vertexes[face[0]];
 			storage.vertexes[counter++] = mesh->vertexes[face[1]];
 			storage.vertexes[counter++] = mesh->vertexes[face[2]];
 			storage.vertexes[counter++] = mesh->vertexes[face[3]];
-			springl.id = springls.size();
 			storage.particles[pcounter] = springl.computeCentroid();
-			springl.particle = &(storage.particles[pcounter]);
 			openvdb::Vec3s norm = springl.computeNormal();
 			storage.particleNormals[pcounter] = norm;
-			storage.normals[counter - 1] = norm;
-			storage.normals[counter - 2] = norm;
-			storage.normals[counter - 3] = norm;
-			storage.normals[counter - 4] = norm;
-			springl.normal = &(storage.particleNormals[pcounter]);
+			storage.vertexNormals[counter - 1] = norm;
+			storage.vertexNormals[counter - 2] = norm;
+			storage.vertexNormals[counter - 3] = norm;
+			storage.vertexNormals[counter - 4] = norm;
 			springls.push_back(springl);
 		} else {
-			storage.meshType = Mesh::PrimitiveType::TRIANGLES;
 			storage.faces.push_back(
 					openvdb::Vec4I(counter, counter + 1, counter + 2,
 							openvdb::util::INVALID_IDX));
-			Springl<3> springl(&storage.vertexes[counter]);
-			springl.offset = counter;
+			storage.triIndexes.push_back(counter);
+			storage.triIndexes.push_back(counter + 1);
+			storage.triIndexes.push_back(counter + 2);
 			storage.vertexes[counter++] = mesh->vertexes[face[0]];
 			storage.vertexes[counter++] = mesh->vertexes[face[1]];
 			storage.vertexes[counter++] = mesh->vertexes[face[2]];
-			springl.id = springls.size();
+			storage.particles[pcounter] = springl.computeCentroid();
 			openvdb::Vec3s norm = springl.computeNormal();
 			storage.particleNormals[pcounter] = norm;
-			storage.normals[counter - 1] = norm;
-			storage.normals[counter - 2] = norm;
-			storage.normals[counter - 3] = norm;
-			storage.normals[pcounter] = storage.particleNormals[pcounter] =
-					springl.computeNormal();
-			springl.particle = &(storage.particles[pcounter]);
-			springl.normal = &(storage.particleNormals[pcounter]);
+			storage.vertexNormals[counter - 1] = norm;
+			storage.vertexNormals[counter - 2] = norm;
+			storage.vertexNormals[counter - 3] = norm;
+
 			springls.push_back(springl);
 		}
 		pcounter++;
 	}
 	storage.updateBBox();
 }
-float SpringLevelSet::angle(openvdb::Vec3s& v0, openvdb::Vec3s& v1,
-		openvdb::Vec3s& v2) {
-	Vec3s v = v0 - v2;
-	Vec3s w = v1 - v2;
-	float len1 = v.length();
-	float len2 = w.length();
-	if (len1 <= 1E-3f || len2 <= 1E-3f)
-		return 0;
-	return std::acos(v.dot(w) / (len1 * len2));
-}
+
 void SpringLevelSet::clean() {
 	openvdb::math::BoxStencil<openvdb::FloatGrid> stencil(*signedLevelSet);
 	Vec3s pt, pt1, pt2, pt3;
-	float maxAngle, minAngle,area;
+	float maxAngle, minAngle, area;
 	int K;
 	std::vector<Index32> keepList;
-	Index32 newVertexCount=0;
-	Index32 newSpringlCount=0;
-	int N=constellation->getNumSpringls();
+	Index32 newVertexCount = 0;
+	Index32 newSpringlCount = 0;
+	int N = constellation->getNumSpringls();
 	keepList.reserve(N);
-	for (SpringlBase& springl : constellation->springls) {
-		pt = *(springl.particle);
-		stencil.moveTo(Coord(
-				std::floor(pt[0]),
-				std::floor(pt[1]),
-				std::floor(pt[2])));
-		float levelSetValue =stencil.interpolation(pt);
+	Index32 index = 0;
+	for (Springl& springl : constellation->springls) {
+		pt = springl.particle();
+		stencil.moveTo(
+				Coord(std::floor(pt[0]), std::floor(pt[1]), std::floor(pt[2])));
+		float levelSetValue = stencil.interpolation(pt);
+		K = springl.size();
 
 		if (fabs(levelSetValue) < 1.25f * SpringLevelSet::MAX_VEXT) {
 			maxAngle = 0;
 			minAngle = M_2_PI;
-			K=springl.size();
-			area=0.0f;
+			area = 0.0f;
 			for (int i = 0; i < K; i++) {
 				pt1 = springl[i];
 				pt2 = springl[(i + 1) % K];
 				pt3 = springl[(i + 2) % K];
-				float ang = angle(pt1, pt3, pt2);
+				float ang = Angle(pt1, pt2, pt3);
 				maxAngle = std::max(maxAngle, ang);
 				minAngle = std::min(minAngle, ang);
 			}
-			area=springl.area();
+			area = springl.area();
 			if (area > MIN_AREA && maxAngle <= MAX_ANGLE_TOLERANCE
 					&& minAngle >= MIN_ANGLE_TOLERANCE) {
 				keepList.push_back(springl.id);
 				newSpringlCount++;
-				newVertexCount+=K;
+				newVertexCount += K;
 			}
 		}
+		/*
+
+		 if (index % 2 == 0) {
+		 keepList.push_back(springl.id);
+		 newSpringlCount++;
+		 newVertexCount += K;
+		 }
+		 */
+		index++;
 	}
-	if(newSpringlCount==N)return;
-	std::cout<<"Removed "<<N-newSpringlCount<<std::endl;
-	std::vector<Index32> mask(N,std::numeric_limits<Index32>::max());
-	Index32 springlOffset=0;
-	Index32 vertexOffset=0;
-	for(int n:keepList){
-		mask[n]=springlOffset;
-		SpringlBase& rspringl=constellation->springls[n];
-		SpringlBase& springl=constellation->springls[springlOffset];
-		K=rspringl.size();
-		if(springlOffset!=n){
-			constellation->storage.particles[springlOffset]=constellation->storage.particles[n];
-			constellation->storage.particleNormals[springlOffset]=constellation->storage.particleNormals[n];
-			springl.particle=&constellation->storage.particles[springlOffset];
-			springl.normal=&constellation->storage.normals[springlOffset];
-			springl.offset=vertexOffset;
-			springl.id=springlOffset;
-			for(int k=0;k<K;k++){
-				springl.vertexes[k]=constellation->storage.vertexes[vertexOffset+k]=constellation->storage.vertexes[rspringl.offset+k];
-				constellation->storage.normals[vertexOffset+k]=constellation->storage.normals[rspringl.offset+k];
+	if (newSpringlCount == N)
+		return;
+	std::cout << "Removed " << N - newSpringlCount << std::endl;
+	Index32 springlOffset = 0;
+	Index32 vertexOffset = 0;
+	Index32 quadIndex = 0;
+	Index32 triIndex = 0;
+	for (int n : keepList) {
+		Springl& rspringl = constellation->springls[n];
+		Springl& springl = constellation->springls[springlOffset];
+		K = rspringl.size();
+		if (springlOffset != n) {
+			constellation->storage.particles[springlOffset] =
+					constellation->storage.particles[n];
+			constellation->storage.particleNormals[springlOffset] =
+					constellation->storage.particleNormals[n];
+			springl.offset = vertexOffset;
+			springl.id = springlOffset;
+			Vec4I quad;
+			quad[3] = openvdb::util::INVALID_IDX;
+			for (int k = 0; k < K; k++) {
+				constellation->storage.vertexes[vertexOffset + k] =
+						constellation->storage.vertexes[rspringl.offset + k];
+				constellation->storage.vertexNormals[vertexOffset + k] =
+						constellation->storage.vertexNormals[rspringl.offset + k];
+				quad[k] = vertexOffset + k;
+			}
+			if (K == 4) {
+				for (int k = 0; k < K; k++) {
+					constellation->storage.quadIndexes[quadIndex++] =
+							vertexOffset + k;
+				}
+			} else if (K == 3) {
+				for (int k = 0; k < K; k++) {
+					constellation->storage.triIndexes[triIndex++] = vertexOffset
+							+ k;
+				}
+			}
+			constellation->storage.faces[springlOffset] = quad;
+		} else {
+			if (K == 4) {
+				quadIndex+=K;
+			} else if (K == 3) {
+				triIndex+=K;
 			}
 		}
-		vertexOffset+=K;
+		vertexOffset += K;
 		springlOffset++;
 	}
+	constellation->storage.triIndexes.erase(
+			constellation->storage.triIndexes.begin() + triIndex,
+			constellation->storage.triIndexes.end());
 
-	constellation->springls.erase(constellation->springls.begin()+springlOffset,constellation->springls.end());
-	constellation->storage.particles.erase(constellation->storage.particles.begin()+springlOffset,constellation->storage.particles.end());
-	constellation->storage.particleNormals.erase(constellation->storage.particleNormals.begin()+springlOffset,constellation->storage.particleNormals.end());
+	constellation->storage.quadIndexes.erase(
+			constellation->storage.quadIndexes.begin() + quadIndex,
+			constellation->storage.quadIndexes.end());
 
-	constellation->storage.normals.erase(constellation->storage.normals.begin()+vertexOffset,constellation->storage.normals.end());
-	constellation->storage.vertexes.erase(constellation->storage.vertexes.begin()+vertexOffset,constellation->storage.vertexes.end());
+	constellation->springls.erase(
+			constellation->springls.begin() + springlOffset,
+			constellation->springls.end());
+	constellation->storage.particles.erase(
+			constellation->storage.particles.begin() + springlOffset,
+			constellation->storage.particles.end());
+	constellation->storage.particleNormals.erase(
+			constellation->storage.particleNormals.begin() + springlOffset,
+			constellation->storage.particleNormals.end());
+	constellation->storage.faces.erase(
+			constellation->storage.faces.begin() + springlOffset,
+			constellation->storage.faces.end());
+
+	constellation->storage.vertexNormals.erase(
+			constellation->storage.vertexNormals.begin() + vertexOffset,
+			constellation->storage.vertexNormals.end());
+	constellation->storage.vertexes.erase(
+			constellation->storage.vertexes.begin() + vertexOffset,
+			constellation->storage.vertexes.end());
+	/*
+	 constellation->storage.vertexes.shrink_to_fit();
+	 constellation->storage.normals.shrink_to_fit();
+	 constellation->storage.particles.shrink_to_fit();
+	 constellation->storage.particleNormals.shrink_to_fit();
+	 */
 }
 }
 

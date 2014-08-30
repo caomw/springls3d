@@ -18,7 +18,14 @@
 #include "AdvectionForce.h"
 #undef OPENVDB_REQUIRE_VERSION_NAME
 namespace imagesci{
-
+enum SpringlTemporalIntegrationScheme {
+    UNKNOWN_TIS = -1,
+    TVD_RK1,
+    TVD_RK2,
+    TVD_RK3,
+    TVD_RK4,
+    TVD_RK6,
+};
 class Constellation;
 struct Springl;
 struct SpringlNeighbor{
@@ -29,6 +36,7 @@ public:
 	SpringlNeighbor(openvdb::Index32 id=0,int nbr=-1,float _distance=0):springlId(id),edgeId(nbr),distance(_distance){
 	}
 };
+
 std::ostream& operator<<(std::ostream& ostr, const SpringlNeighbor& classname);
 typedef std::vector<std::list<SpringlNeighbor>> NearestNeighborMap;
 class SpringLevelSet {
@@ -62,7 +70,8 @@ public:
 	std::list<SpringlNeighbor>& GetNearestNeighbors(openvdb::Index32 id,int8_t e);
 	void draw(bool colorEnabled=false,bool wireframe=true,bool particles=false,bool particleNormals=false);
 	void clean();
-	void fill();
+	void fill(bool updateIsoSurface=false);
+	void evolve();
 	void updateGradient();
 	void updateUnsignedLevelSet();
 	void relax(int iters=10);
@@ -72,56 +81,41 @@ public:
 	~SpringLevelSet(){}
 };
 
+
+
 struct Springl {
-	private:
-		Mesh* mesh;
-	public:
-		openvdb::Index32 id;
-		openvdb::Index32 offset;
+private:
+	Mesh* mesh;
+		public:
+			openvdb::Index32 id;
+			openvdb::Index32 offset;
 
-		openvdb::Vec3s& normal() const {return mesh->particleNormals[id];}
-		openvdb::Vec3s& particle() const {return mesh->particles[id];}
-		openvdb::Vec3s& operator[](size_t idx){return mesh->vertexes[offset+idx];}
-		const openvdb::Vec3s& operator[](size_t idx) const {return mesh->vertexes[offset+idx];}
-		Springl():id(0),offset(0),mesh(NULL){
-
-		}
-		Springl(Mesh* _mesh):id(0),offset(0),mesh(_mesh){
-		}
-
-		int size() const;
-		float area() const;
-		float distanceToFace(const openvdb::Vec3s& pt);
-		float distanceToFaceSqr(const openvdb::Vec3s& pt);
-		float distanceToParticle(const openvdb::Vec3s& pt);
-		float distanceToParticleSqr(const openvdb::Vec3s& pt);
-		float distanceEdgeSqr(const openvdb::Vec3s& pt,int e);
-		float distanceEdge(const openvdb::Vec3s& pt,int e);
-		openvdb::Vec3s computeCentroid() const;
-		openvdb::Vec3s computeNormal(const float eps=1E-6f) const;
-		~Springl(){
-		}
-};
-
-
-class Constellation {
+			openvdb::Vec3s& normal() const {return mesh->particleNormals[id];}
+			openvdb::Vec3s& particle() const {return mesh->particles[id];}
+			openvdb::Vec3s& operator[](size_t idx){return mesh->vertexes[offset+idx];}
+			const openvdb::Vec3s& operator[](size_t idx) const {return mesh->vertexes[offset+idx];}
+			Springl(Mesh* _mesh=NULL):id(0),offset(0),mesh(_mesh){}
+			int size() const;
+			float area() const;
+			float distanceToFace(const openvdb::Vec3s& pt);
+			float distanceToFaceSqr(const openvdb::Vec3s& pt);
+			float distanceToParticle(const openvdb::Vec3s& pt);
+			float distanceToParticleSqr(const openvdb::Vec3s& pt);
+			float distanceEdgeSqr(const openvdb::Vec3s& pt,int e);
+			float distanceEdge(const openvdb::Vec3s& pt,int e);
+			openvdb::Vec3s computeCentroid() const;
+			openvdb::Vec3s computeNormal(const float eps=1E-6f) const;
+			~Springl(){
+			}
+	};
+class Constellation:public Mesh {
 public:
-		Mesh storage;
-		std::vector<Springl> springls;
-		inline openvdb::BBoxd GetBBox(){
-			return storage.GetBBox();
-		}
-		Constellation(Mesh* mesh);
 
-		inline void draw(bool colorEnabled,bool wireframe,bool particles,bool particleNormals){
-			storage.draw(colorEnabled,wireframe,particles,particleNormals);
-		}
-		inline void updateGL(){
-			storage.updateGL();
-		}
+		std::vector<Springl> springls;
+		Constellation(Mesh* mesh);
 		virtual ~Constellation(){}
 		inline size_t getNumSpringls() const {return springls.size();}
-		inline size_t getNumVertexes() const {return storage.vertexes.size();}
+		inline size_t getNumVertexes() const {return vertexes.size();}
 
 		Springl& operator[](size_t idx)
 	    {
@@ -223,8 +217,8 @@ private:
 	public:
 		SpringLevelSet& mGrid;
 		ConstellationOperator(SpringLevelSet& grid,InterruptT* _interrupt):mGrid(grid),mInterrupt(_interrupt){
-		}
 
+		}
 		virtual ~ConstellationOperator() {}
 		void process(bool threaded = true)
 		{
@@ -246,38 +240,102 @@ private:
 		{
 			if (openvdb::util::wasInterrupted(mInterrupt)) tbb::task::self().cancel_group_execution();
 			for (typename SpringlRange::Iterator springl=range.begin(); springl; ++springl) {
-				OperatorT::result(*springl,mGrid);
+				OperatorT::compute(*springl,mGrid);
+			}
+			double dt=OperatorT::findTimeStep(mGrid);
+			if(dt!=std::numeric_limits<double>::max()){
+				for (typename SpringlRange::Iterator springl=range.begin(); springl; ++springl) {
+					OperatorT::apply(*springl,mGrid,dt);
+				}
 			}
 		}
 
 	protected:
-		InterruptT*         mInterrupt;
+		InterruptT* mInterrupt;
 
 	};
 
-	struct NearestNeighborOperation
+	class NearestNeighborOperation
+	{
+	public:
+		static void init(SpringLevelSet& mGrid);
+		static void compute(Springl& springl,SpringLevelSet& mGrid);
+		static double findTimeStep(SpringLevelSet& mGrid){return std::numeric_limits<double>::max();}
+		static void apply(Springl& springl,SpringLevelSet& mGrid,double dt){}
+	};
+	class RelaxOperation
 	{
 	private:
 
 	public:
 		static void init(SpringLevelSet& mGrid);
-	    static void result(Springl& springl,SpringLevelSet& mGrid);
+		static void compute(Springl& springl,SpringLevelSet& mGrid);
+		static void apply(Springl& springl,SpringLevelSet& mGrid,double dt);
+		static double findTimeStep(SpringLevelSet& mGrid){return 1.0f;}
 	};
-	struct RelaxOperation
+	template<typename FieldT> class AdvectVertexOperation
 	{
 	private:
-
+		SpringlTemporalIntegrationScheme mIntegrationScheme;
 	public:
-		static void init(SpringLevelSet& mGrid);
-	    static void result(Springl& springl,SpringLevelSet& mGrid);
+		AdvectVertexOperation(SpringlTemporalIntegrationScheme integrationScheme):mIntegrationScheme(integrationScheme){
+
+		}
+		static void init(SpringLevelSet& mGrid) {
+			mGrid.vertexDisplacement.resize(mGrid.constellation->vertexes.size());
+		}
+		static void compute(Springl& springl, SpringLevelSet& mGrid) {
+			int K = springl.size();
+			for (int k = 0; k < K; k++) {
+				Vec3d pt(springl[k]);
+				mGrid.vertexDisplacement[k] = FieldT(pt);//Apply integration scheme here, need buffer for previous time points?
+			}
+		}
+		static double findTimeStep(SpringLevelSet& mGrid){
+			float maxV=std::numeric_limits<float>::min();
+			for(Vec3f v:mGrid.vertexDisplacement){
+				maxV=std::max(v.lengthSqr(),maxV);
+			}
+			return (0.5f/maxV);//What should this be? depends on temporal integration scheme
+		}
+		static void apply(Springl& springl, SpringLevelSet& mGrid,double dt) {
+			int K = springl.size();
+			for (int k = 0; k < K; k++) {
+				springl[k]+=dt*mGrid.vertexDisplacement[k];//Apply integration scheme here, need buffer for previous time points?
+			}
+		}
 	};
-	struct AdvectVertexOperation
+	template<typename FieldT> class AdvectParticleOperation
 	{
 	private:
-
+		SpringlTemporalIntegrationScheme mIntegrationScheme;
 	public:
-		static void init(SpringLevelSet& mGrid);
-	    static void result(Springl& springl,SpringLevelSet& mGrid);
+		AdvectParticleOperation(SpringlTemporalIntegrationScheme integrationScheme):mIntegrationScheme(integrationScheme){
+
+		}
+		static void init(SpringLevelSet& mGrid) {
+			mGrid.vertexDisplacement.resize(mGrid.constellation->vertexes.size());
+		}
+		static void compute(Springl& springl, SpringLevelSet& mGrid) {
+			int K = springl.size();
+			for (int k = 0; k < K; k++) {
+				Vec3d pt(springl[k]);
+				mGrid.vertexDisplacement[k] = FieldT(pt);//Apply integration scheme here, need buffer for previous time points?
+			}
+		}
+		static double findTimeStep(SpringLevelSet& mGrid){
+			float maxV=std::numeric_limits<float>::min();
+			for(Vec3f v:mGrid.particleDisplacement){
+				maxV=std::max(v.lengthSqr(),maxV);
+			}
+			return (0.5f/maxV);//What should this be? depends on temporal integration scheme
+		}
+		static void apply(Springl& springl, SpringLevelSet& mGrid,double dt) {
+			int K = springl.size();
+			for (int k = 0; k < K; k++) {
+				springl[k]+=dt*mGrid.particleDisplacement[k];//Apply integration scheme here, need buffer for previous time points?
+			}
+		}
 	};
 	// end of ConstellationOperator class
 	/// @brief Compute the gradient of a scalar grid.
@@ -318,7 +376,7 @@ private:
 	    SpringLevelSet& mGrid;
 	    InterruptT*          mInterrupt;
 	};
-	template<typename InterruptT = openvdb::util::NullInterrupter>
+	template<typename FieldT, typename InterruptT = openvdb::util::NullInterrupter>
 	class AdvectVertex
 	{
 	public:
@@ -329,7 +387,25 @@ private:
 	    }
 	    void process(bool threaded = true)
 	    {
-        	typedef AdvectVertexOperation OpT;
+        	typedef AdvectVertexOperation<FieldT> OpT;
+	    	ConstellationOperator<OpT,InterruptT> op(mGrid,mInterrupt);
+        	op.process(threaded);
+	    }
+	    SpringLevelSet& mGrid;
+	    InterruptT*          mInterrupt;
+	};
+	template<typename FieldT, typename InterruptT = openvdb::util::NullInterrupter>
+	class AdvectParticle
+	{
+	public:
+		AdvectParticle(
+	    			SpringLevelSet& grid,
+	    			InterruptT* interrupt = NULL):mGrid(grid),mInterrupt(interrupt)
+	    {
+	    }
+	    void process(bool threaded = true)
+	    {
+        	typedef AdvectParticleOperation<FieldT> OpT;
 	    	ConstellationOperator<OpT,InterruptT> op(mGrid,mInterrupt);
         	op.process(threaded);
 	    }

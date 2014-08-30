@@ -7,19 +7,7 @@
 
 #include "Mesh.h"
 #include <openvdb/openvdb.h>
-#include <openvdb/tools/VolumeToMesh.h>
-#include <openvdb/tree/LeafManager.h>
-#include <openvdb/math/Operators.h>
-#include <boost/smart_ptr.hpp>
-#include <openvdb/Types.h>
-#include <openvdb/tree/Tree.h>
-#include <openvdb/tools/LevelSetUtil.h>
-#include <openvdb/tools/LevelSetSphere.h>
-#include <openvdb/tools/LevelSetAdvect.h>
-#include <openvdb/tools/LevelSetMeasure.h>
-#include <openvdb/tools/LevelSetMorph.h>
-#include <openvdb/tools/ValueTransformer.h>
-#include <openvdb/tools/VectorTransformer.h>
+
 #include <openvdb/util/Util.h>
 #include "ply_io.h"
 namespace imagesci {
@@ -354,22 +342,54 @@ Mesh* Mesh::openMesh(const std::string& file) {
 		return NULL;
 	}
 }
-void Mesh::create(FloatGrid::Ptr grid) {
-	openvdb::tools::VolumeToMesh mesher(0.0);
-	mesher(*grid);
+void Mesh::create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr grid){
 	// Copy points and generate point normals.
-
-	openvdb::tree::ValueAccessor<FloatGrid::TreeType> acc(grid->tree());
-
 	openvdb::math::GenericMap map(grid->transform());
 	vertexes.clear();
 	vertexNormals.clear();
 	faces.clear();
 	triIndexes.clear();
 	quadIndexes.clear();
-
 	vertexes.resize(mesher.pointListSize());
-	vertexNormals.resize(mesher.pointListSize());
+	Index64 N = mesher.pointListSize();
+	for (Index64 n = 0; n < N; ++n) {
+		vertexes[n] = map.applyInverseMap(mesher.pointList()[n]);
+	}
+	// Copy primitives
+	openvdb::tools::PolygonPoolList& polygonPoolList = mesher.polygonPoolList();
+	for (Index64 n = 0, N = mesher.polygonPoolListSize(); n < N; ++n) {
+		const openvdb::tools::PolygonPool& polygons = polygonPoolList[n];
+		//std::cout << "Polygon " << polygons.numTriangles() << " "<< polygons.numQuads() << std::endl;
+		for (Index64 i = 0, I = polygons.numQuads(); i < I; ++i) {
+			const openvdb::Vec4I& quad = polygons.quad(i);
+			faces.push_back(openvdb::Vec4I(quad[3],quad[2],quad[1],quad[0]));
+			quadIndexes.push_back(quad[3]);
+			quadIndexes.push_back(quad[2]);
+			quadIndexes.push_back(quad[1]);
+			quadIndexes.push_back(quad[0]);
+		}
+		for (Index64 i = 0, I = polygons.numTriangles(); i < I; ++i) {
+			const openvdb::Vec3I& quad = polygons.triangle(i);
+			faces.push_back(openvdb::Vec4I(quad[2],quad[1],quad[0],openvdb::util::INVALID_IDX));
+			triIndexes.push_back(quad[2]);
+			triIndexes.push_back(quad[1]);
+			triIndexes.push_back(quad[0]);
+		}
+	}
+	updateVertexNormals();
+	updateBBox();
+}
+void Mesh::create(FloatGrid::Ptr grid) {
+	openvdb::tools::VolumeToMesh mesher(0.0);
+	mesher(*grid);
+	// Copy points and generate point normals.
+	openvdb::math::GenericMap map(grid->transform());
+	vertexes.clear();
+	vertexNormals.clear();
+	faces.clear();
+	triIndexes.clear();
+	quadIndexes.clear();
+	vertexes.resize(mesher.pointListSize());
 	Index64 N = mesher.pointListSize();
 	for (Index64 n = 0; n < N; ++n) {
 		vertexes[n] = map.applyInverseMap(mesher.pointList()[n]);

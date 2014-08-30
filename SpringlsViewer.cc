@@ -365,8 +365,13 @@ SpringlsViewer::render()
     glTranslatef(-minPt[0],-minPt[1],-minPt[2]);
     mClipBox->render();
     mClipBox->enableClipping();
-	glColor3f(0.8f,0.8f,0.8f);
-	originalMesh->draw(false,false,false,false);
+    if(springlGrid.isoSurface.get()==nullptr){
+		glColor3f(0.8f,0.8f,0.8f);
+		originalMesh->draw(false,false,false,false);
+    } else {
+		glColor3f(0.8f,0.3f,0.3f);
+		springlGrid.isoSurface->draw(false,false,false,false);
+    }
 	mClipBox->disableClipping();
     glPopMatrix();
     //

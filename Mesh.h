@@ -8,6 +8,8 @@
 #ifndef MESH_H_
 #define MESH_H_
 #include <openvdb/openvdb.h>
+#include <openvdb/tools/VolumeToMesh.h>
+#include <openvdb/tools/LevelSetUtil.h>
 #undef OPENVDB_REQUIRE_VERSION_NAME
 
 #include <mutex>
@@ -40,6 +42,7 @@ class Mesh{
 		std::vector<openvdb::Index32> triIndexes;
 		std::vector<openvdb::Vec4I> faces;
 		Mesh();
+		void create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr grid);
 		inline openvdb::BBoxd GetBBox(){return bbox;}
 		openvdb::math::BBox<openvdb::Vec3d>& updateBBox();
 		void draw(bool colorEnabled=false,bool wireframe=true,bool particles=false,bool particleNormals=false);

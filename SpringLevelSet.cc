@@ -10,11 +10,16 @@
 #include <openvdb/math/Stencils.h>
 #include <openvdb/tools/MeshToVolume.h>
 #include <openvdb/tools/VolumeToMesh.h>
+#include <openvdb/tools/LevelSetAdvect.h>
 #include <openvdb/openvdb.h>
 namespace imagesci {
 using namespace openvdb;
 using namespace openvdb::math;
 using namespace openvdb::tools;
+
+typedef DiscreteField<openvdb::VectorGrid> VelocityField;
+typedef LevelSetAdvection<openvdb::FloatGrid, VelocityField> AdvectionTool;
+
 std::ostream& operator<<(std::ostream& ostr, const SpringlNeighbor& classname) {
 	ostr << "{" << classname.springlId << "|"
 			<< static_cast<int>(classname.edgeId) << ":" << std::setprecision(4)
@@ -122,24 +127,22 @@ openvdb::Vec3s& SpringLevelSet::GetSpringlVertex(const openvdb::Index32 id,
 	return constellation->springls[id][i];
 }
 openvdb::Vec3s& SpringLevelSet::GetSpringlVertex(const openvdb::Index32 id) {
-	return constellation->storage.vertexes[id];
+	return constellation->vertexes[id];
 }
 Springl& SpringLevelSet::GetSpringl(const openvdb::Index32 id) {
 	return constellation->springls[id];
 }
-void AdvectVertexOperation::init(SpringLevelSet& mGrid) {
 
-}
-void AdvectVertexOperation::result(Springl& springl, SpringLevelSet& mGrid) {
-	int K = springl.size();
-	for (int k = 0; k < K; k++) {
-		springl[k] = mGrid.vertexDisplacement[springl.offset + k];
-	}
-}
 void RelaxOperation::init(SpringLevelSet& mGrid) {
 	mGrid.vertexDisplacement.resize(mGrid.constellation->getNumVertexes());
 }
-void RelaxOperation::result(Springl& springl, SpringLevelSet& mGrid) {
+void RelaxOperation::apply(Springl& springl,SpringLevelSet& mGrid,double dt) {
+	int K=springl.size();
+	for(int k=0;k<K;k++){
+		springl[k]=mGrid.vertexDisplacement[springl.offset+k];
+	}
+}
+void RelaxOperation::compute(Springl& springl, SpringLevelSet& mGrid) {
 	float w, len;
 	Vec3s tanget;
 	Vec3s dir;
@@ -217,7 +220,7 @@ void NearestNeighborOperation::init(SpringLevelSet& mGrid) {
 	map.resize(mGrid.constellation->getNumVertexes(),
 			std::list<SpringlNeighbor>());
 }
-void NearestNeighborOperation::result(Springl& springl, SpringLevelSet& mGrid) {
+void NearestNeighborOperation::compute(Springl& springl, SpringLevelSet& mGrid) {
 	const float D2 = SpringLevelSet::NEAREST_NEIGHBOR_RANGE
 			* SpringLevelSet::NEAREST_NEIGHBOR_RANGE;
 
@@ -286,7 +289,7 @@ void SpringLevelSet::updateNearestNeighbors(bool threaded) {
 	NearestNeighbors<openvdb::util::NullInterrupter> nn(*this);
 	nn.process();
 	/*
-	 std::vector<Index32>& lines = constellation->storage.lines;
+	 std::vector<Index32>& lines = constellation->lines;
 	 lines.clear();
 	 Index32 fCount = 0;
 	 for (Index32 i = 0; i < constellation->getNumSpringls(); i++) {
@@ -307,11 +310,20 @@ void SpringLevelSet::updateNearestNeighbors(bool threaded) {
 }
 void SpringLevelSet::relax(int iters) {
 	Relax<openvdb::util::NullInterrupter> relax(*this);
-	AdvectVertex<openvdb::util::NullInterrupter> advect(*this);
 	for (int iter = 0; iter < iters; iter++) {
 		relax.process();
-		advect.process();
 	}
+}
+void SpringLevelSet::evolve(){
+	updateGradient();
+	VelocityField grad(*gradient);
+	AdvectionTool advect(*signedLevelSet,grad);
+	advect.setSpatialScheme(openvdb::math::FIRST_BIAS);
+	advect.setTemporalScheme(openvdb::math::TVD_RK1);
+	advect.setTrackerSpatialScheme(openvdb::math::FIRST_BIAS);
+	advect.setTrackerTemporalScheme(openvdb::math::TVD_RK1);
+	float simTime=openvdb::LEVEL_SET_HALF_WIDTH;
+	advect.advect(0.0,simTime);
 }
 void SpringLevelSet::updateUnsignedLevelSet() {
 	openvdb::math::Transform::Ptr trans =
@@ -319,8 +331,8 @@ void SpringLevelSet::updateUnsignedLevelSet() {
 	using namespace openvdb::tools;
 	using namespace openvdb;
 	MeshToVolume<FloatGrid> mtol(trans, GENERATE_PRIM_INDEX_GRID);
-	mtol.convertToUnsignedDistanceField(constellation->storage.vertexes,
-			constellation->storage.faces, float(LEVEL_SET_HALF_WIDTH) * 2);
+	mtol.convertToUnsignedDistanceField(constellation->vertexes,
+			constellation->faces, float(LEVEL_SET_HALF_WIDTH) * 2);
 	unsignedLevelSet = mtol.distGridPtr();
 	unsignedLevelSet->setBackground(float(LEVEL_SET_HALF_WIDTH) * 2);
 	springlIndexGrid = mtol.indexGridPtr();
@@ -353,7 +365,7 @@ void SpringLevelSet::create(Mesh* mesh) {
 
 	//WriteToRawFile(unsignedLevelSet,"/home/blake/tmp/unsignedLevelSet");
 	//std::cout << "Update gradient ..." << std::endl;
-	//updateGradient();
+	//
 	std::cout << "Update nearest neighbors ..." << std::endl;
 	updateNearestNeighbors();
 	std::cout << "Relax springls ..." << std::endl;
@@ -364,15 +376,15 @@ void SpringLevelSet::create(Mesh* mesh) {
 	//WriteToRawFile(unsignedLevelSet,"/home/blake/tmp/unsigned_constl");
 	//WriteToRawFile(springlIndexGrid,"/home/blake/tmp/index");
 	std::cout << "Fill ..." << std::endl;
-	fill();
+	fill(true);
 
 	std::cout << "done." << std::endl;
 }
-void SpringLevelSet::fill() {
+void SpringLevelSet::fill(bool updateIsoSurface) {
 
 	openvdb::tools::VolumeToMesh mesher(0.0f);
 	mesher(*signedLevelSet);
-
+	isoSurface->create(mesher,signedLevelSet);
 	openvdb::tree::ValueAccessor<FloatGrid::TreeType> acc(
 			signedLevelSet->tree());
 	openvdb::math::GenericMap map(signedLevelSet->transform());
@@ -386,7 +398,6 @@ void SpringLevelSet::fill() {
 	Vec3s p[4];
 	Vec3s refPoint;
 
-	Mesh& storage = constellation->storage;
 	Index32 springlsCount = constellation->getNumSpringls();
 	Index32 pcounter = constellation->getNumSpringls();
 	Index32 counter = constellation->getNumVertexes();
@@ -435,27 +446,27 @@ void SpringLevelSet::fill() {
 			}
 			if (levelSetValue > D2) {
 				added++;
-				storage.quadIndexes.push_back(counter);
-				storage.vertexes.push_back(p[0]);
-				storage.quadIndexes.push_back(counter + 1);
-				storage.vertexes.push_back(p[1]);
-				storage.quadIndexes.push_back(counter + 2);
-				storage.vertexes.push_back(p[2]);
-				storage.quadIndexes.push_back(counter + 3);
-				storage.vertexes.push_back(p[3]);
+				constellation->quadIndexes.push_back(counter);
+				constellation->vertexes.push_back(p[0]);
+				constellation->quadIndexes.push_back(counter + 1);
+				constellation->vertexes.push_back(p[1]);
+				constellation->quadIndexes.push_back(counter + 2);
+				constellation->vertexes.push_back(p[2]);
+				constellation->quadIndexes.push_back(counter + 3);
+				constellation->vertexes.push_back(p[3]);
 
-				Springl springl(&storage);
+				Springl springl(constellation.get());
 				springl.offset = counter;
 				springl.id = constellation->springls.size();
-				constellation->storage.faces.push_back(
+				constellation->faces.push_back(
 						Vec4I(counter, counter + 1, counter + 2, counter + 3));
-				storage.particles.push_back(springl.computeCentroid());
+				constellation->particles.push_back(springl.computeCentroid());
 				openvdb::Vec3s norm = springl.computeNormal();
-				storage.particleNormals.push_back(norm);
-				storage.vertexNormals.push_back(norm);
-				storage.vertexNormals.push_back(norm);
-				storage.vertexNormals.push_back(norm);
-				storage.vertexNormals.push_back(norm);
+				constellation->particleNormals.push_back(norm);
+				constellation->vertexNormals.push_back(norm);
+				constellation->vertexNormals.push_back(norm);
+				constellation->vertexNormals.push_back(norm);
+				constellation->vertexNormals.push_back(norm);
 				constellation->springls.push_back(springl);
 				pcounter++;
 				counter += 4;
@@ -496,26 +507,26 @@ void SpringLevelSet::fill() {
 			}
 			if (levelSetValue > D2) {
 				added++;
-				storage.triIndexes.push_back(counter);
-				storage.vertexes.push_back(p[0]);
-				storage.triIndexes.push_back(counter + 1);
-				storage.vertexes.push_back(p[1]);
-				storage.triIndexes.push_back(counter + 2);
-				storage.vertexes.push_back(p[2]);
-				Springl springl(&storage);
+				constellation->triIndexes.push_back(counter);
+				constellation->vertexes.push_back(p[0]);
+				constellation->triIndexes.push_back(counter + 1);
+				constellation->vertexes.push_back(p[1]);
+				constellation->triIndexes.push_back(counter + 2);
+				constellation->vertexes.push_back(p[2]);
+				Springl springl(constellation.get());
 				springl.offset = counter;
 				springl.id = constellation->springls.size();
 
-				constellation->storage.faces.push_back(
+				constellation->faces.push_back(
 						Vec4I(counter, counter + 1, counter + 2,
 								openvdb::util::INVALID_IDX));
-				storage.particles.push_back(springl.computeCentroid());
+				constellation->particles.push_back(springl.computeCentroid());
 				openvdb::Vec3s norm = springl.computeNormal();
 
-				storage.particleNormals.push_back(norm);
-				storage.vertexNormals.push_back(norm);
-				storage.vertexNormals.push_back(norm);
-				storage.vertexNormals.push_back(norm);
+				constellation->particleNormals.push_back(norm);
+				constellation->vertexNormals.push_back(norm);
+				constellation->vertexNormals.push_back(norm);
+				constellation->vertexNormals.push_back(norm);
 				constellation->springls.push_back(springl);
 				pcounter++;
 				counter += 3;
@@ -524,65 +535,64 @@ void SpringLevelSet::fill() {
 	}
 	std::cout << "Added " << addList.size() << std::endl;
 }
-Constellation::Constellation(Mesh* mesh) :
-		storage() {
+Constellation::Constellation(Mesh* mesh) :Mesh() {
 	size_t faceCount = mesh->faces.size();
 	size_t counter = 0;
 	size_t pcounter = 0;
 	springls.clear();
-	storage.faces.clear();
-	storage.quadIndexes.clear();
-	storage.triIndexes.clear();
-	storage.vertexes.resize(mesh->quadIndexes.size() + mesh->triIndexes.size());
-	storage.particles.resize(faceCount);
-	storage.particleNormals.resize(faceCount);
-	storage.vertexNormals.resize(storage.vertexes.size());
+	faces.clear();
+	quadIndexes.clear();
+	triIndexes.clear();
+	vertexes.resize(mesh->quadIndexes.size() + mesh->triIndexes.size());
+	particles.resize(faceCount);
+	particleNormals.resize(faceCount);
+	vertexNormals.resize(vertexes.size());
 	for (openvdb::Vec4I face : mesh->faces) {
-		Springl springl(&storage);
+		Springl springl(this);
 		springl.offset = counter;
 		springl.id = springls.size();
 		if (face[3] != openvdb::util::INVALID_IDX) {
-			storage.faces.push_back(
+			faces.push_back(
 					openvdb::Vec4I(counter, counter + 1, counter + 2,
 							counter + 3));
-			storage.quadIndexes.push_back(counter);
-			storage.quadIndexes.push_back(counter + 1);
-			storage.quadIndexes.push_back(counter + 2);
-			storage.quadIndexes.push_back(counter + 3);
-			storage.vertexes[counter++] = mesh->vertexes[face[0]];
-			storage.vertexes[counter++] = mesh->vertexes[face[1]];
-			storage.vertexes[counter++] = mesh->vertexes[face[2]];
-			storage.vertexes[counter++] = mesh->vertexes[face[3]];
-			storage.particles[pcounter] = springl.computeCentroid();
+			quadIndexes.push_back(counter);
+			quadIndexes.push_back(counter + 1);
+			quadIndexes.push_back(counter + 2);
+			quadIndexes.push_back(counter + 3);
+			vertexes[counter++] = mesh->vertexes[face[0]];
+			vertexes[counter++] = mesh->vertexes[face[1]];
+			vertexes[counter++] = mesh->vertexes[face[2]];
+			vertexes[counter++] = mesh->vertexes[face[3]];
+			particles[pcounter] = springl.computeCentroid();
 			openvdb::Vec3s norm = springl.computeNormal();
-			storage.particleNormals[pcounter] = norm;
-			storage.vertexNormals[counter - 1] = norm;
-			storage.vertexNormals[counter - 2] = norm;
-			storage.vertexNormals[counter - 3] = norm;
-			storage.vertexNormals[counter - 4] = norm;
+			particleNormals[pcounter] = norm;
+			vertexNormals[counter - 1] = norm;
+			vertexNormals[counter - 2] = norm;
+			vertexNormals[counter - 3] = norm;
+			vertexNormals[counter - 4] = norm;
 			springls.push_back(springl);
 		} else {
-			storage.faces.push_back(
+			faces.push_back(
 					openvdb::Vec4I(counter, counter + 1, counter + 2,
 							openvdb::util::INVALID_IDX));
-			storage.triIndexes.push_back(counter);
-			storage.triIndexes.push_back(counter + 1);
-			storage.triIndexes.push_back(counter + 2);
-			storage.vertexes[counter++] = mesh->vertexes[face[0]];
-			storage.vertexes[counter++] = mesh->vertexes[face[1]];
-			storage.vertexes[counter++] = mesh->vertexes[face[2]];
-			storage.particles[pcounter] = springl.computeCentroid();
+			triIndexes.push_back(counter);
+			triIndexes.push_back(counter + 1);
+			triIndexes.push_back(counter + 2);
+			vertexes[counter++] = mesh->vertexes[face[0]];
+			vertexes[counter++] = mesh->vertexes[face[1]];
+			vertexes[counter++] = mesh->vertexes[face[2]];
+			particles[pcounter] = springl.computeCentroid();
 			openvdb::Vec3s norm = springl.computeNormal();
-			storage.particleNormals[pcounter] = norm;
-			storage.vertexNormals[counter - 1] = norm;
-			storage.vertexNormals[counter - 2] = norm;
-			storage.vertexNormals[counter - 3] = norm;
+			particleNormals[pcounter] = norm;
+			vertexNormals[counter - 1] = norm;
+			vertexNormals[counter - 2] = norm;
+			vertexNormals[counter - 3] = norm;
 
 			springls.push_back(springl);
 		}
 		pcounter++;
 	}
-	storage.updateBBox();
+	updateBBox();
 }
 
 void SpringLevelSet::clean() {
@@ -645,33 +655,33 @@ void SpringLevelSet::clean() {
 		Springl& springl = constellation->springls[springlOffset];
 		K = rspringl.size();
 		if (springlOffset != n) {
-			constellation->storage.particles[springlOffset] =
-					constellation->storage.particles[n];
-			constellation->storage.particleNormals[springlOffset] =
-					constellation->storage.particleNormals[n];
+			constellation->particles[springlOffset] =
+					constellation->particles[n];
+			constellation->particleNormals[springlOffset] =
+					constellation->particleNormals[n];
 			springl.offset = vertexOffset;
 			springl.id = springlOffset;
 			Vec4I quad;
 			quad[3] = openvdb::util::INVALID_IDX;
 			for (int k = 0; k < K; k++) {
-				constellation->storage.vertexes[vertexOffset + k] =
-						constellation->storage.vertexes[rspringl.offset + k];
-				constellation->storage.vertexNormals[vertexOffset + k] =
-						constellation->storage.vertexNormals[rspringl.offset + k];
+				constellation->vertexes[vertexOffset + k] =
+						constellation->vertexes[rspringl.offset + k];
+				constellation->vertexNormals[vertexOffset + k] =
+						constellation->vertexNormals[rspringl.offset + k];
 				quad[k] = vertexOffset + k;
 			}
 			if (K == 4) {
 				for (int k = 0; k < K; k++) {
-					constellation->storage.quadIndexes[quadIndex++] =
+					constellation->quadIndexes[quadIndex++] =
 							vertexOffset + k;
 				}
 			} else if (K == 3) {
 				for (int k = 0; k < K; k++) {
-					constellation->storage.triIndexes[triIndex++] = vertexOffset
+					constellation->triIndexes[triIndex++] = vertexOffset
 							+ k;
 				}
 			}
-			constellation->storage.faces[springlOffset] = quad;
+			constellation->faces[springlOffset] = quad;
 		} else {
 			if (K == 4) {
 				quadIndex+=K;
@@ -682,38 +692,38 @@ void SpringLevelSet::clean() {
 		vertexOffset += K;
 		springlOffset++;
 	}
-	constellation->storage.triIndexes.erase(
-			constellation->storage.triIndexes.begin() + triIndex,
-			constellation->storage.triIndexes.end());
+	constellation->triIndexes.erase(
+			constellation->triIndexes.begin() + triIndex,
+			constellation->triIndexes.end());
 
-	constellation->storage.quadIndexes.erase(
-			constellation->storage.quadIndexes.begin() + quadIndex,
-			constellation->storage.quadIndexes.end());
+	constellation->quadIndexes.erase(
+			constellation->quadIndexes.begin() + quadIndex,
+			constellation->quadIndexes.end());
 
 	constellation->springls.erase(
 			constellation->springls.begin() + springlOffset,
 			constellation->springls.end());
-	constellation->storage.particles.erase(
-			constellation->storage.particles.begin() + springlOffset,
-			constellation->storage.particles.end());
-	constellation->storage.particleNormals.erase(
-			constellation->storage.particleNormals.begin() + springlOffset,
-			constellation->storage.particleNormals.end());
-	constellation->storage.faces.erase(
-			constellation->storage.faces.begin() + springlOffset,
-			constellation->storage.faces.end());
+	constellation->particles.erase(
+			constellation->particles.begin() + springlOffset,
+			constellation->particles.end());
+	constellation->particleNormals.erase(
+			constellation->particleNormals.begin() + springlOffset,
+			constellation->particleNormals.end());
+	constellation->faces.erase(
+			constellation->faces.begin() + springlOffset,
+			constellation->faces.end());
 
-	constellation->storage.vertexNormals.erase(
-			constellation->storage.vertexNormals.begin() + vertexOffset,
-			constellation->storage.vertexNormals.end());
-	constellation->storage.vertexes.erase(
-			constellation->storage.vertexes.begin() + vertexOffset,
-			constellation->storage.vertexes.end());
+	constellation->vertexNormals.erase(
+			constellation->vertexNormals.begin() + vertexOffset,
+			constellation->vertexNormals.end());
+	constellation->vertexes.erase(
+			constellation->vertexes.begin() + vertexOffset,
+			constellation->vertexes.end());
 	/*
-	 constellation->storage.vertexes.shrink_to_fit();
-	 constellation->storage.normals.shrink_to_fit();
-	 constellation->storage.particles.shrink_to_fit();
-	 constellation->storage.particleNormals.shrink_to_fit();
+	 constellation->vertexes.shrink_to_fit();
+	 constellation->normals.shrink_to_fit();
+	 constellation->particles.shrink_to_fit();
+	 constellation->particleNormals.shrink_to_fit();
 	 */
 }
 }

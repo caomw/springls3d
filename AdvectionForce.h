@@ -48,7 +48,7 @@ struct ISAdvectionForce {
                 D1<DiffScheme>::inY(grid, ijk),
                 D1<DiffScheme>::inZ(grid, ijk) );
 		vec.normalize(1E-6f);
-		vec=grid.getValue(ijk)*vec;
+		vec=-grid.getValue(ijk)*vec;
 		return vec;
 	}
 

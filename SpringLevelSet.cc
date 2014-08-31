@@ -142,7 +142,7 @@ void RelaxOperation::apply(Springl& springl,SpringLevelSet& mGrid,double dt) {
 		springl[k]=mGrid.vertexDisplacement[springl.offset+k];
 	}
 }
-void RelaxOperation::compute(Springl& springl, SpringLevelSet& mGrid) {
+void RelaxOperation::compute(Springl& springl, SpringLevelSet& mGrid,double t) {
 	float w, len;
 	Vec3s tanget;
 	Vec3s dir;
@@ -220,7 +220,7 @@ void NearestNeighborOperation::init(SpringLevelSet& mGrid) {
 	map.resize(mGrid.constellation->getNumVertexes(),
 			std::list<SpringlNeighbor>());
 }
-void NearestNeighborOperation::compute(Springl& springl, SpringLevelSet& mGrid) {
+void NearestNeighborOperation::compute(Springl& springl, SpringLevelSet& mGrid,double t) {
 	const float D2 = SpringLevelSet::NEAREST_NEIGHBOR_RANGE
 			* SpringLevelSet::NEAREST_NEIGHBOR_RANGE;
 
@@ -322,8 +322,8 @@ void SpringLevelSet::evolve(){
 	advect.setTemporalScheme(openvdb::math::TVD_RK1);
 	advect.setTrackerSpatialScheme(openvdb::math::FIRST_BIAS);
 	advect.setTrackerTemporalScheme(openvdb::math::TVD_RK1);
-	float simTime=openvdb::LEVEL_SET_HALF_WIDTH;
-	advect.advect(0.0,simTime);
+	int steps=advect.advect(0.0,1.0);
+	std::cout<<"Evolution steps "<<steps<<std::endl;
 }
 void SpringLevelSet::updateUnsignedLevelSet() {
 	openvdb::math::Transform::Ptr trans =
@@ -346,7 +346,8 @@ std::list<SpringlNeighbor>& SpringLevelSet::GetNearestNeighbors(
 		openvdb::Index32 id, int8_t e) {
 	return nearestNeighbors[constellation->springls[id].offset + e];
 }
-void SpringLevelSet::create(Mesh* mesh) {
+void SpringLevelSet::create(Mesh* mesh,openvdb::math::Transform::Ptr _transform) {
+	this->transform=_transform;
 	openvdb::math::Transform::Ptr trans =
 			openvdb::math::Transform::createLinearTransform(1.0);
 	std::cout << "Convert mesh to volume ..." << std::endl;
@@ -379,6 +380,11 @@ void SpringLevelSet::create(Mesh* mesh) {
 	fill(true);
 
 	std::cout << "done." << std::endl;
+}
+void SpringLevelSet::updateIsoSurface(){
+	openvdb::tools::VolumeToMesh mesher(0.0f);
+	mesher(*signedLevelSet);
+	isoSurface->create(mesher,signedLevelSet);
 }
 void SpringLevelSet::fill(bool updateIsoSurface) {
 

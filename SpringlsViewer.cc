@@ -137,11 +137,10 @@ SpringlsViewer::SpringlsViewer()
 }
 void SpringlsViewer::start(){
 	simTime=0.0f;
-	advect=boost::shared_ptr<AdvectT>(new AdvectT(*springlGrid.signedLevelSet,field));
-	advect->setSpatialScheme(openvdb::math::HJWENO5_BIAS);
-	advect->setTemporalScheme(openvdb::math::TVD_RK2);
-	advect->setTrackerSpatialScheme(openvdb::math::HJWENO5_BIAS);
-	advect->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
+	std::cout<<"Start "<<std::endl;
+	advect=boost::shared_ptr<AdvectT>(new AdvectT(springlGrid,field));
+	advect->setTemporalScheme(SpringlTemporalIntegrationScheme::TVD_RK1);
+	std::cout<<"Sim Thread "<<std::endl;
 	simulationRunning=true;
 	simThread=std::thread(UpdateView,this);
 
@@ -161,7 +160,7 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
 	originalMesh->mapIntoBoundingBox(originalMesh->EstimateVoxelSize());
-    openvdb::math::Transform::Ptr trans;
+    openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     springlGrid.create(mesh);
     mClipBox->set(*(springlGrid.signedLevelSet));
 
@@ -185,6 +184,7 @@ bool SpringlsViewer::openMesh(const std::string& fileName){
     const openvdb::Vec3f center(0.35f,0.35f,0.35f);
 
 	Vec3s t=-0.5f*(bbox.min()+bbox.max());
+	trans=springlGrid.transformPtr();
 	trans->postTranslate(t);
 	trans->postScale(scale*2*radius);
 	trans->postTranslate(center);
@@ -268,7 +268,6 @@ bool SpringlsViewer::init(int width,int height){
     glfwSwapInterval(1);
     do {
        if(meshDirty){
-    	   std::cout<<"Update mesh"<<std::endl;
     	   meshLock.lock();
     	   try {
 				originalMesh->updateGL();
@@ -299,19 +298,18 @@ bool SpringlsViewer::init(int width,int height){
     return true;
 }
 bool SpringlsViewer::update(){
-
 	advect->advect(simTime,simTime+dt);
 	simTime+=dt;
 	//openvdb::BBoxd bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
 	//mClipBox->setBBox(bbox);
 	meshLock.lock();
-	springlGrid.isoSurface->create(springlGrid.signedLevelSet);
-
+	springlGrid.updateIsoSurface();
 	meshDirty=true;
 	meshLock.unlock();
 	setNeedsDisplay();
 	std::cout<<"Simulation Time "<<simTime<<std::endl;
 	return (simTime<=3.0f&&simulationRunning);
+	//return false;
 }
 
 void

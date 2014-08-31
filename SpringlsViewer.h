@@ -56,9 +56,12 @@
 #include "Font.h"
 #include "Mesh.h"
 #include "SpringLevelSet.h"
-typedef openvdb::tools::EnrightField<float> FieldT;
-typedef openvdb::tools::LevelSetAdvection<openvdb::FloatGrid, FieldT> AdvectT;
+#include "SpringLevelSetAdvection.h"
 namespace imagesci{
+
+typedef openvdb::tools::EnrightField<float> FieldT;
+typedef SpringLevelSetAdvection<FieldT> AdvectT;
+
 //template<typename Description> class SpringLevelSet;
 
 class SpringlsViewer {

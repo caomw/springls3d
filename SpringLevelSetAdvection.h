@@ -61,7 +61,7 @@ public:
 		op1.process(threaded);
 		MaxOperator<OpT, InterruptT> op2(mGrid, mInterrupt);
 		double maxV = op2.process(threaded);
-		double dt = SpringLevelSet::MAX_VEXT / std::sqrt(maxV);
+		double dt = SpringLevelSet::MAX_VEXT /maxV;
 		ApplyOperator<OpT, InterruptT> op3(mGrid, mInterrupt, dt);
 		op3.process(threaded);
 	}
@@ -81,7 +81,12 @@ public:
 	typedef typename TrackerT::BufferType BufferType;
 	typedef typename TrackerT::ValueType ScalarType;
 	typedef typename FieldT::VectorType VectorType;
-
+	SpringLevelSet& mGrid;
+	const FieldT& mField;
+	SpringlTemporalIntegrationScheme mTemporalScheme;
+	InterruptT* mInterrupt;
+	// disallow copy by assignment
+	void operator=(const SpringLevelSetAdvection& other){}
 	/// Main constructor
 	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,
 			InterruptT* interrupt = NULL) :
@@ -112,15 +117,14 @@ public:
 	    }
 	}
 	template<typename MapT> size_t advect1(double  mStartTime, double mEndTime) {
-
 	    typedef AdvectVertexOperation<FieldT> OpT;
 		double dt = 0.0;
 		Vec3d vsz = mGrid.transformPtr()->voxelSize();
 		double scale = std::max(std::max(vsz[0], vsz[1]), vsz[2]);
 		const double EPS=1E-30f;
-		try {
+		double voxelDistance=0;
 		for (double time = mStartTime; time < mEndTime; time += dt * scale) {
-			std::cout << "Time " << time << std::endl;
+
 			AdvectOperator<OpT, FieldT, InterruptT> op1(mGrid, mField,
 					mInterrupt, time);
 			op1.process();
@@ -129,69 +133,57 @@ public:
 			dt = std::max(0.0,
 					std::min(SpringLevelSet::MAX_VEXT / maxV,
 							(mEndTime - time) / scale));
+			voxelDistance+=dt*maxV;
+			std::cout << "Time " << time <<" voxel distance "<<voxelDistance<< std::endl;
 			if (dt < EPS)
 				break;
 			ApplyOperator<OpT, InterruptT> op3(mGrid, mInterrupt, dt);
-			//op3.process(threaded);
+			op3.process();
 			mGrid.updateUnsignedLevelSet();
 			mGrid.updateGradient();
-			std::cout<<"Start Evolve "<<std::endl;
-			WriteToRawFile(mGrid.signedLevelSet, "/home/blake/tmp/signed");
-			if ( !mGrid.signedLevelSet->hasUniformVoxels() ) {
-					        std::cout<<"The transform must have uniform scale for the LevelSetTracker to function"<<std::endl;
-					 }
-			if (mGrid.signedLevelSet->getGridClass() != GRID_LEVEL_SET) {
-					    	std::cout<<"LevelSetTracker only supports level sets!\n" <<"However, only level sets are guaranteed to work!\n"<<"Hint: Grid::setGridClass(openvdb::GRID_LEVEL_SET)"<<std::endl;
-			}
 			TrackerT mTracker(*mGrid.signedLevelSet,mInterrupt);
-			std::cout<<"Start evolve"<<std::endl;
-			SpringLevelSetAdvect<MapT> evolve(*this,mTracker,time,1.0);
-			evolve.process(false);
-			std::cout<<"End evolve "<<std::endl;
-			break;
-		}
-		} catch(std::exception* e){
-			std::cout<<"Error "<<e->what()<<std::endl;
+			SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,1.0f,2);
+			evolve.process();
 		}
 	    return 0;
 	}
-	template<typename MapT> class SpringLevelSetAdvect {
+	template<typename MapT> class SpringLevelSetEvolve {
 	public:
 		SpringLevelSetAdvection& mParent;
 		typename TrackerT::LeafManagerType& leafs;
 		const MapT* mMap;
 		double mDt;
 		double mTime;
+		int mIterations;
 		TrackerT& mTracker;
 		DiscreteField<openvdb::VectorGrid> mField;
-		SpringLevelSetAdvect(SpringLevelSetAdvection& parent,TrackerT& tracker,double time, double dt) :
+		SpringLevelSetEvolve(SpringLevelSetAdvection& parent,TrackerT& tracker,double time, double dt,int iterations) :
 				mMap(NULL),
 				mParent(parent),
 				mTracker(tracker),
+				mIterations(iterations),
 				mField(DiscreteField<openvdb::VectorGrid>(*(mParent.mGrid.gradient))),
 				mTime(time), mDt(dt),leafs(tracker.leafs()) {
 
 		}
-		void process(bool threaded = true) {
+		void process(bool threaded=true) {
 			mMap= (mTracker.grid().transform().template constMap<MapT>().get());
 			if (mParent.mInterrupt)
 				mParent.mInterrupt->start("Processing voxels");
-
-			std::cout<<"Init tracker "<<leafs.leafCount()<<std::endl;
-			leafs.rebuildAuxBuffers(1);
-
-			std::cout<<"Evolve "<<leafs.leafCount()<<std::endl;
-			if (threaded) {
-				tbb::parallel_for(leafs.getRange(mTracker.getGrainSize()), *this);
-			} else {
-				(*this)(leafs.getRange(mTracker.getGrainSize()));
+			for(int iter=0;iter<mIterations;iter++){
+				leafs.rebuildAuxBuffers(1);
+				if (threaded) {
+					tbb::parallel_for(leafs.getRange(mTracker.getGrainSize()), *this);
+				} else {
+					(*this)(leafs.getRange(mTracker.getGrainSize()));
+				}
+				leafs.swapLeafBuffer(1, mTracker.getGrainSize()==0);
+				leafs.removeAuxBuffers();
+				mTracker.track();
 			}
-
-	        std::cout<<"Update "<<std::endl;
-	        leafs.removeAuxBuffers();
-	        mTracker.track();
-			if (mParent.mInterrupt)
+			if (mParent.mInterrupt){
 				mParent.mInterrupt->end();
+			}
 		}
 		void operator()(const typename TrackerT::LeafManagerType::RangeType& range) const {
 			using namespace openvdb;
@@ -212,12 +204,7 @@ public:
 			}
 		}
 	};
-	SpringLevelSet& mGrid;
-	const FieldT& mField;
-	SpringlTemporalIntegrationScheme mTemporalScheme;
-	InterruptT* mInterrupt;
-	// disallow copy by assignment
-	void operator=(const SpringLevelSetAdvection& other){}
+
 };
 //end of LevelSetAdvection
 }

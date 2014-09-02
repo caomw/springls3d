@@ -102,11 +102,11 @@ public:
 	}
 	void updateGradient();
 	void updateIsoSurface();
-	void updateUnsignedLevelSet();
+	void updateUnsignedLevelSet(bool upscale=false);
 	void relax(int iters = 10);
 	void updateNearestNeighbors(bool threaded = true);
 	void create(Mesh* mesh, openvdb::math::Transform::Ptr transform =
-			openvdb::math::Transform::createLinearTransform());
+			openvdb::math::Transform::createLinearTransform(),bool upscale=false);
 	SpringLevelSet() {
 	}
 	~SpringLevelSet() {
@@ -495,7 +495,8 @@ public:
 		}
 	}
 	static double findTimeStep(Springl& springl, SpringLevelSet& mGrid) {
-		return mGrid.vertexDisplacement[springl.id].lengthSqr();
+		Vec3d vec=mGrid.vertexDisplacement[springl.id];
+		return std::max(std::max(vec[0], vec[1]), vec[2]);
 		//(SpringLevelSet::MAX_VEXT/maxV);//What should this be? depends on temporal integration scheme
 	}
 	static void apply(Springl& springl, SpringLevelSet& mGrid, double dt) {

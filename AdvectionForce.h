@@ -7,7 +7,7 @@
 
 #ifndef UPWINDGRADIENT_H_
 #define UPWINDGRADIENT_H_
-
+#include "ImageSciUtil.h"
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/GridOperators.h>
 #include <openvdb/math/FiniteDifference.h>
@@ -48,7 +48,8 @@ struct ISAdvectionForce {
                 D1<DiffScheme>::inY(grid, ijk),
                 D1<DiffScheme>::inZ(grid, ijk) );
 		vec.normalize(1E-6f);
-		vec=-grid.getValue(ijk)*vec;
+		double scale=-clamp(grid.getValue(ijk)/(double)(openvdb::LEVEL_SET_HALF_WIDTH),-1.0,1.0);
+		vec=scale*vec;
 		return vec;
 	}
 
@@ -62,7 +63,9 @@ struct ISAdvectionForce {
                 D1<DiffScheme>::inY(stencil),
                 D1<DiffScheme>::inZ(stencil) );
 		vec.normalize(1E-6f);
-		vec=(stencil.template getValue< 0, 0, 0>())*vec;
+		double scale=-clamp(stencil.template getValue< 0, 0, 0>()/(double)(openvdb::LEVEL_SET_HALF_WIDTH),-1.0,1.0);
+
+		vec=scale*vec;
 		return vec;
 	}
 };

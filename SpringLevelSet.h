@@ -27,7 +27,6 @@ enum SpringlTemporalIntegrationScheme {
 	TVD_RK5,
 	TVD_RK6,
 };
-class Constellation;
 struct Springl;
 struct SpringlNeighbor {
 public:
@@ -40,6 +39,28 @@ public:
 };
 
 std::ostream& operator<<(std::ostream& ostr, const SpringlNeighbor& classname);
+
+class Constellation: public Mesh {
+public:
+
+	std::vector<Springl> springls;
+	void create(Mesh* mesh);
+	virtual ~Constellation() {
+	}
+	inline size_t getNumSpringls() const {
+		return springls.size();
+	}
+	inline size_t getNumVertexes() const {
+		return vertexes.size();
+	}
+
+	Springl& operator[](size_t idx) {
+		return springls[idx];
+	}
+	const Springl& operator[](size_t idx) const {
+		return springls[idx];
+	}
+};
 typedef std::vector<std::list<SpringlNeighbor>> NearestNeighborMap;
 class SpringLevelSet {
 public:
@@ -59,8 +80,8 @@ public:
 	openvdb::FloatGrid::Ptr unsignedLevelSet;
 	openvdb::VectorGrid::Ptr gradient;
 	openvdb::Int32Grid::Ptr springlIndexGrid;
-	boost::shared_ptr<Mesh> isoSurface;
-	boost::shared_ptr<Constellation> constellation;
+	Mesh isoSurface;
+	Constellation constellation;
 	NearestNeighborMap nearestNeighbors;
 	std::vector<openvdb::Vec3s> vertexDisplacement;
 	std::vector<openvdb::Vec3s> particleDisplacement;
@@ -125,27 +146,6 @@ public:
 	openvdb::Vec3s computeCentroid() const;
 	openvdb::Vec3s computeNormal(const float eps = 1E-6f) const;
 	~Springl() {
-	}
-};
-class Constellation: public Mesh {
-public:
-
-	std::vector<Springl> springls;
-	Constellation(Mesh* mesh);
-	virtual ~Constellation() {
-	}
-	inline size_t getNumSpringls() const {
-		return springls.size();
-	}
-	inline size_t getNumVertexes() const {
-		return vertexes.size();
-	}
-
-	Springl& operator[](size_t idx) {
-		return springls[idx];
-	}
-	const Springl& operator[](size_t idx) const {
-		return springls[idx];
 	}
 };
 
@@ -284,7 +284,7 @@ public:
 		if (mInterrupt)
 			mInterrupt->start("Processing springls");
 		OperatorT::init(mGrid);
-		SpringlRange range(*mGrid.constellation);
+		SpringlRange range(mGrid.constellation);
 		if (threaded) {
 			tbb::parallel_for(range, *this);
 		} else {
@@ -327,7 +327,7 @@ public:
 		if (mInterrupt)
 			mInterrupt->start("Processing springls");
 		OperatorT::init(mGrid);
-		SpringlRange range(*mGrid.constellation);
+		SpringlRange range(mGrid.constellation);
 		if (threaded) {
 			tbb::parallel_for(range, *this);
 		} else {
@@ -369,7 +369,7 @@ public:
 	}
 	MaxOperator(MaxOperator& other, tbb::split) :
 			mGrid(other.mGrid), mMaxAbsV(other.mMaxAbsV), mIsMaster(false), mInterrupt(
-					NULL) {
+			NULL) {
 	}
 	virtual ~MaxOperator() {
 	}
@@ -377,7 +377,7 @@ public:
 		if (mInterrupt)
 			mInterrupt->start("Processing springls");
 		OperatorT::init(mGrid);
-		SpringlRange range(*mGrid.constellation);
+		SpringlRange range(mGrid.constellation);
 		if (threaded) {
 			tbb::parallel_reduce(range, *this);
 		} else {
@@ -423,7 +423,7 @@ public:
 		if (mInterrupt)
 			mInterrupt->start("Processing springls");
 		OperatorT::init(mGrid);
-		SpringlRange range(*mGrid.constellation);
+		SpringlRange range(mGrid.constellation);
 		if (threaded) {
 			tbb::parallel_for(range, *this);
 		} else {
@@ -480,7 +480,7 @@ public:
 
 	}
 	static void init(SpringLevelSet& mGrid) {
-		mGrid.vertexDisplacement.resize(mGrid.constellation->vertexes.size());
+		mGrid.vertexDisplacement.resize(mGrid.constellation.vertexes.size());
 	}
 	static void compute(Springl& springl, SpringLevelSet& mGrid,
 			const FieldT& field, double t) {
@@ -516,7 +516,7 @@ public:
 
 	}
 	static void init(SpringLevelSet& mGrid) {
-		mGrid.vertexDisplacement.resize(mGrid.constellation->vertexes.size());
+		mGrid.vertexDisplacement.resize(mGrid.constellation.vertexes.size());
 	}
 	static void compute(Springl& springl, SpringLevelSet& mGrid,
 			const FieldT& field, double t) {
@@ -565,71 +565,6 @@ public:
 		op2.process(threaded);
 	}
 	SpringLevelSet& mGrid;
-	InterruptT* mInterrupt;
-};
-template<typename FieldT, typename InterruptT = openvdb::util::NullInterrupter>
-class AdvectVertex {
-private:
-	double mStartTime, mEndTime;
-public:
-	AdvectVertex(SpringLevelSet& grid, const FieldT& field, double t0,
-			double t1, InterruptT* interrupt = NULL) :
-			mGrid(grid), mField(field), mStartTime(t0), mEndTime(t1), mInterrupt(
-					interrupt) {
-	}
-	const double EPS = 1E-30f;
-	void process(bool threaded = true) {
-		typedef AdvectVertexOperation<FieldT> OpT;
-		double dt = 0.0;
-		//Assume isotropic voxels!
-		Vec3d vsz = mGrid.transformPtr()->voxelSize();
-		double scale = std::max(std::max(vsz[0], vsz[1]), vsz[2]);
-		double elapsedVoxelDistance = 0.0f;
-		for (double time = mStartTime; time < mEndTime; time += dt * scale) {
-			AdvectOperator<OpT, FieldT, InterruptT> op1(mGrid, mField,
-					mInterrupt, time);
-			op1.process(threaded);
-			MaxOperator<OpT, InterruptT> op2(mGrid, mInterrupt);
-			double maxV = op2.process(threaded);
-			dt = std::max(0.0,
-					std::min(SpringLevelSet::MAX_VEXT / std::sqrt(maxV),
-							(mEndTime - time) / scale));
-			elapsedVoxelDistance += SpringLevelSet::MAX_VEXT;
-			if (dt < EPS)
-				break;
-			ApplyOperator<OpT, InterruptT> op3(mGrid, mInterrupt, dt);
-			op3.process(threaded);
-			//if (elapsedVoxelDistance >= LEVEL_SET_HALF_WIDTH) {
-				//std::cout << "Update " << time <<" "<<elapsedVoxelDistance<< std::endl;
-			mGrid.updateUnsignedLevelSet();
-			mGrid.evolve();
-				//elapsedVoxelDistance = 0.0f;
-			//}
-		}
-	}
-	SpringLevelSet& mGrid;
-	const FieldT& mField;
-	InterruptT* mInterrupt;
-};
-template<typename FieldT, typename InterruptT = openvdb::util::NullInterrupter>
-class AdvectParticle {
-public:
-	AdvectParticle(SpringLevelSet& grid, const FieldT& field,
-			InterruptT* interrupt = NULL) :
-			mGrid(grid), mField(field), mInterrupt(interrupt) {
-	}
-	void process(bool threaded = true) {
-		typedef AdvectParticleOperation<FieldT> OpT;
-		AdvectOperator<OpT, FieldT, InterruptT> op1(mGrid, mField, mInterrupt);
-		op1.process(threaded);
-		MaxOperator<OpT, InterruptT> op2(mGrid, mInterrupt);
-		double maxV = op2.process(threaded);
-		double dt = SpringLevelSet::MAX_VEXT / std::sqrt(maxV);
-		ApplyOperator<OpT, InterruptT> op3(mGrid, mInterrupt, dt);
-		op3.process(threaded);
-	}
-	SpringLevelSet& mGrid;
-	const FieldT& mField;
 	InterruptT* mInterrupt;
 };
 }

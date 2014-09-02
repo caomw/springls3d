@@ -271,8 +271,8 @@ bool SpringlsViewer::init(int width,int height){
     	   meshLock.lock();
     	   try {
 				originalMesh->updateGL();
-				springlGrid.isoSurface->updateGL();
-				springlGrid.constellation->updateGL();
+				springlGrid.isoSurface.updateGL();
+				springlGrid.constellation.updateGL();
     	   } catch(std::exception* e){
     		   std::cerr<<"UpdateGL Error: "<<e->what()<<std::endl;
     	   }
@@ -309,7 +309,6 @@ bool SpringlsViewer::update(){
 	setNeedsDisplay();
 	std::cout<<"Simulation Time "<<simTime<<std::endl;
 	return (simTime<=3.0f&&simulationRunning);
-	//return false;
 }
 
 void
@@ -363,13 +362,8 @@ SpringlsViewer::render()
     glTranslatef(-minPt[0],-minPt[1],-minPt[2]);
     mClipBox->render();
     mClipBox->enableClipping();
-    if(springlGrid.isoSurface.get()==nullptr){
-		glColor3f(0.8f,0.8f,0.8f);
-		originalMesh->draw(false,false,false,false);
-    } else {
-		glColor3f(0.8f,0.3f,0.3f);
-		springlGrid.isoSurface->draw(false,false,false,false);
-    }
+ 	glColor3f(0.8f,0.3f,0.3f);
+	springlGrid.isoSurface.draw(false,false,false,false);
 	mClipBox->disableClipping();
     glPopMatrix();
     //

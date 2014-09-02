@@ -6,14 +6,13 @@
  */
 
 #include "Mesh.h"
+#include "ImageSciUtil.h"
 #include <openvdb/openvdb.h>
 
 #include <openvdb/util/Util.h>
 #include "ply_io.h"
 namespace imagesci {
-template<typename T> T clamp(T a, T min, T max) {
-	return std::max(std::min(a, max), min);
-}
+
 using namespace openvdb;
 typedef struct _plyVertex {
 	float x[3];             // the usual 3-space position of a vertex
@@ -353,7 +352,7 @@ void Mesh::create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr g
 	vertexes.resize(mesher.pointListSize());
 	Index64 N = mesher.pointListSize();
 	for (Index64 n = 0; n < N; ++n) {
-		vertexes[n] = map.applyInverseMap(mesher.pointList()[n]);
+		vertexes[n] = mesher.pointList()[n];//map.applyInverseMap(
 	}
 	// Copy primitives
 	openvdb::tools::PolygonPoolList& polygonPoolList = mesher.polygonPoolList();

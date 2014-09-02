@@ -25,6 +25,7 @@
 								<option id="gnu.cpp.compiler.exe.debug.option.debugging.level.1815424260" name="Debug Level" superClass="gnu.cpp.compiler.exe.debug.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.1955890951" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__cplusplus=201103L"/>
+									<listOptionValue builtIn="false" value="MP"/>
 									<listOptionValue builtIn="false" value="GL_GLEXT_PROTOTYPES=1"/>
 									<listOptionValue builtIn="false" value="OPENVDB_HAS_CXX11"/>
 									<listOptionValue builtIn="false" value="OPENVDB_USE_LOG4CPLUS"/>

@@ -32,7 +32,7 @@ class Mesh{
 		GLuint mLineBuffer;
 		GLuint triangleCount;
 		GLuint quadCount;
-		std::vector<openvdb::Index32> lines;
+		std::vector<openvdb::Vec3s> lines;
 		std::vector<openvdb::Vec3s> particles;
 		std::vector<openvdb::Vec3s> particleNormals;
 		std::vector<openvdb::Vec3s> vertexes;
@@ -40,6 +40,8 @@ class Mesh{
 		std::vector<openvdb::Vec3s> vertexNormals;
 		std::vector<openvdb::Index32> quadIndexes;
 		std::vector<openvdb::Index32> triIndexes;
+		std::vector<openvdb::Vec3s> vertexDisplacement;
+		std::vector<openvdb::Vec3s> particleDisplacement;
 		std::vector<openvdb::Vec4I> faces;
 		Mesh();
 		void create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr grid);

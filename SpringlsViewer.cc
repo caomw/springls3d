@@ -69,6 +69,7 @@ SpringlsViewer* SpringlsViewer::GetInstance(){
 void UpdateView(SpringlsViewer* v){
 	while(v->update()){
 		std::this_thread::yield();
+		std::this_thread::sleep_for(std::chrono::milliseconds(30));
 	}
 }
 
@@ -137,10 +138,9 @@ SpringlsViewer::SpringlsViewer()
 }
 void SpringlsViewer::start(){
 	simTime=0.0f;
-	std::cout<<"Start "<<std::endl;
+	simulationIteration=0;
 	advect=boost::shared_ptr<AdvectT>(new AdvectT(springlGrid,field));
 	advect->setTemporalScheme(SpringlTemporalIntegrationScheme::TVD_RK1);
-	std::cout<<"Sim Thread "<<std::endl;
 	simulationRunning=true;
 	simThread=std::thread(UpdateView,this);
 
@@ -156,7 +156,7 @@ void SpringlsViewer::stop(){
 }
 bool SpringlsViewer::openMesh(const std::string& fileName){
 	Mesh* mesh=Mesh::openMesh(fileName);
-	std::cout<<"Opened mesh "<<mesh->vertexes.size()<<" "<<mesh->faces.size()<<std::endl;
+	std::cout<<"Opened mesh "<<mesh->vertexes.size()<<" "<<mesh->faces.size()<<" "<<mesh->quadIndexes.size()<<" "<<mesh->triIndexes.size()<<std::endl;
 	if(mesh==NULL)return false;
 	originalMesh=std::unique_ptr<Mesh>(mesh);
 	originalMesh->mapIntoBoundingBox(originalMesh->EstimateVoxelSize());
@@ -298,15 +298,22 @@ bool SpringlsViewer::init(int width,int height){
     return true;
 }
 bool SpringlsViewer::update(){
+	std::ostringstream ostr,ostr2;
+	ostr << "/home/blake/tmp/springls" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
+	springlGrid.constellation.save(ostr.str());
+	ostr2 << "/home/blake/tmp/isosurf" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
+	springlGrid.isoSurface.save(ostr2.str());
+
 	advect->advect(simTime,simTime+dt);
+
+
 	simTime+=dt;
 	//openvdb::BBoxd bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
 	//mClipBox->setBBox(bbox);
-	meshLock.lock();
-	springlGrid.updateIsoSurface();
 	meshDirty=true;
-	meshLock.unlock();
+
 	setNeedsDisplay();
+	simulationIteration++;
 	std::cout<<"Simulation Time "<<simTime<<std::endl;
 	return (simTime<=3.0f&&simulationRunning);
 }

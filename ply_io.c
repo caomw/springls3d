@@ -72,7 +72,19 @@ int ply_type_size[] = {
 #define OTHER_PROP       0
 #define NAMED_PROP       1
 
+char* my_strdup(char* str){
+	//return strdup(str);
 
+	int len=strlen(str);
+	if(len>0){
+		char* newStr=malloc(sizeof(char)*(len+1));
+		strcpy(newStr,str);
+		return newStr;
+	} else {
+		return NULL;
+	}
+
+}
 
 /*************/
 /*  Writing  */
@@ -122,7 +134,7 @@ PlyFile *ply_write ( FILE *fp, int nelems, char **elem_names, int file_type )
 	for (i = 0; i < nelems; i++) {
 		elem = (PlyElement *) myalloc (sizeof (PlyElement));
 		plyfile->elems[i] = elem;
-		elem->name = strdup (elem_names[i]);
+		elem->name = my_strdup(elem_names[i]);
 		elem->num = 0;
 		elem->nprops = 0;
 	}
@@ -149,31 +161,17 @@ PlyFile *open_for_writing_ply (const char *filename, int nelems, char **elem_nam
 							   returns a file identifier, used to refer to this file, or NULL if error
 							   */
 {
-	int i;
 	PlyFile *plyfile;
-	PlyElement *elem;
-	char *name;
-	FILE *fp;
-
-	/* tack on the extension .ply, if necessary */
-
-	name = (char *) myalloc (sizeof (char) * (strlen (filename) + 5));
-	strcpy(name, filename);
-	if (strlen (name) < 4 ||
-		strcmp (name + strlen (name) - 4, ".ply") != 0)
-		strcat(name, ".ply");
-
+	FILE *fp=fopen(filename, "wb");
 	/* open the file for writing */
-	if ((fp=fopen(name, "wb")) != 0) {
+	if (fp == 0) {
 		return (NULL);
 	}
 
-	/* create the actual PlyFile structure */
-
 	plyfile = ply_write (fp, nelems, elem_names, file_type);
-	if (plyfile == NULL)
+	if (plyfile == NULL){
 		return (NULL);
-
+	}
 	/* return pointer to the file descriptor */
 	return (plyfile);
 }
@@ -651,7 +649,7 @@ PlyFile *ply_read(FILE *fp, int *nelems, char ***elem_names)
 
 	elist = (char **) myalloc (sizeof (char *) * plyfile->num_elem_types);
 	for (i = 0; i < plyfile->num_elem_types; i++)
-		elist[i] = strdup (plyfile->elems[i]->name);
+		elist[i] = my_strdup(plyfile->elems[i]->name);
 
 	*elem_names = elist;
 	*nelems = plyfile->num_elem_types;
@@ -1024,7 +1022,7 @@ static PlyOtherProp *get_other_properties(
 
 	/* create structure for describing other_props */
 	other = (PlyOtherProp *) myalloc (sizeof (PlyOtherProp));
-	other->name = strdup (elem->name);
+	other->name = my_strdup(elem->name);
 #if 0
 	if (elem->other_offset == NO_OTHER_PROPS) {
 		other->size = 0;
@@ -1150,7 +1148,7 @@ PlyOtherElems *get_other_element_ply (PlyFile *plyfile)
 	other->elem_count = elem_count;
 
 	/* save name of element */
-	other->elem_name = strdup (elem_name);
+	other->elem_name = my_strdup(elem_name);
 
 	/* create a list to hold all the current elements */
 	other->other_data = (OtherData **)
@@ -1469,7 +1467,7 @@ void ascii_get_element(PlyFile *plyfile, char *elem_ptr)
 			if (store_it) {
 				char *str;
 				char **str_ptr;
-				str = strdup (words[which_word++]);
+				str = my_strdup(words[which_word++]);
 				item = elem_data + prop->offset;
 				str_ptr = (char **) item;
 				*str_ptr = str;
@@ -2211,7 +2209,7 @@ void add_element (PlyFile *plyfile, char **words, int nwords)
 
 	/* create the new element */
 	elem = (PlyElement *) myalloc (sizeof (PlyElement));
-	elem->name = strdup (words[1]);
+	elem->name = my_strdup(words[1]);
 	elem->num = atoi (words[2]);
 	elem->nprops = 0;
 
@@ -2280,18 +2278,18 @@ void add_property (PlyFile *plyfile, char **words, int nwords)
 	if (equal_strings (words[1], "list")) {          /* list */
 		prop->count_external = get_prop_type (words[2]);
 		prop->external_type = get_prop_type (words[3]);
-		prop->name = strdup (words[4]);
+		prop->name = my_strdup(words[4]);
 		prop->is_list = PLY_LIST;
 	}
 	else if (equal_strings (words[1], "string")) {   /* string */
 		prop->count_external = Int8;
 		prop->external_type = Int8;
-		prop->name = strdup (words[2]);
+		prop->name = my_strdup(words[2]);
 		prop->is_list = PLY_STRING;
 	}
 	else {                                           /* scalar */
 		prop->external_type = get_prop_type (words[1]);
-		prop->name = strdup (words[2]);
+		prop->name = my_strdup(words[2]);
 		prop->is_list = PLY_SCALAR;
 	}
 
@@ -2357,7 +2355,7 @@ Copy a property.
 
 void copy_property(PlyProperty *dest, PlyProperty *src)
 {
-	dest->name = strdup (src->name);
+	dest->name = my_strdup(src->name);
 	dest->external_type = src->external_type;
 	dest->internal_type = src->internal_type;
 	dest->offset = src->offset;
@@ -2471,7 +2469,7 @@ char **get_element_list_ply(PlyFile *ply, int *num_elems)
 
 	elist = (char **) myalloc (sizeof (char *) * ply->num_elem_types);
 	for (i = 0; i < ply->num_elem_types; i++)
-		elist[i] = strdup (ply->elems[i]->name);
+		elist[i] = my_strdup(ply->elems[i]->name);
 
 	/* return the number of elements and the list of element names */
 	*num_elems = ply->num_elem_types;
@@ -2497,7 +2495,7 @@ void append_comment_ply(PlyFile *ply, char *comment)
 		sizeof (char *) * (ply->num_comments + 1));
 
 	/* add comment to list */
-	ply->comments[ply->num_comments] = strdup (comment);
+	ply->comments[ply->num_comments] = my_strdup(comment);
 	ply->num_comments++;
 }
 
@@ -2537,7 +2535,7 @@ void append_obj_info_ply(PlyFile *ply, char *obj_info)
 		sizeof (char *) * (ply->num_obj_info + 1));
 
 	/* add info to list */
-	ply->obj_info[ply->num_obj_info] = strdup (obj_info);
+	ply->obj_info[ply->num_obj_info] = my_strdup(obj_info);
 	ply->num_obj_info++;
 }
 
@@ -3210,7 +3208,7 @@ PlyRuleList *append_prop_rule (
 	char *ptr;
 
 	/* find . */
-	str = strdup (property);
+	str = my_strdup(property);
 	for (ptr = str; *ptr != '\0' && *ptr != '.'; ptr++) ;
 
 	/* split string at . */

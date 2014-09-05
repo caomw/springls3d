@@ -31,28 +31,25 @@ typedef struct _plyVertex {
 	}
 } plyVertex;
 
+char* elemNames[]={"vertex","face","normal"};
+
 typedef struct _plyFace {
 	unsigned char nverts;    // number of vertex indices in list
 	int *verts;              // vertex index list
-	unsigned char red;
-	unsigned char green;
-	unsigned char blue;
 	_plyFace() {
 		nverts = 0;
 		verts = NULL;
-		red = 0;
-		green = 0;
-		blue = 0;
 	}
 } plyFace;
 
-char* elemNames[] = { "vertex", "face", "normal" };
 
 PlyProperty vertProps[] = { // property information for a vertex
 		{ "x", Float32, Float32, static_cast<int>(offsetof(plyVertex, x)), 0, 0,
-				0, 0 }, { "y", Float32, Float32,
+				0, 0 },
+		{ "y", Float32, Float32,
 				static_cast<int>(offsetof(plyVertex, x) + sizeof(float)), 0, 0,
-				0, 0 }, { "z", Float32, Float32,
+				0, 0 },
+				{ "z", Float32, Float32,
 				static_cast<int>(offsetof(plyVertex, x) + sizeof(float)
 						+ sizeof(float)), 0, 0, 0, 0 }, { "red", Uint8, Uint8,
 				static_cast<int>(offsetof(plyVertex, red)), 0, 0, 0, 0 }, {
@@ -65,11 +62,7 @@ PlyProperty vertProps[] = { // property information for a vertex
 PlyProperty faceProps[] = { // property information for a face
 		{ "vertex_indices", Int32, Int32, static_cast<int>(offsetof(plyFace,
 				verts)), 1, Uint8, Uint8, static_cast<int>(offsetof(plyFace,
-				nverts)) }, { "red", Uint8, Uint8, static_cast<int>(offsetof(
-				plyFace, red)), 0, 0, 0, 0 }, { "green", Uint8, Uint8,
-				static_cast<int>(offsetof(plyFace, green)), 0, 0, 0, 0 }, {
-				"blue", Uint8, Uint8, static_cast<int>(offsetof(plyFace, blue)),
-				0, 0, 0, 0 }, };
+				nverts)) }};
 
 Mesh::Mesh() :
 		mVertexBuffer(0),
@@ -81,38 +74,38 @@ Mesh::Mesh() :
 		quadCount(0),triangleCount(0) {
 }
 bool Mesh::save(const std::string& f) {
-	/*
+	std::cout<<"Saving "<<f<<" ... ";
 	int i, j, idx;
 	const char* fileName = f.c_str();
-	unsigned char *pointColors = NULL;
+
 	PlyFile *ply;
 
 	// Get input and check data
-
 	ply = open_for_writing_ply(fileName, 2, elemNames, PLY_BINARY_LE);
 
-	if (ply == NULL)
+	if (ply == NULL){
+		std::cout<<"Failed. "<<std::endl;
 		return false;
+	}
 
 	// compute colors, if any
 	int numPts = vertexes.size();
 
-	int npts = (meshType == PrimitiveType::TRIANGLES) ? 3 : 4;
-	int numPolys = indexes.size() / npts;
-	unsigned char* c;
+	int numPolys =quadIndexes.size()/4+triIndexes.size()/3;
+
+	std::vector<unsigned char> pointColors;
+
 	if (colors.size() > 0) {
-		pointColors = c = new unsigned char[3 * numPts];
+		size_t inc=0;
+		pointColors.resize(3 * colors.size());
 		for (i = 0; i < numPts; i++) {
 			Vec3s d = colors[i];
-			unsigned char r = (unsigned char) clamp(d[0] * 255.0f, 0.0f,
+			pointColors[inc++] = (unsigned char) clamp(d[0] * 255.0f, 0.0f,
 					255.0f);
-			unsigned char g = (unsigned char) clamp(d[1] * 255.0f, 0.0f,
+			pointColors[inc++] = (unsigned char) clamp(d[1] * 255.0f, 0.0f,
 					255.0f);
-			unsigned char b = (unsigned char) clamp(d[2] * 255.0f, 0.0f,
+			pointColors[inc++] = (unsigned char) clamp(d[2] * 255.0f, 0.0f,
 					255.0f);
-			*c++ = r;
-			*c++ = g;
-			*c++ = b;
 		}
 	}
 	// describe what properties go into the vertex and face elements
@@ -127,7 +120,6 @@ bool Mesh::save(const std::string& f) {
 	}
 	element_count_ply(ply, "face", numPolys);
 	ply_describe_property(ply, "face", &faceProps[0]);
-
 	// write a comment and an object information field
 	append_comment_ply(ply, "PLY File");
 	append_obj_info_ply(ply, "ImageSci");
@@ -144,11 +136,11 @@ bool Mesh::save(const std::string& f) {
 		vert.x[0] = pt[0];
 		vert.x[1] = pt[1];
 		vert.x[2] = pt[2];
-		if (pointColors) {
+		if (pointColors.size()>0) {
 			idx = 3 * i;
-			vert.red = *(pointColors + idx);
-			vert.green = *(pointColors + idx + 1);
-			vert.blue = *(pointColors + idx + 2);
+			vert.red = pointColors[idx];
+			vert.green = pointColors[idx+1];
+			vert.blue = pointColors[idx+2];
 		}
 		put_element_ply(ply, (void *) &vert);
 	}
@@ -158,28 +150,26 @@ bool Mesh::save(const std::string& f) {
 	face.verts = verts;
 	put_element_setup_ply(ply, "face");
 
-	if (indexes.size() < numPolys) {
-		for (int i = 0; i < numPolys; i++) {
-			for (j = 0; j < npts; j++) {
-				face.nverts = npts;
-				verts[j] = 3 * i + j;
-			}
-			put_element_ply(ply, (void *) &face);
+	int sz=quadIndexes.size()/4;
+
+	for (int i = 0; i < sz; i++) {
+		for (j = 0; j < 4; j++) {
+			face.nverts =4;
+			face.verts[j] = quadIndexes[4 * i + j];
 		}
-	} else {
-		for (int i = 0; i < numPolys; i++) {
-			for (j = 0; j < npts; j++) {
-				face.nverts = npts;
-				verts[j] = indexes[3 * i + j];
-			}
-			put_element_ply(ply, (void *) &face);
-		}
+		put_element_ply(ply, (void *) &face);
 	}
-	if (pointColors != NULL)
-		delete[] pointColors;
+	sz=triIndexes.size()/3;
+	for (int i = 0; i < sz; i++) {
+		for (j = 0; j < 3; j++) {
+			face.nverts =3;
+			face.verts[j] = triIndexes[3 * i + j];
+		}
+		put_element_ply(ply, (void *) &face);
+	}
 	// close the PLY file
 	close_ply(ply);
-	*/
+	std::cout<<"Done."<<std::endl;
 	return true;
 }
 Mesh* Mesh::openGrid(const std::string& fileName) {
@@ -227,21 +217,9 @@ Mesh* Mesh::openMesh(const std::string& file) {
 
 	// Check for optional attribute data. We can handle intensity; and the
 	// triplet red, green, blue.
-	unsigned char intensityAvailable = false, RGBCellsAvailable = false,
-			RGBPointsAvailable = false;
+	bool RGBPointsAvailable = false;
 	mesh->triIndexes.clear();
 	mesh->quadIndexes.clear();
-	if ((elem = find_element(ply, "face")) != NULL
-			&& find_property(elem, "intensity", &index) != NULL) {
-		intensityAvailable = true;
-	}
-
-	if ((elem = find_element(ply, "face")) != NULL
-			&& find_property(elem, "red", &index) != NULL
-			&& find_property(elem, "green", &index) != NULL
-			&& find_property(elem, "blue", &index) != NULL) {
-		RGBCellsAvailable = true;
-	}
 
 	if ((elem = find_element(ply, "vertex")) != NULL
 			&& find_property(elem, "red", &index) != NULL
@@ -289,14 +267,6 @@ Mesh* Mesh::openMesh(const std::string& file) {
 			numPolys = numElems;
 			// Get the face properties
 			ply_get_property(ply, elemName, &faceProps[0]);
-			if (intensityAvailable) {
-				ply_get_property(ply, elemName, &faceProps[1]);
-			}
-			if (RGBCellsAvailable) {
-				ply_get_property(ply, elemName, &faceProps[2]);
-				ply_get_property(ply, elemName, &faceProps[3]);
-				ply_get_property(ply, elemName, &faceProps[4]);
-			}
 			for (j = 0; j < numPolys; j++) {
 
 				//grab and element from the file
@@ -314,16 +284,6 @@ Mesh* Mesh::openMesh(const std::string& file) {
 					}
 					mesh->faces.push_back(openvdb::Vec4I(face.verts[0],face.verts[1],face.verts[2],openvdb::util::INVALID_IDX));
 				}
-				if (intensityAvailable) {
-					//Not used!
-					//face.intensity;
-				}
-				if (RGBCellsAvailable) {
-					//Not used!
-					//face.red;
-					//face.green;
-					//face.blue;
-				}
 			}
 		}							//if face
 
@@ -333,7 +293,7 @@ Mesh* Mesh::openMesh(const std::string& file) {
 	free(elist); //allocated by ply_open_for_reading
 	close_ply(ply);
 	mesh->updateVertexNormals();
-	std::cout<<"Mesh "<<mesh->triIndexes.size()<<" "<<mesh->quadIndexes.size()<<" "<<mesh->vertexes.size()<<" "<<mesh->vertexNormals.size()<<" "<<mesh->faces.size()<<std::endl;
+	std::cout<<"Mesh "<<mesh->faces.size()<<" "<<mesh->triIndexes.size()<<" "<<mesh->quadIndexes.size()<<" "<<mesh->vertexes.size()<<" "<<mesh->vertexNormals.size()<<" "<<mesh->faces.size()<<std::endl;
 	if (mesh->vertexes.size() > 0) {
 		mesh->updateBBox();
 		return mesh;
@@ -516,14 +476,12 @@ void Mesh::scale(float sc) {
 }
 void Mesh::mapIntoBoundingBox(float voxelSize) {
 	Vec3s minPt = bbox.min();
-	Vec3s maxPt = bbox.max();
 	for (Vec3s& pt : vertexes) {
 		pt = (pt - minPt) / voxelSize;
 	}
 }
 void Mesh::mapOutOfBoundingBox(float voxelSize) {
 	Vec3s minPt = bbox.min();
-	Vec3s maxPt = bbox.max();
 	for (Vec3s& pt : vertexes) {
 		pt = pt * voxelSize + minPt;
 	}
@@ -600,11 +558,10 @@ void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showPar
 		if (lines.size() > 0) {
 			glColor3f(0.5f, 0.5f, 0.5f);
 			glEnable(GL_LINE_SMOOTH);
-			glLineWidth(1.0f);
-			glBindBuffer(GL_ARRAY_BUFFER, mParticleBuffer);
+			glLineWidth(2.0f);
+			glBindBuffer(GL_ARRAY_BUFFER, mLineBuffer);
 			glVertexPointer(3, GL_FLOAT, 0, 0);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mLineBuffer);
-			glDrawElements(GL_LINES, lines.size(), GL_UNSIGNED_INT, NULL);
+			glDrawArrays(GL_LINES, 0,lines.size());
 		}
 
 		glEnable(GL_LIGHTING);
@@ -669,11 +626,11 @@ void Mesh::updateGL() {
 			glDeleteBuffers(1, &mLineBuffer);
 		// gen new buffer
 		glGenBuffers(1, &mLineBuffer);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mLineBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, mLineBuffer);
 		if (glIsBuffer(mLineBuffer) == GL_FALSE)
 			throw "Error: Unable to create index buffer";
 		// upload data
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * lines.size(),
+		glBufferData(GL_ARRAY_BUFFER,  sizeof(GLfloat) * 3  * lines.size(),
 				&lines[0], GL_STATIC_DRAW); // upload data
 		if (GL_NO_ERROR != glGetError())
 			throw "Error: Unable to upload index buffer data";

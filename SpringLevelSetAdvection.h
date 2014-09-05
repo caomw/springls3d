@@ -3,73 +3,6 @@
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/LevelSetAdvect.h>
 namespace imagesci {
-template<typename FieldT, typename InterruptT = openvdb::util::NullInterrupter>
-class AdvectVertex {
-private:
-	double mStartTime, mEndTime;
-public:
-	AdvectVertex(SpringLevelSet& grid, const FieldT& field, double t0,
-			double t1, InterruptT* interrupt = NULL) :
-			mGrid(grid), mField(field), mStartTime(t0), mEndTime(t1), mInterrupt(
-					interrupt) {
-	}
-	const double EPS = 1E-30f;
-	void process(bool threaded = true) {
-		typedef AdvectVertexOperation<FieldT> OpT;
-		double dt = 0.0;
-		//Assume isotropic voxels!
-		Vec3d vsz = mGrid.transformPtr()->voxelSize();
-		double scale = std::max(std::max(vsz[0], vsz[1]), vsz[2]);
-
-		for (double time = mStartTime; time < mEndTime; time += dt * scale) {
-			std::cout << "Time " << time << std::endl;
-			AdvectOperator<OpT, FieldT, InterruptT> op1(mGrid, mField,
-					mInterrupt, time);
-			op1.process(threaded);
-			MaxOperator<OpT, InterruptT> op2(mGrid, mInterrupt);
-			double maxV = std::max(EPS, std::sqrt(op2.process(threaded)));
-			dt = std::max(0.0,
-					std::min(SpringLevelSet::MAX_VEXT / maxV,
-							(mEndTime - time) / scale));
-			if (dt < EPS)
-				break;
-			ApplyOperator<OpT, InterruptT> op3(mGrid, mInterrupt, dt);
-			//op3.process(threaded);
-			mGrid.updateUnsignedLevelSet();
-			mGrid.evolve();
-			break;
-		}
-		WriteToRawFile(mGrid.signedLevelSet, "/home/blake/tmp/signedLevelSet");
-		WriteToRawFile(mGrid.unsignedLevelSet,"/home/blake/tmp/unsignedLevelSet");
-		WriteToRawFile(mGrid.gradient, "/home/blake/tmp/gradient");
-
-	}
-	SpringLevelSet& mGrid;
-	const FieldT& mField;
-	InterruptT* mInterrupt;
-};
-template<typename FieldT, typename InterruptT = openvdb::util::NullInterrupter>
-class AdvectParticle {
-public:
-	AdvectParticle(SpringLevelSet& grid, const FieldT& field,
-			InterruptT* interrupt = NULL) :
-			mGrid(grid), mField(field), mInterrupt(interrupt) {
-	}
-	void process(bool threaded = true) {
-		typedef AdvectParticleOperation<FieldT> OpT;
-		AdvectOperator<OpT, FieldT, InterruptT> op1(mGrid, mField, mInterrupt);
-		op1.process(threaded);
-		MaxOperator<OpT, InterruptT> op2(mGrid, mInterrupt);
-		double maxV = op2.process(threaded);
-		double dt = SpringLevelSet::MAX_VEXT /maxV;
-		ApplyOperator<OpT, InterruptT> op3(mGrid, mInterrupt, dt);
-		op3.process(threaded);
-	}
-	SpringLevelSet& mGrid;
-	const FieldT& mField;
-	InterruptT* mInterrupt;
-};
-
 template<typename FieldT = openvdb::tools::EnrightField<float>,
 		typename InterruptT = openvdb::util::NullInterrupter>
 class SpringLevelSetAdvection {
@@ -117,7 +50,10 @@ public:
 	    }
 	}
 	template<typename MapT> size_t advect1(double  mStartTime, double mEndTime) {
-	    typedef AdvectVertexOperation<FieldT> OpT;
+//	    typedef AdvectVertexOperation<FieldT> OpT;
+	    typedef AdvectParticleOperation<FieldT> OpT;
+	    typedef AdvectMeshOperation<FieldT> OpS;
+
 		double dt = 0.0;
 		Vec3d vsz = mGrid.transformPtr()->voxelSize();
 		double scale = std::max(std::max(vsz[0], vsz[1]), vsz[2]);
@@ -125,26 +61,50 @@ public:
 		double voxelDistance=0;
 		for (double time = mStartTime; time < mEndTime; time += dt * scale) {
 
-			AdvectOperator<OpT, FieldT, InterruptT> op1(mGrid, mField,
+			AdvectSpringlOperator<OpT, FieldT, InterruptT> op1(mGrid, mField,
 					mInterrupt, time);
 			op1.process();
+			AdvectMeshOperator<OpS, FieldT, InterruptT> opm1(mGrid, mField,
+					mInterrupt, time);
+			opm1.process();
 			MaxOperator<OpT, InterruptT> op2(mGrid, mInterrupt);
 			double maxV = std::max(EPS, std::sqrt(op2.process()));
 			dt = std::max(0.0,
 					std::min(SpringLevelSet::MAX_VEXT / maxV,
 							(mEndTime - time) / scale));
-			voxelDistance+=dt*maxV;
+			voxelDistance=voxelDistance+dt*maxV;
 			std::cout << "Time " << time <<" voxel distance "<<voxelDistance<< std::endl;
-			if (dt < EPS)
-				break;
-			ApplyOperator<OpT, InterruptT> op3(mGrid, mInterrupt, dt);
+			if (dt < EPS)break;
+			ApplySpringlOperator<OpT, InterruptT> op3(mGrid, mInterrupt, dt);
 			op3.process();
-			mGrid.updateUnsignedLevelSet();
-			mGrid.updateGradient();
-			TrackerT mTracker(*mGrid.signedLevelSet,mInterrupt);
-			SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,1.0f,2);
-			evolve.process();
+
+			ApplyMeshOperator<OpS, InterruptT> opm3(mGrid, mInterrupt, dt);
+			opm3.process();
+
 		}
+
+
+		mGrid.updateUnsignedLevelSet();
+		mGrid.updateNearestNeighbors();
+		mGrid.relax(5);
+		mGrid.updateSignedLevelSet();
+		mGrid.updateUnsignedLevelSet();
+		mGrid.updateGradient();
+		TrackerT mTracker(*mGrid.signedLevelSet,mInterrupt);
+		SpringLevelSetEvolve<MapT> evolve(*this,mTracker,mEndTime,1.0,4);
+		evolve.process();
+		mGrid.fill(true);
+		mGrid.clean();
+
+		//mGrid.updateUnsignedLevelSet();
+		//mGrid.updateGradient();
+
+		//WriteToRawFile(mGrid.signedLevelSet, "/home/blake/tmp/signedLevelSet");
+		//WriteToRawFile(mGrid.unsignedLevelSet,"/home/blake/tmp/unsignedLevelSet2");
+		//WriteToRawFile(mGrid.springlIndexGrid,"/home/blake/tmp/springlIndexGrid2");
+
+		//WriteToRawFile(mGrid.gradient, "/home/blake/tmp/gradient");
+
 	    return 0;
 	}
 	template<typename MapT> class SpringLevelSetEvolve {

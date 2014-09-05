@@ -68,6 +68,7 @@ class SpringlsViewer {
 protected:
 	static const float dt;
 	float simTime;
+	unsigned long simulationIteration;
 	bool meshDirty;
 	bool simulationRunning;
 	std::mutex meshLock;

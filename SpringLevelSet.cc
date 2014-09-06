@@ -413,27 +413,13 @@ void SpringLevelSet::create(FloatGrid& grid) {
 	relax(10);
 }
 void SpringLevelSet::updateIsoSurface() {
-	/*
-	int L=5;
-	for(int l=0;l<L;l++){
-		openvdb::tools::VolumeToMesh mesher(0.0f,l/(float)(L-1));
-		mesher(*signedLevelSet);
-		isoSurface.create(mesher, signedLevelSet);
-		std::ostringstream ostr;
-		ostr << "/home/blake/tmp/buddha_" <<l<< ".ply";
-		isoSurface.save(ostr.str());
-	}
-	*/
-	openvdb::tools::VolumeToMesh mesher(0.0f);
+
 	mesher(*signedLevelSet);
 	isoSurface.create(mesher, signedLevelSet);
 
 }
 int SpringLevelSet::fill() {
 
-	openvdb::tools::VolumeToMesh mesher(0.0f);
-	mesher(*signedLevelSet);
-	isoSurface.create(mesher, signedLevelSet);
 	openvdb::tree::ValueAccessor<FloatGrid::TreeType> acc(
 			signedLevelSet->tree());
 	openvdb::math::GenericMap map(signedLevelSet->transform());

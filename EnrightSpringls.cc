@@ -320,7 +320,11 @@ bool EnrightSpringls::init(int width,int height){
 }
 bool EnrightSpringls::update(){
 	std::ostringstream ostr1,ostr2,ostr3;
-	/*
+	if(meshDirty){
+		std::this_thread::sleep_for(std::chrono::milliseconds());
+		return true;
+	}
+
 	ostr1 << "/home/blake/tmp/springls" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
 	springlGrid.constellation.save(ostr1.str());
 	ostr2 << "/home/blake/tmp/isosurf" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
@@ -331,7 +335,7 @@ bool EnrightSpringls::update(){
     openvdb::GridPtrVec grids;
     grids.push_back(springlGrid.signedLevelSet);
     file.write(grids);
-*/
+
 	advect->advect(simTime,simTime+dt);
 
 

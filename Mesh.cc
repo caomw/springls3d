@@ -70,6 +70,8 @@ Mesh::Mesh() :
 		mColorBuffer(0),
 		mTriIndexBuffer(0),
 		mQuadIndexBuffer(0),
+		quadIndexCount(0),
+		triangleIndexCount(0),
 		mLineBuffer(0),mParticleBuffer(0),mParticleNormalBuffer(0),
 		quadCount(0),triangleCount(0) {
 }
@@ -511,16 +513,16 @@ void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showPar
 		glBindBuffer(GL_ARRAY_BUFFER, mNormalBuffer);
 		glNormalPointer(GL_FLOAT, 0, 0);
 
-		if (quadIndexes.size() > 0) {
+		if (quadIndexCount > 0) {
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
-			glDrawElements(GL_QUADS, quadCount, GL_UNSIGNED_INT, NULL);
+			glDrawElements(GL_QUADS, quadIndexCount, GL_UNSIGNED_INT, NULL);
 		} else if(quadCount>0){
 			glDrawArrays(GL_QUADS, 0, quadCount);
 		}
 
-		if (triIndexes.size() > 0) {
+		if (triangleIndexCount > 0) {
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mTriIndexBuffer);
-			glDrawElements(GL_TRIANGLES, triangleCount, GL_UNSIGNED_INT, NULL);
+			glDrawElements(GL_TRIANGLES, triangleIndexCount, GL_UNSIGNED_INT, NULL);
 			//std::cout<<"DRAW TRIANGLE "<<triangleCount<<" "<<mTriIndexBuffer<<" "<<triIndexes.size()<<std::endl;
 		} else if(triangleCount>0){
 			glDrawArrays(GL_TRIANGLES, 0, triangleCount);
@@ -533,15 +535,15 @@ void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showPar
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		glColor3f(0.3f, 0.3f, 0.3f);
 		if(wireframe){
-			if (quadIndexes.size() > 0) {
+			if (quadIndexCount > 0) {
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
-				glDrawElements(GL_QUADS, quadCount, GL_UNSIGNED_INT, NULL);
+				glDrawElements(GL_QUADS, quadIndexCount, GL_UNSIGNED_INT, NULL);
 			} else if(quadCount>0){
 				glDrawArrays(GL_QUADS, 0, quadCount);
 			}
-			if (triIndexes.size() > 0) {
+			if (triangleIndexCount > 0) {
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mTriIndexBuffer);
-				glDrawElements(GL_TRIANGLES, triangleCount, GL_UNSIGNED_INT, NULL);
+				glDrawElements(GL_TRIANGLES, triangleIndexCount, GL_UNSIGNED_INT, NULL);
 			} else if(triangleCount>0){
 				glDrawArrays(GL_TRIANGLES, 0, triangleCount);
 			}
@@ -577,6 +579,8 @@ void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showPar
 void Mesh::updateGL() {
 	quadCount=0;
 	triangleCount=0;
+	triangleIndexCount=0;
+	quadIndexCount=0;
 	if (vertexes.size() > 0) {
 		if (glIsBuffer(mVertexBuffer) == GL_TRUE)
 			glDeleteBuffers(1, &mVertexBuffer);
@@ -657,7 +661,7 @@ void Mesh::updateGL() {
 		if (GL_NO_ERROR != glGetError())
 			throw "Error: Unable to upload index buffer data";
 
-		triangleCount = triIndexes.size();
+		triangleIndexCount = triIndexes.size();
 		// release buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
@@ -678,7 +682,7 @@ void Mesh::updateGL() {
 		if (GL_NO_ERROR != glGetError())
 			throw "Error: Unable to upload index buffer data";
 
-		quadCount = quadIndexes.size();
+		quadIndexCount = quadIndexes.size();
 		// release buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}

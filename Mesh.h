@@ -32,6 +32,8 @@ class Mesh{
 		GLuint mLineBuffer;
 		GLuint triangleCount;
 		GLuint quadCount;
+		GLuint triangleIndexCount;
+		GLuint quadIndexCount;
 		std::vector<openvdb::Vec3s> lines;
 		std::vector<openvdb::Vec3s> particles;
 		std::vector<openvdb::Vec3s> particleNormals;

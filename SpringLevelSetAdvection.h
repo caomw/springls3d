@@ -86,30 +86,15 @@ public:
 		mGrid.updateNearestNeighbors();
 		mGrid.relax(5);
 		mGrid.updateSignedLevelSet();
+		mGrid.clean();
 		mGrid.updateUnsignedLevelSet();
 		mGrid.updateGradient();
 		TrackerT mTracker(*mGrid.signedLevelSet,mInterrupt);
 		SpringLevelSetEvolve<MapT> evolve(*this,mTracker,mEndTime,1.0,4);
 		evolve.process();
-		int added=0;
-		do {
-			added=mGrid.fill();
-			mGrid.clean();
-			if(added>0){
-				mGrid.updateUnsignedLevelSet();
-				mGrid.updateNearestNeighbors();
-				mGrid.relax(5);
-			}
-		} while(added>0);
-		//mGrid.updateUnsignedLevelSet();
-		//mGrid.updateGradient();
-
-		//WriteToRawFile(mGrid.signedLevelSet, "/home/blake/tmp/signedLevelSet");
-		//WriteToRawFile(mGrid.unsignedLevelSet,"/home/blake/tmp/unsignedLevelSet2");
-		//WriteToRawFile(mGrid.springlIndexGrid,"/home/blake/tmp/springlIndexGrid2");
-
-		//WriteToRawFile(mGrid.gradient, "/home/blake/tmp/gradient");
-
+		mGrid.updateIsoSurface();
+		int added=mGrid.fill();
+		mGrid.constellation.updateVertexNormals();
 	    return 0;
 	}
 	template<typename MapT> class SpringLevelSetEvolve {

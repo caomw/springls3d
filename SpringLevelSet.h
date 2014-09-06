@@ -68,6 +68,8 @@ public:
 };
 typedef std::vector<std::list<SpringlNeighbor>> NearestNeighborMap;
 class SpringLevelSet {
+protected:
+	openvdb::tools::VolumeToMesh mesher;
 public:
 	static const float NEAREST_NEIGHBOR_RANGE; //voxel units
 	static const int MAX_NEAREST_NEIGHBORS;
@@ -116,7 +118,7 @@ public:
 	void create(Mesh* mesh, openvdb::math::Transform::Ptr transform =
 			openvdb::math::Transform::createLinearTransform());
 	void create(FloatGrid& grid);
-	SpringLevelSet() {
+	SpringLevelSet():mesher(0.0) {
 	}
 	~SpringLevelSet() {
 	}

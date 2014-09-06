@@ -28,7 +28,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#include "SpringlsViewer.h"
+#include "EnrightSpringls.h"
 
 #include <openvdb/util/Formats.h> // for formattedInt()
 #include <stdio.h>
@@ -57,16 +57,16 @@
 #include <thread>
 
 namespace imagesci{
-SpringlsViewer* viewer=NULL;
+EnrightSpringls* viewer=NULL;
 
-const float SpringlsViewer::dt=0.005f;
+const float EnrightSpringls::dt=0.005f;
 using namespace imagesci;
 using namespace openvdb_viewer;
-SpringlsViewer* SpringlsViewer::GetInstance(){
-	if(viewer==NULL)viewer=new SpringlsViewer();
+EnrightSpringls* EnrightSpringls::GetInstance(){
+	if(viewer==NULL)viewer=new EnrightSpringls();
 	return viewer;
 }
-void UpdateView(SpringlsViewer* v){
+void UpdateView(EnrightSpringls* v){
 	while(v->update()){
 		std::this_thread::yield();
 		std::this_thread::sleep_for(std::chrono::milliseconds(30));
@@ -118,11 +118,11 @@ windowRefreshCB()
 using namespace openvdb;
 using namespace openvdb::tools;
 
-void SpringlsViewer::windowRefreshCallback(){
+void EnrightSpringls::windowRefreshCallback(){
 	setNeedsDisplay();
 }
 
-SpringlsViewer::SpringlsViewer()
+EnrightSpringls::EnrightSpringls()
     : mCamera(new openvdb_viewer::Camera)
     , mClipBox(new openvdb_viewer::ClipBox)
     , mWheelPos(0)
@@ -136,7 +136,7 @@ SpringlsViewer::SpringlsViewer()
 {
 	renderBBox=BBoxd(Vec3s(-50,-50,-50),Vec3s(50,50,50));
 }
-void SpringlsViewer::start(){
+void EnrightSpringls::start(){
 	simTime=0.0f;
 	simulationIteration=0;
 	advect=boost::shared_ptr<AdvectT>(new AdvectT(springlGrid,field));
@@ -145,65 +145,78 @@ void SpringlsViewer::start(){
 	simThread=std::thread(UpdateView,this);
 
 }
-SpringlsViewer::~SpringlsViewer(){
+EnrightSpringls::~EnrightSpringls(){
 	stop();
 }
-void SpringlsViewer::stop(){
+void EnrightSpringls::stop(){
 	simulationRunning=false;
 	if(simThread.joinable()){
 		simThread.join();
 	}
 }
-bool SpringlsViewer::openMesh(const std::string& fileName){
+bool EnrightSpringls::openMesh(const std::string& fileName){
 	Mesh* mesh=Mesh::openMesh(fileName);
 	std::cout<<"Opened mesh "<<mesh->vertexes.size()<<" "<<mesh->faces.size()<<" "<<mesh->quadIndexes.size()<<" "<<mesh->triIndexes.size()<<std::endl;
 	if(mesh==NULL)return false;
-	originalMesh=std::unique_ptr<Mesh>(mesh);
+	boost::shared_ptr<imagesci::Mesh> originalMesh=std::unique_ptr<Mesh>(mesh);
 	originalMesh->mapIntoBoundingBox(originalMesh->EstimateVoxelSize());
     openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     springlGrid.create(mesh);
     mClipBox->set(*(springlGrid.signedLevelSet));
-
-    //springlGrid.isoSurface->save("/home/blake/tmp/isosurface.ply");
-    //springlGrid.constellation->storage.save("/home/blake/tmp/constellation.ply");
-
-    //imagesci::WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/tmp/signedLevelSet");
-   // imagesci::WriteToRawFile(springlGrid.springlIndexGrid,"/home/blake/tmp/springlIndex");
-	//springlGrid.updateUnsignedLevelSet();
-	//imagesci::WriteToRawFile(springlGrid.unsignedLevelSet,"/home/blake/tmp/unsignedLevelSet");
-	//springlGrid.updateGradient();
-	//imagesci::WriteToRawFile(springlGrid.gradient,"/home/blake/tmp/gradient");
-
 	BBoxd bbox=mClipBox->GetBBox();
 	trans=springlGrid.signedLevelSet->transformPtr();
     Vec3d extents=bbox.extents();
 	double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
-
 	double scale=1.0/max_extent;
 	const float radius = 0.15f;
     const openvdb::Vec3f center(0.35f,0.35f,0.35f);
-
 	Vec3s t=-0.5f*(bbox.min()+bbox.max());
 	trans=springlGrid.transformPtr();
 	trans->postTranslate(t);
 	trans->postScale(scale*2*radius);
 	trans->postTranslate(center);
-	//bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
-	//mClipBox->setBBox(bbox);
 	meshDirty=true;
 	setNeedsDisplay();
     return true;
 }
-bool SpringlsViewer::openGrid(const std::string& fileName){
-	Mesh* mesh=Mesh::openGrid(fileName);
-	if(mesh==NULL)return false;
-	originalMesh=std::unique_ptr<Mesh>(mesh);
-
-    mClipBox->set(*springlGrid.signedLevelSet);
-
+bool EnrightSpringls::openGrid(FloatGrid& signedLevelSet){
+    openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
+    springlGrid.create(signedLevelSet);
+    mClipBox->set(*(springlGrid.signedLevelSet));
+	BBoxd bbox=mClipBox->GetBBox();
+	meshDirty=true;
+	setNeedsDisplay();
 	return true;
 }
-bool SpringlsViewer::init(int width,int height){
+bool EnrightSpringls::openGrid(const std::string& fileName){
+	openvdb::io::File file(fileName);
+	file.open();
+	openvdb::GridPtrVecPtr grids = file.getGrids();
+	openvdb::GridPtrVec allGrids;
+	allGrids.insert(allGrids.end(), grids->begin(), grids->end());
+	GridBase::Ptr ptr = allGrids[0];
+	Mesh* mesh = new Mesh();
+	FloatGrid::Ptr signedLevelSet=boost::static_pointer_cast<FloatGrid>(ptr);
+    openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
+    springlGrid.create(*signedLevelSet);
+    mClipBox->set(*(springlGrid.signedLevelSet));
+	BBoxd bbox=mClipBox->GetBBox();
+	trans=springlGrid.signedLevelSet->transformPtr();
+    Vec3d extents=bbox.extents();
+	double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
+	double scale=1.0/max_extent;
+	const float radius = 0.15f;
+    const openvdb::Vec3f center(0.35f,0.35f,0.35f);
+	Vec3s t=-0.5f*(bbox.min()+bbox.max());
+	trans=springlGrid.transformPtr();
+	trans->postTranslate(t);
+	trans->postScale(scale*2*radius);
+	trans->postTranslate(center);
+	meshDirty=true;
+	setNeedsDisplay();
+	return true;
+}
+bool EnrightSpringls::init(int width,int height){
 
 
     if (glfwInit() != GL_TRUE) {
@@ -270,7 +283,6 @@ bool SpringlsViewer::init(int width,int height){
        if(meshDirty){
     	   meshLock.lock();
     	   try {
-				originalMesh->updateGL();
 				springlGrid.isoSurface.updateGL();
 				springlGrid.constellation.updateGL();
     	   } catch(std::exception* e){
@@ -297,12 +309,17 @@ bool SpringlsViewer::init(int width,int height){
     glfwTerminate();
     return true;
 }
-bool SpringlsViewer::update(){
-	std::ostringstream ostr,ostr2;
-	ostr << "/home/blake/tmp/springls" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
-	springlGrid.constellation.save(ostr.str());
+bool EnrightSpringls::update(){
+	std::ostringstream ostr1,ostr2,ostr3;
+	ostr1 << "/home/blake/tmp/springls" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
+	springlGrid.constellation.save(ostr1.str());
 	ostr2 << "/home/blake/tmp/isosurf" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
 	springlGrid.isoSurface.save(ostr2.str());
+	ostr3 << "/home/blake/tmp/levelset" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".vdb";
+    openvdb::io::File file(ostr3.str());
+    openvdb::GridPtrVec grids;
+    grids.push_back(springlGrid.signedLevelSet);
+    file.write(grids);
 
 	advect->advect(simTime,simTime+dt);
 
@@ -319,7 +336,7 @@ bool SpringlsViewer::update(){
 }
 
 void
-SpringlsViewer::setWindowTitle(double fps)
+EnrightSpringls::setWindowTitle(double fps)
 {
     std::ostringstream ss;
     ss  << mProgName << ": "
@@ -333,7 +350,7 @@ SpringlsViewer::setWindowTitle(double fps)
 
 
 void
-SpringlsViewer::render()
+EnrightSpringls::render()
 {
 
 
@@ -399,7 +416,7 @@ SpringlsViewer::render()
 
 
 void
-SpringlsViewer::updateCutPlanes(int wheelPos)
+EnrightSpringls::updateCutPlanes(int wheelPos)
 {
     double speed = std::abs(mWheelPos - wheelPos);
     if (mWheelPos < wheelPos) mClipBox->update(speed);
@@ -412,7 +429,7 @@ SpringlsViewer::updateCutPlanes(int wheelPos)
 
 
 void
-SpringlsViewer::keyCallback(int key, int action)
+EnrightSpringls::keyCallback(int key, int action)
 {
     OPENVDB_START_THREADSAFE_STATIC_WRITE
 
@@ -457,7 +474,7 @@ SpringlsViewer::keyCallback(int key, int action)
 
 
 void
-SpringlsViewer::mouseButtonCallback(int button, int action)
+EnrightSpringls::mouseButtonCallback(int button, int action)
 {
     mCamera->mouseButtonCallback(button, action);
     mClipBox->mouseButtonCallback(button, action);
@@ -466,7 +483,7 @@ SpringlsViewer::mouseButtonCallback(int button, int action)
 
 
 void
-SpringlsViewer::mousePosCallback(int x, int y)
+EnrightSpringls::mousePosCallback(int x, int y)
 {
     bool handled = mClipBox->mousePosCallback(x, y);
     if (!handled) mCamera->mousePosCallback(x, y);
@@ -475,7 +492,7 @@ SpringlsViewer::mousePosCallback(int x, int y)
 
 
 void
-SpringlsViewer::mouseWheelCallback(int pos)
+EnrightSpringls::mouseWheelCallback(int pos)
 {
     if (mClipBox->isActive()) {
         updateCutPlanes(pos);
@@ -489,7 +506,7 @@ SpringlsViewer::mouseWheelCallback(int pos)
 
 
 void
-SpringlsViewer::windowSizeCallback(int, int)
+EnrightSpringls::windowSizeCallback(int, int)
 {
     setNeedsDisplay();
 }
@@ -498,7 +515,7 @@ SpringlsViewer::windowSizeCallback(int, int)
 
 
 bool
-SpringlsViewer::needsDisplay()
+EnrightSpringls::needsDisplay()
 {
     if (mUpdates < 2) {
         mUpdates += 1;
@@ -509,7 +526,7 @@ SpringlsViewer::needsDisplay()
 
 
 void
-SpringlsViewer::setNeedsDisplay()
+EnrightSpringls::setNeedsDisplay()
 {
     mUpdates = 0;
 }

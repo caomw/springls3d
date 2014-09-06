@@ -28,7 +28,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#include "SpringlsViewer.h"
+#include "EnrightSpringls.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -69,24 +69,38 @@ int
 main(int argc, char *argv[])
 {
     int status = EXIT_SUCCESS;
-    std::string fileName(argv[1]);
+
     try {
     	if(argc>1){
+    		std::string fileName(argv[1]);
 			openvdb::initialize();
 			tbb::mutex::scoped_lock(sLock);
 			OPENVDB_START_THREADSAFE_STATIC_WRITE
-			 imagesci::SpringlsViewer* viewer = imagesci::SpringlsViewer::GetInstance();
+			 imagesci::EnrightSpringls* viewer = imagesci::EnrightSpringls::GetInstance();
 			 OPENVDB_FINISH_THREADSAFE_STATIC_WRITE
 				std::string ext=boost::filesystem::extension(boost::filesystem::path(fileName));
 				if(ext==std::string(".ply")){
 					viewer->openMesh(fileName);
 				} else if(ext==std::string(".vdb")){
 					viewer->openGrid(fileName);
+				} else {
+
 				}
 				viewer->start();
 				viewer->init(1600,800);
     	} else {
-    		std::cout<<"Usage: "<<argv[0]<<" [*.ply|*.vdb]"<<std::endl;
+			openvdb::initialize();
+			tbb::mutex::scoped_lock(sLock);
+			OPENVDB_START_THREADSAFE_STATIC_WRITE
+			 imagesci::EnrightSpringls* viewer = imagesci::EnrightSpringls::GetInstance();
+	        const float radius = 0.15f;
+	        const openvdb::Vec3f center(0.35f,0.35f,0.35f);
+	        const int dim = 128;
+	        float voxelSize =1/(float)(dim-1);
+	        FloatGrid::Ptr signedLevelSet=openvdb::tools::createLevelSetSphere<FloatGrid>(radius, center, voxelSize);
+			viewer->openGrid(*signedLevelSet);
+			viewer->start();
+			viewer->init(1600,800);
     	}
     } catch (std::exception& e) {
     	std::cout<<e.what()<<std::endl;

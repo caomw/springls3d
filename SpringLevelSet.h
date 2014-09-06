@@ -99,8 +99,8 @@ public:
 			int8_t e);
 	void draw(bool colorEnabled = false, bool wireframe = true, bool particles =
 			false, bool particleNormals = false);
-	void clean();
-	void fill(bool updateIsoSurface = false);
+	int clean();
+	int fill(bool updateIsoSurface);
 	void evolve();
 	inline openvdb::math::Transform::Ptr transformPtr() {
 		return transform;
@@ -108,13 +108,14 @@ public:
 	void updateLines();
 	void updateGradient();
 	void updateIsoSurface();
-	void updateUnsignedLevelSet(bool upscale=false);
+	void updateUnsignedLevelSet();
 	void updateSignedLevelSet();
 
 	void relax(int iters = 10);
 	void updateNearestNeighbors(bool threaded = true);
 	void create(Mesh* mesh, openvdb::math::Transform::Ptr transform =
-			openvdb::math::Transform::createLinearTransform(),bool upscale=false);
+			openvdb::math::Transform::createLinearTransform());
+	void create(FloatGrid& grid);
 	SpringLevelSet() {
 	}
 	~SpringLevelSet() {

@@ -64,7 +64,7 @@ typedef SpringLevelSetAdvection<FieldT> AdvectT;
 
 //template<typename Description> class SpringLevelSet;
 
-class SpringlsViewer {
+class EnrightSpringls {
 protected:
 	static const float dt;
 	float simTime;
@@ -74,7 +74,6 @@ protected:
 	std::mutex meshLock;
 	int mUpdates;
 	openvdb::BBoxd renderBBox;
-	boost::shared_ptr<imagesci::Mesh> originalMesh;
 	SpringLevelSet springlGrid;
 	FieldT field;
 	boost::shared_ptr<AdvectT> advect;
@@ -84,14 +83,14 @@ public:
 	typedef std::unique_ptr<openvdb_viewer::Camera> CameraPtr;
 	typedef std::unique_ptr<openvdb_viewer::ClipBox> ClipBoxPtr;
 
-	static SpringlsViewer* GetInstance();
-	SpringlsViewer();
-	~SpringlsViewer();
+	static EnrightSpringls* GetInstance();
+	EnrightSpringls();
+	~EnrightSpringls();
 	bool update();
 
 	bool openMesh(const std::string& fileName);
 	bool openGrid(const std::string& fileName);
-
+	bool openGrid(FloatGrid& fileName);
 	bool needsDisplay();
 	void setNeedsDisplay();
 	void setWindowTitle(double fps = 0.0);

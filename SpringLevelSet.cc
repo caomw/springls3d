@@ -354,25 +354,7 @@ void SpringLevelSet::evolve() {
 	std::cout << "Evolution steps " << steps << std::endl;
 
 }
-void SpringLevelSet::updateUnsignedLevelSet(bool upscale) {
-	if (upscale) {
-		openvdb::math::Transform::Ptr trans =
-				openvdb::math::Transform::createLinearTransform(0.5f);
-		using namespace openvdb::tools;
-		using namespace openvdb;
-		MeshToVolume<FloatGrid> mtol(trans, GENERATE_PRIM_INDEX_GRID);
-
-		std::vector<Vec3s> vertCopy = constellation.vertexes;
-		for (Vec3s& pt : vertCopy) {
-			pt *= 2.0f;
-		}
-		mtol.convertToUnsignedDistanceField(vertCopy, constellation.faces,
-				float(LEVEL_SET_HALF_WIDTH) * 2);
-		unsignedLevelSet = mtol.distGridPtr();
-		unsignedLevelSet->setBackground(float(LEVEL_SET_HALF_WIDTH));
-
-		springlIndexGrid = mtol.indexGridPtr();
-	} else {
+void SpringLevelSet::updateUnsignedLevelSet() {
 		openvdb::math::Transform::Ptr trans =
 				openvdb::math::Transform::createLinearTransform(1.0f);
 		using namespace openvdb::tools;
@@ -383,18 +365,16 @@ void SpringLevelSet::updateUnsignedLevelSet(bool upscale) {
 		unsignedLevelSet = mtol.distGridPtr();
 		unsignedLevelSet->setBackground(float(LEVEL_SET_HALF_WIDTH));
 		springlIndexGrid = mtol.indexGridPtr();
-	}
 }
 void SpringLevelSet::updateSignedLevelSet() {
 	openvdb::math::Transform::Ptr trans =
 			openvdb::math::Transform::createLinearTransform(1.0);
 	using namespace openvdb::tools;
 	using namespace openvdb;
-	MeshToVolume<FloatGrid> mtol(trans, GENERATE_PRIM_INDEX_GRID);
+	MeshToVolume<FloatGrid> mtol(trans);
 	mtol.convertToLevelSet(isoSurface.vertexes, isoSurface.faces,
 			float(LEVEL_SET_HALF_WIDTH));
 	signedLevelSet = mtol.distGridPtr();
-	std::cout<<"done"<<std::endl;
 }
 
 void SpringLevelSet::updateGradient() {
@@ -407,16 +387,26 @@ std::list<SpringlNeighbor>& SpringLevelSet::GetNearestNeighbors(
 	return nearestNeighbors[constellation.springls[id].offset + e];
 }
 void SpringLevelSet::create(Mesh* mesh,
-		openvdb::math::Transform::Ptr _transform, bool upscale) {
+		openvdb::math::Transform::Ptr _transform) {
 	this->transform = _transform;
 	openvdb::math::Transform::Ptr trans =
 			openvdb::math::Transform::createLinearTransform(1.0);
-	openvdb::tools::MeshToVolume<openvdb::FloatGrid> mtol(trans,openvdb::tools::GENERATE_PRIM_INDEX_GRID);
+	openvdb::tools::MeshToVolume<openvdb::FloatGrid> mtol(trans);
 	mtol.convertToLevelSet(mesh->vertexes, mesh->faces);
 	signedLevelSet = mtol.distGridPtr();
-	Mesh m;
-	m.create(signedLevelSet);
-	constellation.create(&m);
+	isoSurface.create(signedLevelSet);
+	constellation.create(&isoSurface);
+	updateIsoSurface();
+	updateUnsignedLevelSet();
+	updateNearestNeighbors();
+	relax(10);
+}
+void SpringLevelSet::create(FloatGrid& grid) {
+	this->transform = grid.transformPtr();
+	signedLevelSet = boost::static_pointer_cast<FloatGrid>(grid.copyGrid(CopyPolicy::CP_COPY));
+	signedLevelSet->transform()=*openvdb::math::Transform::createLinearTransform(1.0);
+	isoSurface.create(signedLevelSet);
+	constellation.create(&isoSurface);
 	updateIsoSurface();
 	updateUnsignedLevelSet();
 	updateNearestNeighbors();
@@ -439,7 +429,7 @@ void SpringLevelSet::updateIsoSurface() {
 	isoSurface.create(mesher, signedLevelSet);
 
 }
-void SpringLevelSet::fill(bool updateIsoSurface) {
+int SpringLevelSet::fill(bool updateIsoSurface) {
 
 	openvdb::tools::VolumeToMesh mesher(0.0f);
 	mesher(*signedLevelSet);
@@ -593,6 +583,7 @@ void SpringLevelSet::fill(bool updateIsoSurface) {
 		}
 	}
 	std::cout << "Added " << addList.size() << std::endl;
+	return addList.size();
 }
 void Constellation::create(Mesh* mesh) {
 	size_t faceCount = mesh->faces.size();
@@ -654,7 +645,7 @@ void Constellation::create(Mesh* mesh) {
 	updateBBox();
 }
 
-void SpringLevelSet::clean() {
+int SpringLevelSet::clean() {
 	openvdb::math::BoxStencil<openvdb::FloatGrid> stencil(*signedLevelSet);
 	Vec3s pt, pt1, pt2, pt3;
 	float maxAngle, minAngle, area;
@@ -703,7 +694,7 @@ void SpringLevelSet::clean() {
 		index++;
 	}
 	if (newSpringlCount == N)
-		return;
+		return 0;
 	std::cout << "Removed " << N - newSpringlCount << std::endl;
 	Index32 springlOffset = 0;
 	Index32 vertexOffset = 0;
@@ -771,12 +762,7 @@ void SpringLevelSet::clean() {
 			constellation.vertexNormals.end());
 	constellation.vertexes.erase(constellation.vertexes.begin() + vertexOffset,
 			constellation.vertexes.end());
-	/*
-	 constellation.vertexes.shrink_to_fit();
-	 constellation.normals.shrink_to_fit();
-	 constellation.particles.shrink_to_fit();
-	 constellation.particleNormals.shrink_to_fit();
-	 */
+	return (N - newSpringlCount);
 }
 
 }

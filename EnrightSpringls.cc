@@ -69,7 +69,7 @@ EnrightSpringls* EnrightSpringls::GetInstance(){
 void UpdateView(EnrightSpringls* v){
 	while(v->update()){
 		std::this_thread::yield();
-		std::this_thread::sleep_for(std::chrono::milliseconds(30));
+		//std::this_thread::sleep_for(std::chrono::milliseconds());
 	}
 }
 
@@ -143,7 +143,16 @@ void EnrightSpringls::start(){
 	advect->setTemporalScheme(SpringlTemporalIntegrationScheme::TVD_RK1);
 	simulationRunning=true;
 	simThread=std::thread(UpdateView,this);
-
+}
+void EnrightSpringls::resume(){
+	if(advect.get()==nullptr){
+		simTime=0.0f;
+		simulationIteration=0;
+		advect=boost::shared_ptr<AdvectT>(new AdvectT(springlGrid,field));
+		advect->setTemporalScheme(SpringlTemporalIntegrationScheme::TVD_RK1);
+	}
+	simulationRunning=true;
+	simThread=std::thread(UpdateView,this);
 }
 EnrightSpringls::~EnrightSpringls(){
 	stop();
@@ -331,7 +340,7 @@ bool EnrightSpringls::update(){
 
 	setNeedsDisplay();
 	simulationIteration++;
-	std::cout<<"Simulation Time "<<simTime<<std::endl;
+	std::cout<<"Simulation Time "<<simTime<<" "<<simulationRunning<<std::endl;
 	return (simTime<=3.0f&&simulationRunning);
 }
 
@@ -432,26 +441,19 @@ void
 EnrightSpringls::keyCallback(int key, int action)
 {
     OPENVDB_START_THREADSAFE_STATIC_WRITE
-
     mCamera->keyCallback(key, action);
     const bool keyPress = glfwGetKey(key) == GLFW_PRESS;
     mShiftIsDown = glfwGetKey(GLFW_KEY_LSHIFT);
     mCtrlIsDown = glfwGetKey(GLFW_KEY_LCTRL);
-
-    if (keyPress) {
-        switch (key) {
-        case 'c': case 'C':
-            mClipBox->reset();
-            break;
-        case 'h': case 'H': // center home
-            mCamera->lookAt(openvdb::Vec3d(0.0), 10.0);
-            break;
-        case 'g': case 'G': // center geometry
-            mCamera->lookAtTarget();
-            break;
-        }
+    if(keyPress){
+		if(key==' '){
+			if(simulationRunning){
+				stop();
+			} else {
+				resume();
+			}
+		}
     }
-
     switch (key) {
     case 'x': case 'X':
         mClipBox->activateXPlanes() = keyPress;

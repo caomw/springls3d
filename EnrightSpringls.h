@@ -95,6 +95,7 @@ public:
 	void setNeedsDisplay();
 	void setWindowTitle(double fps = 0.0);
 	void render();
+	void resume();
 	void updateCutPlanes(int wheelPos);
 	bool init(int width, int height);
 	void keyCallback(int key, int action);

@@ -72,22 +72,26 @@ main(int argc, char *argv[])
 
     try {
     	if(argc>1){
-    		std::string fileName(argv[1]);
-			openvdb::initialize();
-			tbb::mutex::scoped_lock(sLock);
-			OPENVDB_START_THREADSAFE_STATIC_WRITE
-			 imagesci::EnrightSpringls* viewer = imagesci::EnrightSpringls::GetInstance();
-			 OPENVDB_FINISH_THREADSAFE_STATIC_WRITE
-				std::string ext=boost::filesystem::extension(boost::filesystem::path(fileName));
-				if(ext==std::string(".ply")){
-					viewer->openMesh(fileName);
-				} else if(ext==std::string(".vdb")){
-					viewer->openGrid(fileName);
-				} else {
+    		if(std::string(argv[1])=="-render"){
 
-				}
-				viewer->start();
-				viewer->init(1600,800);
+    		} else {
+				std::string fileName(argv[1]);
+				openvdb::initialize();
+				tbb::mutex::scoped_lock(sLock);
+				OPENVDB_START_THREADSAFE_STATIC_WRITE
+				 imagesci::EnrightSpringls* viewer = imagesci::EnrightSpringls::GetInstance();
+				 OPENVDB_FINISH_THREADSAFE_STATIC_WRITE
+					std::string ext=boost::filesystem::extension(boost::filesystem::path(fileName));
+					if(ext==std::string(".ply")){
+						viewer->openMesh(fileName);
+					} else if(ext==std::string(".vdb")){
+						viewer->openGrid(fileName);
+					} else {
+
+					}
+					viewer->start();
+					viewer->init(1600,800);
+    		}
     	} else {
 			openvdb::initialize();
 			tbb::mutex::scoped_lock(sLock);
@@ -99,7 +103,7 @@ main(int argc, char *argv[])
 	        float voxelSize =1/(float)(dim-1);
 	        FloatGrid::Ptr signedLevelSet=openvdb::tools::createLevelSetSphere<FloatGrid>(radius, center, voxelSize);
 			viewer->openGrid(*signedLevelSet);
-			viewer->start();
+			//viewer->start();
 			viewer->init(1600,800);
     	}
     } catch (std::exception& e) {

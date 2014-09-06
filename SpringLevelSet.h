@@ -100,7 +100,7 @@ public:
 	void draw(bool colorEnabled = false, bool wireframe = true, bool particles =
 			false, bool particleNormals = false);
 	int clean();
-	int fill(bool updateIsoSurface);
+	int fill();
 	void evolve();
 	inline openvdb::math::Transform::Ptr transformPtr() {
 		return transform;

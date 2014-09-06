@@ -429,7 +429,7 @@ void SpringLevelSet::updateIsoSurface() {
 	isoSurface.create(mesher, signedLevelSet);
 
 }
-int SpringLevelSet::fill(bool updateIsoSurface) {
+int SpringLevelSet::fill() {
 
 	openvdb::tools::VolumeToMesh mesher(0.0f);
 	mesher(*signedLevelSet);
@@ -456,7 +456,6 @@ int SpringLevelSet::fill(bool updateIsoSurface) {
 	std::vector<openvdb::Index32> stencilCopy;
 	Index32 last;
 	const float D2 = FILL_DISTANCE * FILL_DISTANCE;
-	std::list<Index64> addList;
 	for (Index64 n = 0, N = mesher.polygonPoolListSize(); n < N; ++n) {
 		const openvdb::tools::PolygonPool& polygons = polygonPoolList[n];
 		for (Index64 i = 0, I = polygons.numQuads(); i < I; ++i) {
@@ -582,8 +581,8 @@ int SpringLevelSet::fill(bool updateIsoSurface) {
 			}
 		}
 	}
-	std::cout << "Added " << addList.size() << std::endl;
-	return addList.size();
+	std::cout << "Added " << added << std::endl;
+	return added;
 }
 void Constellation::create(Mesh* mesh) {
 	size_t faceCount = mesh->faces.size();

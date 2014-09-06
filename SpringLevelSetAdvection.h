@@ -82,8 +82,6 @@ public:
 			opm3.process();
 
 		}
-
-
 		mGrid.updateUnsignedLevelSet();
 		mGrid.updateNearestNeighbors();
 		mGrid.relax(5);
@@ -93,9 +91,16 @@ public:
 		TrackerT mTracker(*mGrid.signedLevelSet,mInterrupt);
 		SpringLevelSetEvolve<MapT> evolve(*this,mTracker,mEndTime,1.0,4);
 		evolve.process();
-		mGrid.fill(true);
-		mGrid.clean();
-
+		int added=0;
+		do {
+			added=mGrid.fill();
+			mGrid.clean();
+			if(added>0){
+				mGrid.updateUnsignedLevelSet();
+				mGrid.updateNearestNeighbors();
+				mGrid.relax(5);
+			}
+		} while(added>0);
 		//mGrid.updateUnsignedLevelSet();
 		//mGrid.updateGradient();
 

@@ -320,16 +320,18 @@ bool EnrightSpringls::init(int width,int height){
 }
 bool EnrightSpringls::update(){
 	std::ostringstream ostr1,ostr2,ostr3;
+	/*
 	ostr1 << "/home/blake/tmp/springls" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
 	springlGrid.constellation.save(ostr1.str());
 	ostr2 << "/home/blake/tmp/isosurf" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
 	springlGrid.isoSurface.save(ostr2.str());
 	ostr3 << "/home/blake/tmp/levelset" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".vdb";
+
     openvdb::io::File file(ostr3.str());
     openvdb::GridPtrVec grids;
     grids.push_back(springlGrid.signedLevelSet);
     file.write(grids);
-
+*/
 	advect->advect(simTime,simTime+dt);
 
 

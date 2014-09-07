@@ -55,8 +55,8 @@ class Mesh{
 		void updateVertexNormals();
 		void mapIntoBoundingBox(float voxelSize);
 		void mapOutOfBoundingBox(float voxelSize);
-		static Mesh* openMesh(const std::string& file);
-		static Mesh* openGrid(const std::string& file);
+		bool openMesh(const std::string& file);
+		bool openGrid(const std::string& file);
 		bool save(const std::string& file);
 		void create(openvdb::FloatGrid::Ptr grid);
 		float EstimateVoxelSize(int stride=4);

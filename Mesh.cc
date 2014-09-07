@@ -174,7 +174,7 @@ bool Mesh::save(const std::string& f) {
 	std::cout<<"Done."<<std::endl;
 	return true;
 }
-Mesh* Mesh::openGrid(const std::string& fileName) {
+bool Mesh::openGrid(const std::string& fileName) {
 	openvdb::io::File file(fileName);
 	file.open();
 	openvdb::GridPtrVecPtr grids = file.getGrids();
@@ -182,11 +182,12 @@ Mesh* Mesh::openGrid(const std::string& fileName) {
 	openvdb::GridPtrVec allGrids;
 	allGrids.insert(allGrids.end(), grids->begin(), grids->end());
 	GridBase::Ptr ptr = allGrids[0];
-	Mesh* mesh = new Mesh();
-	mesh->create(boost::static_pointer_cast<FloatGrid>(ptr));
-	return mesh;
+	if(ptr.get()!=nullptr){
+		create(boost::static_pointer_cast<FloatGrid>(ptr));
+		return true;
+	} else return false;
 }
-Mesh* Mesh::openMesh(const std::string& file) {
+bool Mesh::openMesh(const std::string& file) {
 	int i, j, k;
 	int numPts = 0, numPolys = 0;
 
@@ -199,7 +200,7 @@ Mesh* Mesh::openMesh(const std::string& file) {
 	if (!(ply = ply_open_for_reading(file.c_str(), &nelems, &elist, &fileType,
 			&version))) {
 		std::cerr << "Could not open ply file." << std::endl;
-		return NULL;
+		return false;
 	}
 
 	// Check to make sure that we can read geometry
@@ -213,15 +214,15 @@ Mesh* Mesh::openMesh(const std::string& file) {
 			|| find_property(elem, "vertex_indices", &index) == NULL) {
 		std::cerr << "Cannot read geometry" << std::endl;
 		close_ply(ply);
-		return NULL;
+		return false;
 	}
-	Mesh* mesh = new Mesh();
+	boost::shared_ptr<Mesh> mesh = boost::shared_ptr<Mesh>(new Mesh());
 
 	// Check for optional attribute data. We can handle intensity; and the
 	// triplet red, green, blue.
 	bool RGBPointsAvailable = false;
-	mesh->triIndexes.clear();
-	mesh->quadIndexes.clear();
+	this->triIndexes.clear();
+	this->quadIndexes.clear();
 
 	if ((elem = find_element(ply, "vertex")) != NULL
 			&& find_property(elem, "red", &index) != NULL
@@ -243,23 +244,23 @@ Mesh* Mesh::openMesh(const std::string& file) {
 		if (elemName && !strcmp("vertex", elemName)) {
 			// Create a list of points
 			numPts = numElems;
-			mesh->vertexes.resize(numPts,Vec3s(0.0f));
+			this->vertexes.resize(numPts,Vec3s(0.0f));
 			// Setup to read the PLY elements
 			ply_get_property(ply, elemName, &vertProps[0]);
 			ply_get_property(ply, elemName, &vertProps[1]);
 			ply_get_property(ply, elemName, &vertProps[2]);
 
 			if (RGBPointsAvailable) {
-				mesh->colors.resize(numPts);
+				this->colors.resize(numPts);
 				ply_get_property(ply, elemName, &vertProps[3]);
 				ply_get_property(ply, elemName, &vertProps[4]);
 				ply_get_property(ply, elemName, &vertProps[5]);
 			}
 			for (j = 0; j < numPts; j++) {
 				get_element_ply(ply, &vertex);
-				mesh->vertexes[j] = Vec3s(vertex.x[0], vertex.x[1], vertex.x[2]);
+				this->vertexes[j] = Vec3s(vertex.x[0], vertex.x[1], vertex.x[2]);
 				if (RGBPointsAvailable) {
-					mesh->colors[j] = Vec3s(vertex.red / 255.0f,
+					this->colors[j] = Vec3s(vertex.red / 255.0f,
 							vertex.green / 255.0f, vertex.blue / 255.0f);
 				}
 			}
@@ -277,14 +278,14 @@ Mesh* Mesh::openMesh(const std::string& file) {
 
 				if(face.nverts==4){
 					for (k = 0; k < face.nverts; k++) {
-						mesh->quadIndexes.push_back(face.verts[k]);
+						this->quadIndexes.push_back(face.verts[k]);
 					}
-					mesh->faces.push_back(openvdb::Vec4I(face.verts[0],face.verts[1],face.verts[2],face.verts[3]));
+					this->faces.push_back(openvdb::Vec4I(face.verts[0],face.verts[1],face.verts[2],face.verts[3]));
 				} else if(face.nverts==3){
 					for (k = 0; k < face.nverts; k++) {
-						mesh->triIndexes.push_back(face.verts[k]);
+						this->triIndexes.push_back(face.verts[k]);
 					}
-					mesh->faces.push_back(openvdb::Vec4I(face.verts[0],face.verts[1],face.verts[2],openvdb::util::INVALID_IDX));
+					this->faces.push_back(openvdb::Vec4I(face.verts[0],face.verts[1],face.verts[2],openvdb::util::INVALID_IDX));
 				}
 			}
 		}							//if face
@@ -294,13 +295,12 @@ Mesh* Mesh::openMesh(const std::string& file) {
 	} //for all elements of the PLY file
 	free(elist); //allocated by ply_open_for_reading
 	close_ply(ply);
-	mesh->updateVertexNormals();
-	std::cout<<"Mesh "<<mesh->faces.size()<<" "<<mesh->triIndexes.size()<<" "<<mesh->quadIndexes.size()<<" "<<mesh->vertexes.size()<<" "<<mesh->vertexNormals.size()<<" "<<mesh->faces.size()<<std::endl;
-	if (mesh->vertexes.size() > 0) {
-		mesh->updateBBox();
-		return mesh;
+	this->updateVertexNormals();
+	if (this->vertexes.size() > 0) {
+		this->updateBBox();
+		return true;
 	} else {
-		return NULL;
+		return false;
 	}
 }
 void Mesh::create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr grid){

@@ -65,50 +65,60 @@
 
 using namespace openvdb;
 tbb::mutex sLock;
-int
-main(int argc, char *argv[])
-{
-    int status = EXIT_SUCCESS;
+int main(int argc, char *argv[]) {
+	int status = EXIT_SUCCESS;
 
-    try {
-    	if(argc>1){
-    		if(std::string(argv[1])=="-render"){
-
-    		} else {
+	try {
+		if (argc > 1) {
+			if (std::string(argv[1]) == "-playback") {
+				std::string fileName(argv[2]);
+				openvdb::initialize();
+				tbb::mutex::scoped_lock(sLock);
+				OPENVDB_START_THREADSAFE_STATIC_WRITE
+				imagesci::EnrightSpringls* viewer =
+						imagesci::EnrightSpringls::GetInstance();
+				OPENVDB_FINISH_THREADSAFE_STATIC_WRITE
+				if(viewer->openRecording(fileName)){
+					viewer->init(1600, 800);
+				}
+			} else {
 				std::string fileName(argv[1]);
 				openvdb::initialize();
 				tbb::mutex::scoped_lock(sLock);
 				OPENVDB_START_THREADSAFE_STATIC_WRITE
-				 imagesci::EnrightSpringls* viewer = imagesci::EnrightSpringls::GetInstance();
-				 OPENVDB_FINISH_THREADSAFE_STATIC_WRITE
-					std::string ext=boost::filesystem::extension(boost::filesystem::path(fileName));
-					if(ext==std::string(".ply")){
-						viewer->openMesh(fileName);
-					} else if(ext==std::string(".vdb")){
-						viewer->openGrid(fileName);
-					} else {
-
-					}
-					viewer->start();
-					viewer->init(1600,800);
-    		}
-    	} else {
+				imagesci::EnrightSpringls* viewer =
+						imagesci::EnrightSpringls::GetInstance();
+				OPENVDB_FINISH_THREADSAFE_STATIC_WRITE
+				std::string ext = boost::filesystem::extension(
+						boost::filesystem::path(fileName));
+				if (ext == std::string(".ply")) {
+					viewer->openMesh(fileName);
+				} else if (ext == std::string(".vdb")) {
+					viewer->openGrid(fileName);
+				}
+				//viewer->start();
+				viewer->init(1600, 800);
+			}
+		} else {
 			openvdb::initialize();
 			tbb::mutex::scoped_lock(sLock);
 			OPENVDB_START_THREADSAFE_STATIC_WRITE
-			 imagesci::EnrightSpringls* viewer = imagesci::EnrightSpringls::GetInstance();
-	        const float radius = 0.15f;
-	        const openvdb::Vec3f center(0.35f,0.35f,0.35f);
-	        const int dim = 256;
-	        float voxelSize =1/(float)(dim-1);
-	        FloatGrid::Ptr signedLevelSet=openvdb::tools::createLevelSetSphere<FloatGrid>(radius, center, voxelSize);
+			imagesci::EnrightSpringls* viewer =
+					imagesci::EnrightSpringls::GetInstance();
+			const float radius = 0.15f;
+			const openvdb::Vec3f center(0.35f, 0.35f, 0.35f);
+			const int dim = 256;
+			float voxelSize = 1 / (float) (dim - 1);
+			FloatGrid::Ptr signedLevelSet =
+					openvdb::tools::createLevelSetSphere<FloatGrid>(radius,
+							center, voxelSize);
 			viewer->openGrid(*signedLevelSet);
 			//viewer->start();
-			viewer->init(1600,800);
-    	}
-    } catch (std::exception& e) {
-    	std::cout<<e.what()<<std::endl;
-        status = EXIT_FAILURE;
-    }
-    return status;
+			viewer->init(1600, 800);
+		}
+	} catch (std::exception& e) {
+		std::cout << e.what() << std::endl;
+		status = EXIT_FAILURE;
+	}
+	return status;
 }

@@ -8,9 +8,34 @@
 #include "ImageSciUtil.h"
 #include <openvdb/tools/Dense.h>
 #include <openvdb/tools/LevelSetUtil.h>
+#include <boost/filesystem.hpp>
 namespace imagesci {
 using namespace openvdb;
 using namespace openvdb::tools;
+using namespace boost::filesystem;
+int GetDirectoryListing(const std::string& dirName,std::vector<std::string>& files,const std::string& mask,const std::string& ext){
+
+	path someDir(dirName);
+	directory_iterator end_iter;
+	files.clear();
+	if ( exists(someDir) && is_directory(someDir))
+	{
+	  for( directory_iterator dir_iter(someDir) ; dir_iter != end_iter ; ++dir_iter)
+	  {
+	    if (is_regular_file(dir_iter->status()) )
+	    {
+	    	path file=*dir_iter;
+	    	if(extension(file)==ext){
+	    		std::string fstring=file.string();
+	    		if(mask.length()==0||(mask.length()>0&&fstring.find(mask)<fstring.length()))
+	    		files.push_back(file.string());
+	    	}
+	    }
+	  }
+	}
+	sort(files.begin(),files.end());
+	return files.size();
+}
 openvdb::math::Mat3<float> CreateAxisAngle(Vec3s a1, float angle) {
 	openvdb::math::Mat3<float> M;
 	float mag = a1.length();

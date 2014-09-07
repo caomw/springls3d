@@ -71,6 +71,7 @@ protected:
 	unsigned long simulationIteration;
 	bool meshDirty;
 	bool simulationRunning;
+	bool playbackMode;
 	std::mutex meshLock;
 	int mUpdates;
 	openvdb::BBoxd renderBBox;
@@ -78,7 +79,9 @@ protected:
 	FieldT field;
 	boost::shared_ptr<AdvectT> advect;
 	std::thread simThread;
-
+	std::vector<std::string> isoSurfaceFiles;
+	std::vector<std::string> constellationFiles;
+	std::vector<std::string> signedDistanceFiles;
 public:
 	typedef std::unique_ptr<openvdb_viewer::Camera> CameraPtr;
 	typedef std::unique_ptr<openvdb_viewer::ClipBox> ClipBoxPtr;
@@ -91,6 +94,7 @@ public:
 	bool openMesh(const std::string& fileName);
 	bool openGrid(const std::string& fileName);
 	bool openGrid(FloatGrid& fileName);
+	bool openRecording(const std::string& dirName);
 	bool needsDisplay();
 	void setNeedsDisplay();
 	void setWindowTitle(double fps = 0.0);

@@ -132,6 +132,7 @@ EnrightSpringls::EnrightSpringls()
 	, meshDirty(false)
 	, simTime(0.0f)
 	, mUpdates(1)
+	,playbackMode(false)
 	, simulationRunning(false)
 {
 	renderBBox=BBoxd(Vec3s(-50,-50,-50),Vec3s(50,50,50));
@@ -164,7 +165,8 @@ void EnrightSpringls::stop(){
 	}
 }
 bool EnrightSpringls::openMesh(const std::string& fileName){
-	Mesh* mesh=Mesh::openMesh(fileName);
+	Mesh* mesh=new Mesh();
+	mesh->openMesh(fileName);
 	std::cout<<"Opened mesh "<<mesh->vertexes.size()<<" "<<mesh->faces.size()<<" "<<mesh->quadIndexes.size()<<" "<<mesh->triIndexes.size()<<std::endl;
 	if(mesh==NULL)return false;
 	boost::shared_ptr<imagesci::Mesh> originalMesh=std::unique_ptr<Mesh>(mesh);
@@ -318,35 +320,70 @@ bool EnrightSpringls::init(int width,int height){
     glfwTerminate();
     return true;
 }
+bool EnrightSpringls::openRecording(const std::string& dirName){
+	isoSurfaceFiles.clear();
+	constellationFiles.clear();
+	signedDistanceFiles.clear();
+	int n1=GetDirectoryListing(dirName,isoSurfaceFiles,"isosurf",".ply");
+	int n2=GetDirectoryListing(dirName,constellationFiles,"springls",".ply");
+	int n3=GetDirectoryListing(dirName,signedDistanceFiles,"levelset",".vdb");
+	if(!(n1==n2&&n2==n3)||n1==0)return false;
+	playbackMode=true;
+	openGrid(signedDistanceFiles[0]);
+	Mesh c;
+	c.openMesh(constellationFiles[0]);
+	springlGrid.constellation.create(&c);
+	springlGrid.isoSurface.openMesh(isoSurfaceFiles[0]);
+	springlGrid.isoSurface.updateVertexNormals();
+	springlGrid.constellation.updateVertexNormals();
+	meshDirty=true;
+	setNeedsDisplay();
+	return true;
+}
 bool EnrightSpringls::update(){
 	std::ostringstream ostr1,ostr2,ostr3;
 	if(meshDirty){
 		std::this_thread::sleep_for(std::chrono::milliseconds());
 		return true;
 	}
+	if(playbackMode){
+		if(simulationIteration>=constellationFiles.size()){
+			simulationIteration=0;
+			simTime=0;
+		}
+		Mesh c;
+		c.openMesh(constellationFiles[simulationIteration]);
+		springlGrid.constellation.create(&c);
+		springlGrid.isoSurface.openMesh(isoSurfaceFiles[simulationIteration]);
+		springlGrid.isoSurface.updateVertexNormals();
+		springlGrid.constellation.updateVertexNormals();
 
-	ostr1 << "/home/blake/tmp/springls" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
-	springlGrid.constellation.save(ostr1.str());
-	ostr2 << "/home/blake/tmp/isosurf" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
-	springlGrid.isoSurface.save(ostr2.str());
-	ostr3 << "/home/blake/tmp/levelset" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".vdb";
+		openvdb::io::File file(signedDistanceFiles[simulationIteration]);
+		file.open();
+		openvdb::GridPtrVecPtr grids =file.getGrids();
+		openvdb::GridPtrVec allGrids;
+		allGrids.insert(allGrids.end(), grids->begin(), grids->end());
+		GridBase::Ptr ptr = allGrids[0];
+		springlGrid.signedLevelSet=boost::static_pointer_cast<FloatGrid>(ptr);
+	} else {
+		ostr1 << "/home/blake/tmp/springls" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
+		springlGrid.constellation.save(ostr1.str());
+		ostr2 << "/home/blake/tmp/isosurf" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
+		springlGrid.isoSurface.save(ostr2.str());
+		ostr3 << "/home/blake/tmp/levelset" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".vdb";
 
-    openvdb::io::File file(ostr3.str());
-    openvdb::GridPtrVec grids;
-    grids.push_back(springlGrid.signedLevelSet);
-    file.write(grids);
-
-	advect->advect(simTime,simTime+dt);
-
-
+		openvdb::io::File file(ostr3.str());
+		openvdb::GridPtrVec grids;
+		grids.push_back(springlGrid.signedLevelSet);
+		file.write(grids);
+		advect->advect(simTime,simTime+dt);
+	}
 	simTime+=dt;
 	//openvdb::BBoxd bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
 	//mClipBox->setBBox(bbox);
 	meshDirty=true;
-
 	setNeedsDisplay();
 	simulationIteration++;
-	std::cout<<"Simulation Time "<<simTime<<" "<<simulationRunning<<std::endl;
 	return (simTime<=3.0f&&simulationRunning);
 }
 

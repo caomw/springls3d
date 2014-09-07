@@ -120,6 +120,7 @@ public:
 	void create(FloatGrid& grid);
 	SpringLevelSet():mesher(0.0) {
 	}
+
 	~SpringLevelSet() {
 	}
 };

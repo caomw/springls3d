@@ -37,7 +37,7 @@
 #include <openvdb/Types.h>
 
 
-namespace openvdb_viewer {
+namespace imagesci{
 
 class Camera
 {
@@ -64,7 +64,7 @@ public:
 
     bool needsDisplay() const { return mNeedsDisplay; }
 
-private:
+protected:
     // Camera parameters
     double mFov, mNearPlane, mFarPlane;
     openvdb::Vec3d mTarget, mLookAt, mUp, mForward, mRight, mEye;

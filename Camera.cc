@@ -43,7 +43,7 @@
 #include <GL/glfw.h>
 
 
-namespace openvdb_viewer {
+namespace imagesci {
 
 const double Camera::sDeg2rad = M_PI / 180.0;
 

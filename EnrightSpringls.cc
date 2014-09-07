@@ -123,7 +123,7 @@ void EnrightSpringls::windowRefreshCallback(){
 }
 
 EnrightSpringls::EnrightSpringls()
-    : mCamera(new openvdb_viewer::Camera)
+    : mCamera(new LuxCamera())
     , mClipBox(new openvdb_viewer::ClipBox)
     , mWheelPos(0)
     , mShiftIsDown(false)
@@ -132,6 +132,7 @@ EnrightSpringls::EnrightSpringls()
 	, meshDirty(false)
 	, simTime(0.0f)
 	, mUpdates(1)
+	,simulationIteration(0)
 	,playbackMode(false)
 	, simulationRunning(false)
 {

@@ -51,7 +51,7 @@
 #include <thread>
 #include <mutex>
 #include <memory>
-#include "Camera.h"
+#include "LuxCamera.h"
 #include "ClipBox.h"
 #include "Font.h"
 #include "Mesh.h"
@@ -83,7 +83,7 @@ protected:
 	std::vector<std::string> constellationFiles;
 	std::vector<std::string> signedDistanceFiles;
 public:
-	typedef std::unique_ptr<openvdb_viewer::Camera> CameraPtr;
+	typedef std::unique_ptr<LuxCamera> CameraPtr;
 	typedef std::unique_ptr<openvdb_viewer::ClipBox> ClipBoxPtr;
 
 	static EnrightSpringls* GetInstance();

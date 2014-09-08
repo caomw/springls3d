@@ -80,8 +80,8 @@ public:
 	static const float SHARPNESS;
 	static const float SPRING_CONSTANT;
 	static const float RELAX_TIMESTEP;
-	static const float MAX_ANGLE_TOLERANCE;
-	static const float MIN_ANGLE_TOLERANCE;
+	static const float MIN_ASPECT_RATIO;
+	static const float MAX_AREA;
 	static const float MIN_AREA;
 	openvdb::math::Transform::Ptr transform;
 	openvdb::FloatGrid::Ptr signedLevelSet;

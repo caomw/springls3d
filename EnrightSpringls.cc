@@ -331,9 +331,9 @@ bool EnrightSpringls::openRecording(const std::string& dirName){
 	isoSurfaceFiles.clear();
 	constellationFiles.clear();
 	signedDistanceFiles.clear();
-	int n1=GetDirectoryListing(dirName,isoSurfaceFiles,"isosurf",".ply");
-	int n2=GetDirectoryListing(dirName,constellationFiles,"springls",".ply");
-	int n3=GetDirectoryListing(dirName,signedDistanceFiles,"levelset",".vdb");
+	int n1=GetDirectoryListing(dirName,isoSurfaceFiles,"_iso",".ply");
+	int n2=GetDirectoryListing(dirName,constellationFiles,"_sls",".ply");
+	int n3=GetDirectoryListing(dirName,signedDistanceFiles,"",".vdb");
 	if(!(n1==n2&&n2==n3)||n1==0)return false;
 	playbackMode=true;
 	openGrid(signedDistanceFiles[0]);

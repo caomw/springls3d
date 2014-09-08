@@ -20,7 +20,18 @@ using namespace openvdb::tools;
 
 typedef DiscreteField<openvdb::VectorGrid> VelocityField;
 typedef LevelSetAdvection<openvdb::FloatGrid, VelocityField> AdvectionTool;
-
+const float SpringLevelSet::NEAREST_NEIGHBOR_RANGE = 1.5f;
+const float SpringLevelSet::PARTICLE_RADIUS = 0.05f;
+const float SpringLevelSet::MAX_VEXT = 0.5f;
+const int SpringLevelSet::MAX_NEAREST_NEIGHBORS =2;
+const float SpringLevelSet::FILL_DISTANCE = 0.3f;
+const float SpringLevelSet::CLEAN_DISTANCE = 0.6f;
+const float SpringLevelSet::SHARPNESS = 5.0f;
+const float SpringLevelSet::SPRING_CONSTANT = 0.3f;
+const float SpringLevelSet::RELAX_TIMESTEP = 0.1f;
+const float SpringLevelSet::MIN_AREA = 0.05f;
+const float SpringLevelSet::MAX_AREA = 2.0*2.0f;
+const float SpringLevelSet::MIN_ASPECT_RATIO=0.3f;
 std::ostream& operator<<(std::ostream& ostr, const SpringlNeighbor& classname) {
 	ostr << "{" << classname.springlId << "|"
 			<< static_cast<int>(classname.edgeId) << ":" << std::setprecision(4)
@@ -110,18 +121,8 @@ void SpringLevelSet::draw(bool colorEnabled, bool wireframe, bool particles,
 	constellation.draw(colorEnabled, wireframe, particles, particleNormals);
 
 }
-const float SpringLevelSet::NEAREST_NEIGHBOR_RANGE = 1.5f;
-const float SpringLevelSet::PARTICLE_RADIUS = 0.05f;
-const float SpringLevelSet::MAX_VEXT = 0.5f;
-const int SpringLevelSet::MAX_NEAREST_NEIGHBORS =2;
-const float SpringLevelSet::FILL_DISTANCE = 0.3f;
-const float SpringLevelSet::CLEAN_DISTANCE = 0.6f;
-const float SpringLevelSet::SHARPNESS = 5.0f;
-const float SpringLevelSet::SPRING_CONSTANT = 0.3f;
-const float SpringLevelSet::RELAX_TIMESTEP = 0.1f;
-const float SpringLevelSet::MAX_ANGLE_TOLERANCE = M_PI;
-const float SpringLevelSet::MIN_ANGLE_TOLERANCE = 20 * M_PI / 180.0f;
-const float SpringLevelSet::MIN_AREA = 0.05f;
+
+
 openvdb::Vec3s& SpringLevelSet::GetParticle(const openvdb::Index32 id) {
 	return (constellation.springls[id].particle());
 }
@@ -633,7 +634,8 @@ void Constellation::create(Mesh* mesh) {
 int SpringLevelSet::clean() {
 	openvdb::math::BoxStencil<openvdb::FloatGrid> stencil(*signedLevelSet);
 	Vec3s pt, pt1, pt2, pt3;
-	float maxAngle, minAngle, area;
+	float area;
+	float minEdgeLength,maxEdgeLength;
 	int K;
 	std::vector<Index32> keepList;
 	Index32 newVertexCount = 0;
@@ -649,33 +651,24 @@ int SpringLevelSet::clean() {
 		K = springl.size();
 
 		if (fabs(levelSetValue) <= CLEAN_DISTANCE) {
-			maxAngle = 0;
-			minAngle = M_2_PI;
+			minEdgeLength=1E30;
+			maxEdgeLength=-1E30;
 			area = 0.0f;
 			for (int i = 0; i < K; i++) {
 				pt1 = springl[i];
 				pt2 = springl[(i + 1) % K];
-				pt3 = springl[(i + 2) % K];
-				float ang = Angle(pt1, pt2, pt3);
-				maxAngle = std::max(maxAngle, ang);
-				minAngle = std::min(minAngle, ang);
+				float len=(pt1-pt2).length();
+				minEdgeLength=std::min(minEdgeLength,len);
+				maxEdgeLength=std::max(maxEdgeLength,len);
 			}
+			float aspect=minEdgeLength/maxEdgeLength;
 			area = springl.area();
-			if (area > MIN_AREA && maxAngle <= MAX_ANGLE_TOLERANCE
-					&& minAngle >= MIN_ANGLE_TOLERANCE) {
+			if (area >=MIN_AREA&&area<MAX_AREA&&aspect>=MIN_ASPECT_RATIO) {
 				keepList.push_back(springl.id);
 				newSpringlCount++;
 				newVertexCount += K;
 			}
 		}
-		/*
-
-		 if (index % 2 == 0) {
-		 keepList.push_back(springl.id);
-		 newSpringlCount++;
-		 newVertexCount += K;
-		 }
-		 */
 		index++;
 	}
 	if (newSpringlCount == N)

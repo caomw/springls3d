@@ -82,9 +82,14 @@ public:
 			opm3.process();
 
 		}
+		const int RELAX_OUTER_ITERS=2;
+		const int RELAX_INNER_ITERS=5;
+
 		mGrid.updateUnsignedLevelSet();
-		mGrid.updateNearestNeighbors();
-		mGrid.relax(5);
+		for(int iter=0;iter<RELAX_OUTER_ITERS;iter++){
+			mGrid.updateNearestNeighbors();
+			mGrid.relax(RELAX_INNER_ITERS);
+		}
 		mGrid.updateSignedLevelSet();
 		mGrid.clean();
 		mGrid.updateUnsignedLevelSet();

@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 				} else if (ext == std::string(".vdb")) {
 					viewer->openGrid(fileName);
 				}
-				//viewer->start();
+				viewer->start();
 				viewer->init(1600, 800);
 			}
 		} else {
@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
 					openvdb::tools::createLevelSetSphere<FloatGrid>(radius,
 							center, voxelSize);
 			viewer->openGrid(*signedLevelSet);
-			//viewer->start();
+			viewer->start();
 			viewer->init(1600, 800);
 		}
 	} catch (std::exception& e) {

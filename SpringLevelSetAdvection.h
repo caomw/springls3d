@@ -104,10 +104,10 @@ public:
 		//std::cout << "Time " << time <<" voxel distance "<<voxelDistance<< std::endl;
 		//if (dt < EPS)break;
 
-		ApplySpringlOperator<OpT, InterruptT> op3(mGrid, mInterrupt, dt);
+		ApplySpringlOperator<OpT, InterruptT> op3(mGrid, mInterrupt, 1.0);
 		op3.process();
 
-		ApplyMeshOperator<OpS, InterruptT> opm3(mGrid, mInterrupt, dt);
+		ApplyMeshOperator<OpS, InterruptT> opm3(mGrid, mInterrupt, 1.0);
 		opm3.process();
 
 

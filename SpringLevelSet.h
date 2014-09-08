@@ -403,7 +403,7 @@ template<typename FieldT> Vec3d ComputeVelocity(const FieldT& field, SpringlTemp
 	Vec3d k1,k2,k3,k4;
 	switch(scheme){
 		case SpringlTemporalIntegrationScheme::RK1:
-			velocity=field(pt,t);
+			velocity=h*field(pt,t);
 			break;
 		case SpringlTemporalIntegrationScheme::RK3:
 			k1=h*field(pt,t);
@@ -795,10 +795,13 @@ public:
 	static void apply(Springl& springl, SpringLevelSet& mGrid, double dt) {
 		openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
 		Vec3s vel=dt*mGrid.constellation.particleDisplacement[springl.id];
-		springl.particle()+=vel;//Apply integration scheme here, need buffer for previous time points?
+		Vec3d pt = trans->indexToWorld(springl.particle());
+
+		springl.particle()=trans->worldToIndex(pt+vel);//Apply integration scheme here, need buffer for previous time points?
 		int K=springl.size();
 		for(int k=0;k<K;k++){
-			springl[k]+=vel;
+			pt = trans->indexToWorld(springl[k]);
+			springl[k]=trans->worldToIndex(pt+vel);
 		}
 	}
 };
@@ -829,7 +832,8 @@ public:
 	static void apply(size_t vid, SpringLevelSet& mGrid, double dt) {
 		openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
 		Vec3s vel=dt*mGrid.isoSurface.vertexDisplacement[vid];
-		mGrid.isoSurface.vertexes[vid]+=vel;
+		Vec3d pt = trans->indexToWorld(mGrid.isoSurface.vertexes[vid]);
+		mGrid.isoSurface.vertexes[vid]=trans->worldToIndex(pt+vel);
 	}
 };
 // end of ConstellationOperator class

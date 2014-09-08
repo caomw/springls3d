@@ -137,6 +137,7 @@ EnrightSpringls::EnrightSpringls()
 	, simulationRunning(false)
 {
 	renderBBox=BBoxd(Vec3s(-50,-50,-50),Vec3s(50,50,50));
+	Pose.setIdentity();
 }
 void EnrightSpringls::start(){
 	simTime=0.0f;
@@ -189,6 +190,7 @@ bool EnrightSpringls::openMesh(const std::string& fileName){
 	trans->postTranslate(center);
 	meshDirty=true;
 	setNeedsDisplay();
+	rootFile=GetFileWithoutExtension(fileName);
     return true;
 }
 bool EnrightSpringls::openGrid(FloatGrid& signedLevelSet){
@@ -196,6 +198,7 @@ bool EnrightSpringls::openGrid(FloatGrid& signedLevelSet){
     springlGrid.create(signedLevelSet);
     mClipBox->set(*(springlGrid.signedLevelSet));
 	BBoxd bbox=mClipBox->GetBBox();
+	rootFile="/home/blake/tmp/enright";
 	meshDirty=true;
 	setNeedsDisplay();
 	return true;
@@ -225,6 +228,7 @@ bool EnrightSpringls::openGrid(const std::string& fileName){
 	trans->postScale(scale*2*radius);
 	trans->postTranslate(center);
 	meshDirty=true;
+	rootFile=GetFileWithoutExtension(fileName);
 	setNeedsDisplay();
 	return true;
 }
@@ -291,6 +295,8 @@ bool EnrightSpringls::init(int width,int height){
     size_t frame = 0;
     double time = glfwGetTime();
     glfwSwapInterval(1);
+
+    stash();
     do {
        if(meshDirty){
     	   meshLock.lock();
@@ -342,11 +348,11 @@ bool EnrightSpringls::openRecording(const std::string& dirName){
 	return true;
 }
 bool EnrightSpringls::update(){
-	std::ostringstream ostr1,ostr2,ostr3;
 	if(meshDirty){
 		std::this_thread::sleep_for(std::chrono::milliseconds());
 		return true;
 	}
+
 	if(playbackMode){
 		if(simulationIteration>=constellationFiles.size()){
 			simulationIteration=0;
@@ -358,7 +364,6 @@ bool EnrightSpringls::update(){
 		springlGrid.isoSurface.openMesh(isoSurfaceFiles[simulationIteration]);
 		springlGrid.isoSurface.updateVertexNormals();
 		springlGrid.constellation.updateVertexNormals();
-
 		openvdb::io::File file(signedDistanceFiles[simulationIteration]);
 		file.open();
 		openvdb::GridPtrVecPtr grids =file.getGrids();
@@ -367,18 +372,9 @@ bool EnrightSpringls::update(){
 		GridBase::Ptr ptr = allGrids[0];
 		springlGrid.signedLevelSet=boost::static_pointer_cast<FloatGrid>(ptr);
 	} else {
-		ostr1 << "/home/blake/tmp/springls" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
-		springlGrid.constellation.save(ostr1.str());
-		ostr2 << "/home/blake/tmp/isosurf" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
-		springlGrid.isoSurface.save(ostr2.str());
-		ostr3 << "/home/blake/tmp/levelset" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".vdb";
-
-		openvdb::io::File file(ostr3.str());
-		openvdb::GridPtrVec grids;
-		grids.push_back(springlGrid.signedLevelSet);
-		file.write(grids);
 		advect->advect(simTime,simTime+dt);
 	}
+	stash();
 	simTime+=dt;
 	//openvdb::BBoxd bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
 	//mClipBox->setBBox(bbox);
@@ -387,7 +383,27 @@ bool EnrightSpringls::update(){
 	simulationIteration++;
 	return (simTime<=3.0f&&simulationRunning);
 }
+void EnrightSpringls::stash(){
 
+	std::ostringstream ostr1,ostr2,ostr3,ostr4;
+	ostr4 << rootFile <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".lxs";
+	mCamera->setMaterialFile("/home/blake/materials/white_chess.lbm2");
+	if(playbackMode){
+		mCamera->setGeometryFile(isoSurfaceFiles[simulationIteration],Pose);
+	} else {
+		ostr1 << rootFile<<"_sls" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
+		springlGrid.constellation.save(ostr1.str());
+		ostr2 <<  rootFile<<"_iso" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
+		springlGrid.isoSurface.save(ostr2.str());
+		ostr3 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << ".vdb";
+		mCamera->setGeometryFile(ostr2.str(),Pose);
+		openvdb::io::File file(ostr3.str());
+		openvdb::GridPtrVec grids;
+		grids.push_back(springlGrid.signedLevelSet);
+		file.write(grids);
+	}
+	mCamera->write(ostr4.str(),640,640);
+}
 void
 EnrightSpringls::setWindowTitle(double fps)
 {
@@ -412,36 +428,46 @@ EnrightSpringls::render()
     openvdb::Vec3d extents = bbox.extents();
     openvdb::Vec3d rextents=renderBBox.extents();
 
+    /*
+    double scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));
+    Vec3s minPt=bbox.getCenter();
+    Vec3s rminPt=renderBBox.getCenter();
+*/
+
     double scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));
     Vec3s minPt=bbox.getCenter();
     Vec3s rminPt=renderBBox.getCenter();
 
+    Pose.setIdentity();
+    Pose.postTranslate(-minPt);
+	Pose.postScale(Vec3s(scale,scale,scale));
+	Pose.postTranslate(rminPt);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     int width,height;
     glfwGetWindowSize(&width, &height);
     mCamera->aim(0,0,width/2,height);
     glPushMatrix();
+    glMultMatrixf(Pose.asPointer());
+/*
     glTranslatef(rminPt[0],rminPt[1],rminPt[2]);
     glScalef(scale,scale,scale);
     glTranslatef(-minPt[0],-minPt[1],-minPt[2]);
-    mClipBox->render();
-    mClipBox->enableClipping();
+*/
+
+ //   mClipBox->render();
+  //  mClipBox->enableClipping();
 	glColor3f(0.8f,0.8f,0.8f);
 	springlGrid.draw(false,true,false,false);
-	mClipBox->disableClipping();
+//	mClipBox->disableClipping();
     glPopMatrix();
 
     mCamera->aim(width/2,0,width/2,height);
     glPushMatrix();
-    glTranslatef(rminPt[0],rminPt[1],rminPt[2]);
-    glScalef(scale,scale,scale);
-    glTranslatef(-minPt[0],-minPt[1],-minPt[2]);
+    glMultMatrixf(Pose.asPointer());
     mClipBox->render();
-    mClipBox->enableClipping();
  	glColor3f(0.8f,0.3f,0.3f);
 	springlGrid.isoSurface.draw(false,false,false,false);
-	mClipBox->disableClipping();
     glPopMatrix();
     //
     // Render text

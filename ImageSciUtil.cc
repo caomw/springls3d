@@ -13,6 +13,28 @@ namespace imagesci {
 using namespace openvdb;
 using namespace openvdb::tools;
 using namespace boost::filesystem;
+std::string GetFileWithoutExtension(const std::string& file){
+	path p(file);
+	std::string ext=extension(p);
+	if(ext.length()>0){
+		return file.substr(0,file.length()-ext.length());
+	} else {
+		return file;
+	}
+}
+std::string GetFileNameWithoutExtension(const std::string& file){
+	path p(file);
+
+	//std::string ext=extension(p);
+	return boost::filesystem::basename(p);
+	/*
+	if(ext.length()>0){
+		return file.substr(0,file.length()-ext.length());
+	} else {
+		return file;
+	}
+	*/
+}
 int GetDirectoryListing(const std::string& dirName,std::vector<std::string>& files,const std::string& mask,const std::string& ext){
 
 	path someDir(dirName);

@@ -79,9 +79,11 @@ protected:
 	FieldT field;
 	boost::shared_ptr<AdvectT> advect;
 	std::thread simThread;
+	std::string rootFile;
 	std::vector<std::string> isoSurfaceFiles;
 	std::vector<std::string> constellationFiles;
 	std::vector<std::string> signedDistanceFiles;
+	openvdb::Mat4s Pose;
 public:
 	typedef std::unique_ptr<LuxCamera> CameraPtr;
 	typedef std::unique_ptr<openvdb_viewer::ClipBox> ClipBoxPtr;
@@ -90,7 +92,7 @@ public:
 	EnrightSpringls();
 	~EnrightSpringls();
 	bool update();
-
+	void stash();
 	bool openMesh(const std::string& fileName);
 	bool openGrid(const std::string& fileName);
 	bool openGrid(FloatGrid& fileName);

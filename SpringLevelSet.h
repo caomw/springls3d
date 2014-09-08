@@ -20,12 +20,11 @@
 namespace imagesci {
 enum SpringlTemporalIntegrationScheme {
 	UNKNOWN_TIS = openvdb::math::TemporalIntegrationScheme::UNKNOWN_TIS,
-	TVD_RK1 = openvdb::math::TemporalIntegrationScheme::TVD_RK1,
-	TVD_RK2 = openvdb::math::TemporalIntegrationScheme::TVD_RK2,
-	TVD_RK3 = openvdb::math::TemporalIntegrationScheme::TVD_RK3,
-	TVD_RK4,
-	TVD_RK5,
-	TVD_RK6,
+	RK1 = openvdb::math::TemporalIntegrationScheme::TVD_RK1,
+	RK2 = openvdb::math::TemporalIntegrationScheme::TVD_RK2,
+	RK3 = openvdb::math::TemporalIntegrationScheme::TVD_RK3,
+	RK4a,
+	RK4b
 };
 struct Springl;
 struct SpringlNeighbor {
@@ -399,6 +398,39 @@ private:
 		return middle;
 	}
 };
+template<typename FieldT> Vec3d ComputeVelocity(const FieldT& field, SpringlTemporalIntegrationScheme scheme,Vec3d pt,double t,double h){
+	Vec3d velocity(0.0);
+	Vec3d k1,k2,k3,k4;
+	switch(scheme){
+		case SpringlTemporalIntegrationScheme::RK1:
+			velocity=field(pt,t);
+			break;
+		case SpringlTemporalIntegrationScheme::RK3:
+			k1=h*field(pt,t);
+			k2=h*field(pt+0.5*k1,t+0.5f*h);
+			k3=h*field(pt-1.0*k1+2.0*k2,t+h);
+			velocity=(1.0f/6.0f)*(k1+4*k2+k3);
+			break;
+		case SpringlTemporalIntegrationScheme::RK4a:
+			k1=h*field(pt,t);
+			k2=h*field(pt+0.5f*k1,t+0.5f*h);
+			k3=h*field(pt+0.5f*k2,t+0.5f*h);
+			k4=h*field(pt+k3,t+h);
+			velocity=(1.0f/6.0f)*(k1+2*k2+2*k3+k4);
+			break;
+		case SpringlTemporalIntegrationScheme::RK4b:
+		default:
+			k1=h*field(pt,t);
+			k2=h*field(pt+(1/3.0)*k1,t+(1/3.0)*h);
+			k3=h*field(pt-(1/3.0)*k1+k2,t+(2/3.0)*h);
+			k4=h*field(pt+k1-k2+k3,t+h);
+			velocity=(1.0f/8.0f)*(k1+3*k2+3*k3+k4);
+			break;
+
+	}
+	return velocity;
+}
+
 // end of SpringlRange
 
 template<typename OperatorT,
@@ -406,10 +438,11 @@ template<typename OperatorT,
 class ComputeOperator {
 public:
 	SpringLevelSet& mGrid;
-	ComputeOperator(SpringLevelSet& grid, InterruptT* _interrupt, double t) :
-			mGrid(grid), mInterrupt(_interrupt), mTime(t) {
+	ComputeOperator(SpringLevelSet& grid, InterruptT* _interrupt, double t=0.0,double dt=0.0,SpringlTemporalIntegrationScheme scheme=SpringlTemporalIntegrationScheme::RK1) :
+			mGrid(grid), mInterrupt(_interrupt),mIntegrationScheme(scheme), mTime(t),mTimeStep(dt) {
 
 	}
+
 	virtual ~ComputeOperator() {
 	}
 	void process(bool threaded = true) {
@@ -430,8 +463,8 @@ public:
 	/// @note Never call this public method directly - it is called by
 	/// TBB threads only!
 	void operator()(const SpringlRange& range) const {
-		if (openvdb::util::wasInterrupted(mInterrupt))
-			tbb::task::self().cancel_group_execution();
+		//if (openvdb::util::wasInterrupted(mInterupt))tbb::task::self().cancel_group_execution();
+		//OperatorT OpT(mIntegrationScheme);
 		for (typename SpringlRange::Iterator springl = range.begin(); springl;
 				++springl) {
 			OperatorT::compute(*springl, mGrid, mTime);
@@ -440,6 +473,8 @@ public:
 
 protected:
 	double mTime;
+	double mTimeStep;
+	SpringlTemporalIntegrationScheme mIntegrationScheme;
 	InterruptT* mInterrupt;
 
 };
@@ -449,8 +484,8 @@ class AdvectMeshOperator {
 public:
 	SpringLevelSet& mGrid;
 	AdvectMeshOperator(SpringLevelSet& grid, const FieldT& field,
-			InterruptT* _interrupt, double t) :
-				mGrid(grid), mField(field), mInterrupt(_interrupt), mTime(t) {
+			InterruptT* _interrupt,	SpringlTemporalIntegrationScheme scheme, double t,double dt) :
+				mGrid(grid), mField(field), mInterrupt(_interrupt),mIntegrationScheme(scheme), mTime(t),mTimeStep(dt) {
 
 	}
 	virtual ~AdvectMeshOperator() {
@@ -475,14 +510,18 @@ public:
 	void operator()(const MeshRange& range) const {
 		if (openvdb::util::wasInterrupted(mInterrupt))
 			tbb::task::self().cancel_group_execution();
+		OperatorT OpT(mIntegrationScheme);
 		for (typename MeshRange::Iterator vert = range.begin(); vert;
 				++vert) {
-			OperatorT::compute(*vert, mGrid, mField, mTime);
+			OpT.compute(*vert, mGrid, mField, mTime,mTimeStep);
 		}
 	}
 
 protected:
 	double mTime;
+	double mTimeStep;
+	SpringlTemporalIntegrationScheme mIntegrationScheme;
+
 	const FieldT& mField;
 	InterruptT* mInterrupt;
 
@@ -493,8 +532,8 @@ class AdvectSpringlOperator {
 public:
 	SpringLevelSet& mGrid;
 	AdvectSpringlOperator(SpringLevelSet& grid, const FieldT& field,
-			InterruptT* _interrupt, double t) :
-			mGrid(grid), mField(field), mInterrupt(_interrupt), mTime(t) {
+			InterruptT* _interrupt, SpringlTemporalIntegrationScheme scheme,double t,double dt) :
+			mGrid(grid), mField(field),mIntegrationScheme(scheme), mInterrupt(_interrupt), mTime(t),mTimeStep(dt) {
 
 	}
 	virtual ~AdvectSpringlOperator() {
@@ -519,14 +558,17 @@ public:
 	void operator()(const SpringlRange& range) const {
 		if (openvdb::util::wasInterrupted(mInterrupt))
 			tbb::task::self().cancel_group_execution();
+		OperatorT OpT(mIntegrationScheme);
 		for (typename SpringlRange::Iterator springl = range.begin(); springl;
 				++springl) {
-			OperatorT::compute(*springl, mGrid, mField, mTime);
+			OpT.compute(*springl, mGrid, mField, mTime,mTimeStep);
 		}
 	}
 
 protected:
 	double mTime;
+	double mTimeStep;
+	SpringlTemporalIntegrationScheme mIntegrationScheme;
 	const FieldT& mField;
 	InterruptT* mInterrupt;
 
@@ -699,15 +741,14 @@ public:
 	static void init(SpringLevelSet& mGrid) {
 		mGrid.constellation.vertexDisplacement.resize(mGrid.constellation.vertexes.size());
 	}
-	static void compute(Springl& springl, SpringLevelSet& mGrid,
-			const FieldT& field, double t) {
+	void compute(Springl& springl, SpringLevelSet& mGrid,
+			const FieldT& field, double t,double h) {
 		int K = springl.size();
 		openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
 		for (int k = 0; k < K; k++) {
 			Vec3d v = Vec3d(springl[k]);
 			Vec3d pt = trans->indexToWorld(v);
-			Vec3d vel = field(pt, t);
-			//std::cout<<"Evaluate "<<pt<<" "<<v<<" "<<vel<<t<<std::endl;
+			Vec3d vel = ComputeVelocity(field,mIntegrationScheme,pt,t,h);
 			mGrid.constellation.vertexDisplacement[springl.offset + k] = vel;	//Apply integration scheme here, need buffer for previous time points?
 		}
 	}
@@ -739,12 +780,12 @@ public:
 	static void init(SpringLevelSet& mGrid) {
 		mGrid.constellation.particleDisplacement.resize(mGrid.constellation.particles.size());
 	}
-	static void compute(Springl& springl, SpringLevelSet& mGrid,
-			const FieldT& field, double t) {
+	void compute(Springl& springl, SpringLevelSet& mGrid,
+			const FieldT& field, double t,double h) {
 		openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
 		Vec3d v = Vec3d(springl.particle());
 		Vec3d pt = trans->indexToWorld(v);
-		Vec3d vel = field(pt, t);
+		Vec3d vel = ComputeVelocity(field,mIntegrationScheme,pt,t,h);
 		mGrid.constellation.particleDisplacement[springl.id] = vel;	//Apply integration scheme here, need buffer for previous time points?
 	}
 	static double findTimeStep(Springl& springl, SpringLevelSet& mGrid) {
@@ -772,13 +813,13 @@ public:
 	static void init(SpringLevelSet& mGrid) {
 		mGrid.isoSurface.vertexDisplacement.resize(mGrid.isoSurface.vertexes.size());
 	}
-	static void compute(size_t vid, SpringLevelSet& mGrid,
-			const FieldT& field, double t) {
+	void compute(size_t vid, SpringLevelSet& mGrid,
+			const FieldT& field, double t,double h) {
 		Vec3s vert=mGrid.isoSurface.vertexes[vid];
 		openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
 		Vec3d v = Vec3d(vert);
 		Vec3d pt = trans->indexToWorld(v);
-		Vec3d vel = field(pt, t);
+		Vec3d vel = ComputeVelocity(field,mIntegrationScheme,pt,t,h);
 		mGrid.isoSurface.vertexDisplacement[vid] = vel;	//Apply integration scheme here, need buffer for previous time points?
 	}
 	static double findTimeStep(size_t vid, Mesh& mMesh) {
@@ -801,7 +842,7 @@ public:
 	}
 	void process(bool threaded = true) {
 		typedef NearestNeighborOperation OpT;
-		ComputeOperator<OpT, InterruptT> op(mGrid, mInterrupt, 0.0);
+		ComputeOperator<OpT, InterruptT> op(mGrid, mInterrupt);
 		op.process(threaded);
 	}
 	SpringLevelSet& mGrid;
@@ -817,7 +858,7 @@ public:
 	}
 	void process(bool threaded = true) {
 		typedef RelaxOperation OpT;
-		ComputeOperator<OpT, InterruptT> op1(mGrid, mInterrupt, 0.0);
+		ComputeOperator<OpT, InterruptT> op1(mGrid, mInterrupt);
 		op1.process(threaded);
 		ApplySpringlOperator<OpT, InterruptT> op2(mGrid, mInterrupt, 1.0f);
 		op2.process(threaded);

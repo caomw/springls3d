@@ -24,7 +24,7 @@ public:
 	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,
 			InterruptT* interrupt = NULL) :
 			mGrid(grid), mField(field), mInterrupt(interrupt), mTemporalScheme(
-					SpringlTemporalIntegrationScheme::TVD_RK4) {
+					SpringlTemporalIntegrationScheme::RK4b) {
 	}
 	/// @return the temporal integration scheme
 	SpringlTemporalIntegrationScheme getTemporalScheme() const {
@@ -59,6 +59,7 @@ public:
 		double scale = std::max(std::max(vsz[0], vsz[1]), vsz[2]);
 		const double EPS=1E-30f;
 		double voxelDistance=0;
+		/*
 		for (double time = mStartTime; time < mEndTime; time += dt * scale) {
 
 			AdvectSpringlOperator<OpT, FieldT, InterruptT> op1(mGrid, mField,
@@ -81,7 +82,35 @@ public:
 			ApplyMeshOperator<OpS, InterruptT> opm3(mGrid, mInterrupt, dt);
 			opm3.process();
 
-		}
+		}*/
+		dt=mEndTime-mStartTime;
+		std::cout<<"DT "<<dt<<std::endl;
+		AdvectSpringlOperator<OpT, FieldT, InterruptT> op1(mGrid, mField,mInterrupt, mTemporalScheme,mStartTime,dt);
+		op1.process();
+
+		AdvectMeshOperator<OpS, FieldT, InterruptT> opm1(mGrid, mField,mInterrupt,  mTemporalScheme,mStartTime,dt);
+		opm1.process();
+
+		/*
+		MaxOperator<OpT, InterruptT> op2(mGrid, mInterrupt);
+		double maxV = std::max(EPS, std::sqrt(op2.process()));
+		std::cout<<"Max Velocity "<<maxV<<std::endl;
+
+		dt = std::max(0.0,
+				std::min(SpringLevelSet::MAX_VEXT / maxV,
+						(mEndTime - time) / scale));
+		voxelDistance=voxelDistance+dt*maxV;
+		*/
+		//std::cout << "Time " << time <<" voxel distance "<<voxelDistance<< std::endl;
+		//if (dt < EPS)break;
+
+		ApplySpringlOperator<OpT, InterruptT> op3(mGrid, mInterrupt, dt);
+		op3.process();
+
+		ApplyMeshOperator<OpS, InterruptT> opm3(mGrid, mInterrupt, dt);
+		opm3.process();
+
+
 		const int RELAX_OUTER_ITERS=2;
 		const int RELAX_INNER_ITERS=5;
 

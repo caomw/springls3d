@@ -143,7 +143,7 @@ void EnrightSpringls::start(){
 	simTime=0.0f;
 	simulationIteration=0;
 	advect=boost::shared_ptr<AdvectT>(new AdvectT(springlGrid,field));
-	advect->setTemporalScheme(SpringlTemporalIntegrationScheme::TVD_RK1);
+	advect->setTemporalScheme(SpringlTemporalIntegrationScheme::RK4b);
 	simulationRunning=true;
 	simThread=std::thread(UpdateView,this);
 }
@@ -152,7 +152,7 @@ void EnrightSpringls::resume(){
 		simTime=0.0f;
 		simulationIteration=0;
 		advect=boost::shared_ptr<AdvectT>(new AdvectT(springlGrid,field));
-		advect->setTemporalScheme(SpringlTemporalIntegrationScheme::TVD_RK1);
+		advect->setTemporalScheme(SpringlTemporalIntegrationScheme::RK4b);
 	}
 	simulationRunning=true;
 	simThread=std::thread(UpdateView,this);

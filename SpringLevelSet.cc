@@ -568,7 +568,6 @@ int SpringLevelSet::fill() {
 			}
 		}
 	}
-	std::cout << "Added " << added << std::endl;
 	return added;
 }
 void Constellation::create(Mesh* mesh) {
@@ -673,7 +672,6 @@ int SpringLevelSet::clean() {
 	}
 	if (newSpringlCount == N)
 		return 0;
-	std::cout << "Removed " << N - newSpringlCount << std::endl;
 	Index32 springlOffset = 0;
 	Index32 vertexOffset = 0;
 	Index32 quadIndex = 0;

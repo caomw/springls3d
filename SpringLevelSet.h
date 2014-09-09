@@ -483,8 +483,7 @@ template<typename OperatorT, typename FieldT,
 class AdvectMeshOperator {
 public:
 	SpringLevelSet& mGrid;
-	AdvectMeshOperator(SpringLevelSet& grid, const FieldT& field,
-			InterruptT* _interrupt,	SpringlTemporalIntegrationScheme scheme, double t,double dt) :
+	AdvectMeshOperator(SpringLevelSet& grid, const FieldT& field,	SpringlTemporalIntegrationScheme scheme, double t,double dt,InterruptT* _interrupt) :
 				mGrid(grid), mField(field), mInterrupt(_interrupt),mIntegrationScheme(scheme), mTime(t),mTimeStep(dt) {
 
 	}
@@ -493,7 +492,6 @@ public:
 	void process(bool threaded = true) {
 		if (mInterrupt)
 			mInterrupt->start("Processing springls");
-		OperatorT::init(mGrid);
 		MeshRange range(mGrid.isoSurface);
 		if (threaded) {
 			tbb::parallel_for(range, *this);
@@ -531,8 +529,7 @@ template<typename OperatorT, typename FieldT,
 class AdvectSpringlOperator {
 public:
 	SpringLevelSet& mGrid;
-	AdvectSpringlOperator(SpringLevelSet& grid, const FieldT& field,
-			InterruptT* _interrupt, SpringlTemporalIntegrationScheme scheme,double t,double dt) :
+	AdvectSpringlOperator(SpringLevelSet& grid, const FieldT& field,SpringlTemporalIntegrationScheme scheme,double t,double dt,InterruptT* _interrupt) :
 			mGrid(grid), mField(field),mIntegrationScheme(scheme), mInterrupt(_interrupt), mTime(t),mTimeStep(dt) {
 
 	}
@@ -541,7 +538,6 @@ public:
 	void process(bool threaded = true) {
 		if (mInterrupt)
 			mInterrupt->start("Processing springls");
-		OperatorT::init(mGrid);
 		SpringlRange range(mGrid.constellation);
 		if (threaded) {
 			tbb::parallel_for(range, *this);
@@ -573,20 +569,20 @@ protected:
 	InterruptT* mInterrupt;
 
 };
-template<typename OperatorT,
+template<typename OperatorT,typename FieldT,
 		typename InterruptT = openvdb::util::NullInterrupter>
 class MaxOperator {
 public:
 	double mMaxAbsV;
 	SpringLevelSet& mGrid;
 	bool mIsMaster;
-	MaxOperator(SpringLevelSet& grid, InterruptT* _interrupt) :
-			mIsMaster(true), mGrid(grid), mInterrupt(_interrupt), mMaxAbsV(
+	MaxOperator(SpringLevelSet& grid,const FieldT& field,double t, InterruptT* _interrupt) :
+			mIsMaster(true), mGrid(grid),mField(field), mTime(t),mInterrupt(_interrupt), mMaxAbsV(
 					std::numeric_limits<double>::min()) {
 
 	}
 	MaxOperator(MaxOperator& other, tbb::split) :
-			mGrid(other.mGrid), mMaxAbsV(other.mMaxAbsV), mIsMaster(false), mInterrupt(
+			mGrid(other.mGrid), mMaxAbsV(other.mMaxAbsV),mField(other.mField),mTime(other.mTime), mIsMaster(false), mInterrupt(
 			NULL) {
 	}
 	virtual ~MaxOperator() {
@@ -594,7 +590,6 @@ public:
 	double process(bool threaded = true) {
 		if (mInterrupt)
 			mInterrupt->start("Processing springls");
-		OperatorT::init(mGrid);
 		SpringlRange range(mGrid.constellation);
 		if (threaded) {
 			tbb::parallel_reduce(range, *this);
@@ -614,16 +609,18 @@ public:
 	void operator()(const SpringlRange& range) {
 		if (openvdb::util::wasInterrupted(mInterrupt))
 			tbb::task::self().cancel_group_execution();
+		OperatorT OpT;
 		for (typename SpringlRange::Iterator springl = range.begin(); springl;
 				++springl) {
 			mMaxAbsV = std::max(mMaxAbsV,
-					OperatorT::findTimeStep(*springl, mGrid));
+					OpT.findTimeStep(*springl, mGrid,mField,mTime));
 		}
 	}
 
 protected:
+	double mTime;
 	InterruptT* mInterrupt;
-
+	const FieldT& mField;
 };
 template<typename OperatorT,
 		typename InterruptT = openvdb::util::NullInterrupter>
@@ -730,6 +727,7 @@ public:
 		return 1.0f;
 	}
 };
+/*
 template<typename FieldT> class AdvectVertexOperation {
 private:
 	SpringlTemporalIntegrationScheme mIntegrationScheme;
@@ -769,16 +767,13 @@ public:
 		springl.particle()=newCenter;
 	}
 };
+*/
 template<typename FieldT> class AdvectParticleOperation {
 private:
 	SpringlTemporalIntegrationScheme mIntegrationScheme;
 public:
-	AdvectParticleOperation(SpringlTemporalIntegrationScheme integrationScheme) :
+	AdvectParticleOperation(SpringlTemporalIntegrationScheme integrationScheme=SpringlTemporalIntegrationScheme::UNKNOWN_TIS) :
 			mIntegrationScheme(integrationScheme) {
-
-	}
-	static void init(SpringLevelSet& mGrid) {
-		mGrid.constellation.particleDisplacement.resize(mGrid.constellation.particles.size());
 	}
 	void compute(Springl& springl, SpringLevelSet& mGrid,
 			const FieldT& field, double t,double h) {
@@ -786,17 +781,6 @@ public:
 		Vec3d v = Vec3d(springl.particle());
 		Vec3d pt = trans->indexToWorld(v);
 		Vec3d vel = ComputeVelocity(field,mIntegrationScheme,pt,t,h);
-		mGrid.constellation.particleDisplacement[springl.id] = vel;	//Apply integration scheme here, need buffer for previous time points?
-	}
-	static double findTimeStep(Springl& springl, SpringLevelSet& mGrid) {
-		Vec3d vec=mGrid.constellation.particleDisplacement[springl.id];
-		return std::max(std::max(fabs(vec[0]), fabs(vec[1])), fabs(vec[2]));
-	}
-	static void apply(Springl& springl, SpringLevelSet& mGrid, double dt) {
-		openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
-		Vec3s vel=dt*mGrid.constellation.particleDisplacement[springl.id];
-		Vec3d pt = trans->indexToWorld(springl.particle());
-
 		springl.particle()=trans->worldToIndex(pt+vel);//Apply integration scheme here, need buffer for previous time points?
 		int K=springl.size();
 		for(int k=0;k<K;k++){
@@ -804,35 +788,36 @@ public:
 			springl[k]=trans->worldToIndex(pt+vel);
 		}
 	}
+	double findTimeStep(Springl& springl, SpringLevelSet& mGrid,const FieldT& field, double t) {
+		openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
+		Vec3d v = Vec3d(springl.particle());
+		Vec3d pt = trans->indexToWorld(v);
+		Vec3d vec=field(pt,t);
+		return std::max(std::max(fabs(vec[0]), fabs(vec[1])), fabs(vec[2]));
+	}
+
 };
 template<typename FieldT> class AdvectMeshOperation {
 private:
 	SpringlTemporalIntegrationScheme mIntegrationScheme;
 public:
-	AdvectMeshOperation(SpringlTemporalIntegrationScheme integrationScheme) :
+	AdvectMeshOperation(SpringlTemporalIntegrationScheme integrationScheme=SpringlTemporalIntegrationScheme::UNKNOWN_TIS) :
 			mIntegrationScheme(integrationScheme) {
-
 	}
-	static void init(SpringLevelSet& mGrid) {
-		mGrid.isoSurface.vertexDisplacement.resize(mGrid.isoSurface.vertexes.size());
-	}
-	void compute(size_t vid, SpringLevelSet& mGrid,
-			const FieldT& field, double t,double h) {
-		Vec3s vert=mGrid.isoSurface.vertexes[vid];
+	double findTimeStep(size_t vid, SpringLevelSet& mGrid, Mesh& mMesh,const FieldT& field, double t) {
 		openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
+		Vec3s vert=mGrid.isoSurface.vertexes[vid];
 		Vec3d v = Vec3d(vert);
 		Vec3d pt = trans->indexToWorld(v);
-		Vec3d vel = ComputeVelocity(field,mIntegrationScheme,pt,t,h);
-		mGrid.isoSurface.vertexDisplacement[vid] = vel;	//Apply integration scheme here, need buffer for previous time points?
-	}
-	static double findTimeStep(size_t vid, Mesh& mMesh) {
-		Vec3f vec=mMesh.vertexDisplacement[vid];
+		Vec3f vec=field(pt,t);
 		return std::max(std::max(fabs(vec[0]), fabs(vec[1])), fabs(vec[2]));
 	}
-	static void apply(size_t vid, SpringLevelSet& mGrid, double dt) {
+	void compute(size_t vid, SpringLevelSet& mGrid,const FieldT& field,double t, double dt) {
 		openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
-		Vec3s vel=dt*mGrid.isoSurface.vertexDisplacement[vid];
-		Vec3d pt = trans->indexToWorld(mGrid.isoSurface.vertexes[vid]);
+		Vec3s vert=mGrid.isoSurface.vertexes[vid];
+		Vec3d v = Vec3d(vert);
+		Vec3d pt = trans->indexToWorld(v);
+		Vec3d vel = ComputeVelocity(field,mIntegrationScheme,pt,t,dt);
 		mGrid.isoSurface.vertexes[vid]=trans->worldToIndex(pt+vel);
 	}
 };

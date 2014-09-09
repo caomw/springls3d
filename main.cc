@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
 					imagesci::EnrightSpringls::GetInstance();
 			const float radius = 0.15f;
 			const openvdb::Vec3f center(0.35f, 0.35f, 0.35f);
-			const int dim = 384;
+			const int dim = 256;
 			float voxelSize = 1 / (float) (dim - 1);
 			FloatGrid::Ptr signedLevelSet =
 					openvdb::tools::createLevelSetSphere<FloatGrid>(radius,

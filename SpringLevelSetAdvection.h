@@ -49,71 +49,9 @@ public:
 	        return 0;
 	    }
 	}
-	template<typename MapT> size_t advect1(double  mStartTime, double mEndTime) {
-//	    typedef AdvectVertexOperation<FieldT> OpT;
-	    typedef AdvectParticleOperation<FieldT> OpT;
-	    typedef AdvectMeshOperation<FieldT> OpS;
-
-		double dt = 0.0;
-		Vec3d vsz = mGrid.transformPtr()->voxelSize();
-		double scale = std::max(std::max(vsz[0], vsz[1]), vsz[2]);
-		const double EPS=1E-30f;
-		double voxelDistance=0;
-		/*
-		for (double time = mStartTime; time < mEndTime; time += dt * scale) {
-
-			AdvectSpringlOperator<OpT, FieldT, InterruptT> op1(mGrid, mField,
-					mInterrupt, time);
-			op1.process();
-			AdvectMeshOperator<OpS, FieldT, InterruptT> opm1(mGrid, mField,
-					mInterrupt, time);
-			opm1.process();
-			MaxOperator<OpT, InterruptT> op2(mGrid, mInterrupt);
-			double maxV = std::max(EPS, std::sqrt(op2.process()));
-			dt = std::max(0.0,
-					std::min(SpringLevelSet::MAX_VEXT / maxV,
-							(mEndTime - time) / scale));
-			voxelDistance=voxelDistance+dt*maxV;
-			std::cout << "Time " << time <<" voxel distance "<<voxelDistance<< std::endl;
-			if (dt < EPS)break;
-			ApplySpringlOperator<OpT, InterruptT> op3(mGrid, mInterrupt, dt);
-			op3.process();
-
-			ApplyMeshOperator<OpS, InterruptT> opm3(mGrid, mInterrupt, dt);
-			opm3.process();
-
-		}*/
-		dt=mEndTime-mStartTime;
-		std::cout<<"DT "<<dt<<std::endl;
-		AdvectSpringlOperator<OpT, FieldT, InterruptT> op1(mGrid, mField,mInterrupt, mTemporalScheme,mStartTime,dt);
-		op1.process();
-
-		AdvectMeshOperator<OpS, FieldT, InterruptT> opm1(mGrid, mField,mInterrupt,  mTemporalScheme,mStartTime,dt);
-		opm1.process();
-
-		/*
-		MaxOperator<OpT, InterruptT> op2(mGrid, mInterrupt);
-		double maxV = std::max(EPS, std::sqrt(op2.process()));
-		std::cout<<"Max Velocity "<<maxV<<std::endl;
-
-		dt = std::max(0.0,
-				std::min(SpringLevelSet::MAX_VEXT / maxV,
-						(mEndTime - time) / scale));
-		voxelDistance=voxelDistance+dt*maxV;
-		*/
-		//std::cout << "Time " << time <<" voxel distance "<<voxelDistance<< std::endl;
-		//if (dt < EPS)break;
-
-		ApplySpringlOperator<OpT, InterruptT> op3(mGrid, mInterrupt, 1.0);
-		op3.process();
-
-		ApplyMeshOperator<OpS, InterruptT> opm3(mGrid, mInterrupt, 1.0);
-		opm3.process();
-
-
-		const int RELAX_OUTER_ITERS=2;
+	template<typename MapT> void track(double time){
+		const int RELAX_OUTER_ITERS=1;
 		const int RELAX_INNER_ITERS=5;
-
 		mGrid.updateUnsignedLevelSet();
 		for(int iter=0;iter<RELAX_OUTER_ITERS;iter++){
 			mGrid.updateNearestNeighbors();
@@ -124,13 +62,38 @@ public:
 		mGrid.updateUnsignedLevelSet();
 		mGrid.updateGradient();
 		TrackerT mTracker(*mGrid.signedLevelSet,mInterrupt);
-		SpringLevelSetEvolve<MapT> evolve(*this,mTracker,mEndTime,1.0,4);
+		SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,1.0,4);
 		evolve.process();
 		mGrid.updateIsoSurface();
 		int added=mGrid.fill();
 		mGrid.constellation.updateVertexNormals();
-	    return 0;
+
 	}
+	template<typename MapT> size_t advect1(double  mStartTime, double mEndTime) {
+//	    typedef AdvectVertexOperation<FieldT> OpT;
+	    typedef AdvectParticleOperation<FieldT> OpT;
+	    typedef AdvectMeshOperation<FieldT> OpS;
+
+		double dt = 0.0;
+		Vec3d vsz = mGrid.transformPtr()->voxelSize();
+		double scale = std::max(std::max(vsz[0], vsz[1]), vsz[2]);
+		const double EPS=1E-30f;
+		double voxelDistance=0;
+		const double MAX_TIME_STEP=SpringLevelSet::MAX_VEXT;
+		for (double time = mStartTime; time < mEndTime; time += dt) {
+			MaxOperator<OpT, FieldT, InterruptT> op2(mGrid,mField,time, mInterrupt);
+			double maxV = std::max(EPS, std::sqrt(op2.process()));
+			dt=clamp(MAX_TIME_STEP*scale/std::max(1E-30,maxV),0.0,mEndTime-mStartTime);
+			if (dt < EPS)break;
+			AdvectSpringlOperator<OpT, FieldT, InterruptT> op1(mGrid, mField,mTemporalScheme, time,dt,mInterrupt);
+			op1.process();
+			AdvectMeshOperator<OpS, FieldT, InterruptT> opm1(mGrid, mField,mTemporalScheme, time,dt,mInterrupt);
+			opm1.process();
+			track<MapT>(time);
+		}
+		return 0;
+	}
+
 	template<typename MapT> class SpringLevelSetEvolve {
 	public:
 		SpringLevelSetAdvection& mParent;

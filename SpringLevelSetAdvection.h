@@ -58,16 +58,18 @@ public:
 			mGrid.relax(RELAX_INNER_ITERS);
 		}
 		mGrid.updateSignedLevelSet();
-		mGrid.clean();
+		int cleaned=mGrid.clean();
+		std::cout<<"Cleaned "<<cleaned<<" "<<100*cleaned/(double)mGrid.constellation.getNumSpringls()<<"%"<<std::endl;
 		mGrid.updateUnsignedLevelSet();
+
 		mGrid.updateGradient();
 		TrackerT mTracker(*mGrid.signedLevelSet,mInterrupt);
 		SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,1.0,4);
 		evolve.process();
+
 		mGrid.updateIsoSurface();
 		int added=mGrid.fill();
-		mGrid.constellation.updateVertexNormals();
-
+		std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.constellation.getNumSpringls()<<"%"<<std::endl;
 	}
 	template<typename MapT> size_t advect1(double  mStartTime, double mEndTime) {
 //	    typedef AdvectVertexOperation<FieldT> OpT;
@@ -89,8 +91,11 @@ public:
 			op1.process();
 			AdvectMeshOperator<OpS, FieldT, InterruptT> opm1(mGrid, mField,mTemporalScheme, time,dt,mInterrupt);
 			opm1.process();
-			track<MapT>(time);
 		}
+		track<MapT>(mEndTime);
+
+		mGrid.constellation.updateVertexNormals();
+
 		return 0;
 	}
 

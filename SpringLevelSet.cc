@@ -25,13 +25,13 @@ const float SpringLevelSet::PARTICLE_RADIUS = 0.05f;
 const float SpringLevelSet::MAX_VEXT = 0.5f;
 const int SpringLevelSet::MAX_NEAREST_NEIGHBORS =2;
 const float SpringLevelSet::FILL_DISTANCE = 0.3f;
-const float SpringLevelSet::CLEAN_DISTANCE = 0.6f;
+const float SpringLevelSet::CLEAN_DISTANCE = 0.625f;
 const float SpringLevelSet::SHARPNESS = 5.0f;
 const float SpringLevelSet::SPRING_CONSTANT = 0.3f;
 const float SpringLevelSet::RELAX_TIMESTEP = 0.1f;
 const float SpringLevelSet::MIN_AREA = 0.05f;
 const float SpringLevelSet::MAX_AREA = 2.0*2.0f;
-const float SpringLevelSet::MIN_ASPECT_RATIO=0.3f;
+const float SpringLevelSet::MIN_ASPECT_RATIO=0.1f;
 std::ostream& operator<<(std::ostream& ostr, const SpringlNeighbor& classname) {
 	ostr << "{" << classname.springlId << "|"
 			<< static_cast<int>(classname.edgeId) << ":" << std::setprecision(4)
@@ -400,6 +400,7 @@ void SpringLevelSet::create(Mesh* mesh,
 	updateIsoSurface();
 	updateUnsignedLevelSet();
 	updateNearestNeighbors();
+	updateGradient();
 	relax(10);
 }
 void SpringLevelSet::create(FloatGrid& grid) {
@@ -411,6 +412,7 @@ void SpringLevelSet::create(FloatGrid& grid) {
 	updateIsoSurface();
 	updateUnsignedLevelSet();
 	updateNearestNeighbors();
+	updateGradient();
 	relax(10);
 }
 void SpringLevelSet::updateIsoSurface() {
@@ -642,13 +644,23 @@ int SpringLevelSet::clean() {
 	int N = constellation.getNumSpringls();
 	keepList.reserve(N);
 	Index32 index = 0;
+	double minls=1E30,bias=0,maxls=-1E30,meanls=0,v;
+	int count=0;
+	int removeFarCount=0;
+	int removeSmallCount=0;
+	int removeAspectCount=0;
 	for (Springl& springl : constellation.springls) {
 		pt = springl.particle();
 		stencil.moveTo(
 				Coord(std::floor(pt[0]), std::floor(pt[1]), std::floor(pt[2])));
 		float levelSetValue = stencil.interpolation(pt);
 		K = springl.size();
-
+		count++;
+		v=fabs(levelSetValue);
+		meanls+=v;
+		bias+=levelSetValue;
+		minls=std::min(minls,v);
+		maxls=std::max(maxls,v);
 		if (fabs(levelSetValue) <= CLEAN_DISTANCE) {
 			minEdgeLength=1E30;
 			maxEdgeLength=-1E30;
@@ -666,10 +678,23 @@ int SpringLevelSet::clean() {
 				keepList.push_back(springl.id);
 				newSpringlCount++;
 				newVertexCount += K;
+			} else {
+				if(area <MIN_AREA||area>=MAX_AREA){
+					removeSmallCount++;
+				}
+				if(aspect<MIN_ASPECT_RATIO){
+					removeAspectCount++;
+				}
 			}
+		} else {
+			removeFarCount++;
 		}
 		index++;
 	}
+	meanls/=count;
+	bias/=count;
+	std::cout<<"Clean mean="<<meanls<<" bias="<<bias<<" ["<<minls<<","<<maxls<<"] ["<<removeFarCount<<","<<removeSmallCount<<","<<removeAspectCount<<"]"<<std::endl;
+
 	if (newSpringlCount == N)
 		return 0;
 	Index32 springlOffset = 0;

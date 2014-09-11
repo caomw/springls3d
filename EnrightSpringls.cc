@@ -385,7 +385,7 @@ bool EnrightSpringls::update(){
 }
 void EnrightSpringls::stash(){
 
-	std::ostringstream ostr1,ostr2,ostr3,ostr4;
+	std::ostringstream ostr1,ostr2,ostr3,ostr4,ostr5,ostr6,ostr7;
 	ostr4 << rootFile <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".lxs";
 	mCamera->setMaterialFile("/home/blake/materials/white_chess.lbm2");
 	if(playbackMode){
@@ -395,6 +395,16 @@ void EnrightSpringls::stash(){
 		springlGrid.constellation.save(ostr1.str());
 		ostr2 <<  rootFile<<"_iso" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
 		springlGrid.isoSurface.save(ostr2.str());
+
+		ostr5<<  rootFile<<"_sgn" <<std::setw(4)<<std::setfill('0')<< simulationIteration;
+		WriteToRawFile(springlGrid.signedLevelSet,ostr5.str());
+
+		ostr6<<  rootFile<<"_usgn" <<std::setw(4)<<std::setfill('0')<< simulationIteration;
+		WriteToRawFile(springlGrid.unsignedLevelSet,ostr6.str());
+
+		ostr7<<  rootFile<<"_grad" <<std::setw(4)<<std::setfill('0')<< simulationIteration;
+		WriteToRawFile(springlGrid.gradient,ostr7.str());
+
 		ostr3 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << ".vdb";
 		mCamera->setGeometryFile(ostr2.str(),Pose);
 		openvdb::io::File file(ostr3.str());
@@ -402,7 +412,7 @@ void EnrightSpringls::stash(){
 		grids.push_back(springlGrid.signedLevelSet);
 		file.write(grids);
 	}
-	mCamera->write(ostr4.str(),640,640);
+	//mCamera->write(ostr4.str(),640,640);
 }
 void
 EnrightSpringls::setWindowTitle(double fps)

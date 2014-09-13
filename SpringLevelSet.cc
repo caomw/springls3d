@@ -23,15 +23,15 @@ typedef LevelSetAdvection<openvdb::FloatGrid, VelocityField> AdvectionTool;
 const float SpringLevelSet::NEAREST_NEIGHBOR_RANGE = 1.5f;
 const float SpringLevelSet::PARTICLE_RADIUS = 0.05f;
 const float SpringLevelSet::MAX_VEXT = 0.5f;
-const int SpringLevelSet::MAX_NEAREST_NEIGHBORS =2;
+const int SpringLevelSet::MAX_NEAREST_NEIGHBORS = 2;
 const float SpringLevelSet::FILL_DISTANCE = 0.3f;
 const float SpringLevelSet::CLEAN_DISTANCE = 0.625f;
 const float SpringLevelSet::SHARPNESS = 5.0f;
 const float SpringLevelSet::SPRING_CONSTANT = 0.3f;
 const float SpringLevelSet::RELAX_TIMESTEP = 0.1f;
 const float SpringLevelSet::MIN_AREA = 0.05f;
-const float SpringLevelSet::MAX_AREA = 2.0*2.0f;
-const float SpringLevelSet::MIN_ASPECT_RATIO=0.1f;
+const float SpringLevelSet::MAX_AREA = 2.0 * 2.0f;
+const float SpringLevelSet::MIN_ASPECT_RATIO = 0.1f;
 std::ostream& operator<<(std::ostream& ostr, const SpringlNeighbor& classname) {
 	ostr << "{" << classname.springlId << "|"
 			<< static_cast<int>(classname.edgeId) << ":" << std::setprecision(4)
@@ -101,11 +101,12 @@ float Springl::area() const {
 	}
 	return 0.5f * norm.length();
 }
-Vec3s Constellation::closestPointOnEdge(const Vec3s& start,const SpringlNeighbor& ci){
+Vec3s Constellation::closestPointOnEdge(const Vec3s& start,
+		const SpringlNeighbor& ci) {
 	Vec3s pt;
-	Springl& nbr=springls[ci.springlId];
-	DistanceToEdgeSqr(start, nbr[ci.edgeId],
-			nbr[(ci.edgeId + 1) % nbr.size()], &pt);
+	Springl& nbr = springls[ci.springlId];
+	DistanceToEdgeSqr(start, nbr[ci.edgeId], nbr[(ci.edgeId + 1) % nbr.size()],
+			&pt);
 	return pt;
 }
 void SpringLevelSet::draw(bool colorEnabled, bool wireframe, bool particles,
@@ -121,7 +122,6 @@ void SpringLevelSet::draw(bool colorEnabled, bool wireframe, bool particles,
 	constellation.draw(colorEnabled, wireframe, particles, particleNormals);
 
 }
-
 
 openvdb::Vec3s& SpringLevelSet::GetParticle(const openvdb::Index32 id) {
 	return (constellation.springls[id].particle());
@@ -141,7 +141,8 @@ Springl& SpringLevelSet::GetSpringl(const openvdb::Index32 id) {
 }
 
 void RelaxOperation::init(SpringLevelSet& mGrid) {
-	mGrid.constellation.vertexDisplacement.resize(mGrid.constellation.getNumVertexes());
+	mGrid.constellation.vertexDisplacement.resize(
+			mGrid.constellation.getNumVertexes());
 }
 void RelaxOperation::apply(Springl& springl, SpringLevelSet& mGrid, double dt) {
 	int K = springl.size();
@@ -195,7 +196,8 @@ void RelaxOperation::compute(Springl& springl, SpringLevelSet& mGrid,
 			w = atanh(MAX_FORCE * clamp(w, -1.0f, 1.0f));
 			startVelocity += (w * dir);
 		}
-		if(map.size()>0)startVelocity/=map.size();
+		if (map.size() > 0)
+			startVelocity /= map.size();
 		len = std::max(1E-6f, startVelocity.length());
 		float t = SpringLevelSet::SHARPNESS * len;
 		vertexVelocity[k] = SpringLevelSet::RELAX_TIMESTEP * startVelocity
@@ -223,7 +225,8 @@ void RelaxOperation::compute(Springl& springl, SpringLevelSet& mGrid,
 
 		//disable rotation
 		start = rot * start;
-		mGrid.constellation.vertexDisplacement[springl.offset + k] = start + particlePt;
+		mGrid.constellation.vertexDisplacement[springl.offset + k] = start
+				+ particlePt;
 	}
 }
 void NearestNeighborOperation::init(SpringLevelSet& mGrid) {
@@ -287,17 +290,19 @@ void NearestNeighborOperation::compute(Springl& springl, SpringLevelSet& mGrid,
 			bestNbr = SpringlNeighbor(nbrId, -1, D2);
 			for (int8_t n = 0; n < snbr.size(); n++) {
 				float d = snbr.distanceEdgeSqr(refPoint, n);
-				if(d<=bestNbr.distance){
-					bestNbr.edgeId=n;
-					bestNbr.distance=d;
+				if (d <= bestNbr.distance) {
+					bestNbr.edgeId = n;
+					bestNbr.distance = d;
 				}
 			}
-			if(bestNbr.edgeId>=0)tmpRange.push_back(bestNbr);
+			if (bestNbr.edgeId >= 0)
+				tmpRange.push_back(bestNbr);
 			last = nbrId;
 		}
 
-		sort(tmpRange.begin(),tmpRange.end());
-		for(int nn=0,nmax=std::min(SpringLevelSet::MAX_NEAREST_NEIGHBORS,(int)tmpRange.size());nn<nmax;nn++){
+		sort(tmpRange.begin(), tmpRange.end());
+		for (int nn = 0, nmax = std::min(SpringLevelSet::MAX_NEAREST_NEIGHBORS,
+				(int) tmpRange.size()); nn < nmax; nn++) {
 			mapList.push_back(tmpRange[nn]);
 		}
 		//if (bestNbr.springlId >= 0 && bestNbr.springlId < N)mapList.push_back(bestNbr);
@@ -309,14 +314,12 @@ void SpringLevelSet::updateNearestNeighbors(bool threaded) {
 	NearestNeighbors<openvdb::util::NullInterrupter> nn(*this);
 	nn.process();
 
-
-
 }
-void SpringLevelSet::updateLines(){
+void SpringLevelSet::updateLines() {
 	std::vector<Vec3s>& lines = constellation.lines;
 	lines.clear();
 	float d;
-	Vec3s pt,qt;
+	Vec3s pt, qt;
 	for (Index32 i = 0; i < constellation.getNumSpringls(); i++) {
 
 		Springl& springl = constellation.springls[i];
@@ -324,9 +327,9 @@ void SpringLevelSet::updateLines(){
 		for (int k = 0; k < springl.size(); k++) {
 			//std::cout <<i << "={"<<k<<":: ";
 			for (SpringlNeighbor nbr : GetNearestNeighbors(i, k)) {
-				pt=springl[k];
+				pt = springl[k];
 				lines.push_back(pt);
-				qt=constellation.closestPointOnEdge(pt,nbr);
+				qt = constellation.closestPointOnEdge(pt, nbr);
 				lines.push_back(qt);
 				//std::cout << nbr << " ";
 			}
@@ -356,16 +359,48 @@ void SpringLevelSet::evolve() {
 
 }
 void SpringLevelSet::updateUnsignedLevelSet() {
-		openvdb::math::Transform::Ptr trans =
-				openvdb::math::Transform::createLinearTransform(1.0f);
-		using namespace openvdb::tools;
-		using namespace openvdb;
-		MeshToVolume<FloatGrid> mtol(trans, GENERATE_PRIM_INDEX_GRID);
-		mtol.convertToUnsignedDistanceField(constellation.vertexes,
-				constellation.faces, float(LEVEL_SET_HALF_WIDTH));
-		unsignedLevelSet = mtol.distGridPtr();
-		unsignedLevelSet->setBackground(float(LEVEL_SET_HALF_WIDTH));
-		springlIndexGrid = mtol.indexGridPtr();
+	openvdb::math::Transform::Ptr trans =
+			openvdb::math::Transform::createLinearTransform(1.0f);
+	using namespace openvdb::tools;
+	using namespace openvdb;
+	MeshToVolume<FloatGrid> mtol(trans, GENERATE_PRIM_INDEX_GRID);
+	mtol.convertToUnsignedDistanceField(constellation.vertexes,
+			constellation.faces, float(LEVEL_SET_HALF_WIDTH));
+	unsignedLevelSet = mtol.distGridPtr();
+	unsignedLevelSet->setBackground(float(LEVEL_SET_HALF_WIDTH));
+	springlIndexGrid = mtol.indexGridPtr();
+}
+double SpringLevelSet::distanceToConstellation(const Vec3s& pt) {
+	openvdb::math::DenseStencil<openvdb::Int32Grid> stencil =
+			openvdb::math::DenseStencil<openvdb::Int32Grid>(*springlIndexGrid,
+					ceil(FILL_DISTANCE));
+	stencil.moveTo(
+			Coord((int) floor(pt[0] + 0.5f), (int) floor(pt[1] + 0.5f),
+					(int) floor(pt[2] + 0.5f)));
+	int sz = stencil.size();
+	double levelSetValue = std::numeric_limits<float>::max();
+	std::vector<Index32> stencilCopy;
+	stencilCopy.clear();
+	Index32 last = -1;
+	Index32 springlsCount = constellation.getNumSpringls();
+	for (unsigned int nn = 0; nn < sz; nn++) {
+		openvdb::Index32 id = stencil.getValue(nn);
+		if (id >= springlsCount)
+			continue;
+		stencilCopy.push_back(id);
+	}
+	sz = stencilCopy.size();
+	sort(stencilCopy.begin(), stencilCopy.end());
+	for (Index32 id : stencilCopy) {
+		if (last != id) {
+			float d = constellation.springls[id].distanceToFaceSqr(pt);
+			if (d < levelSetValue) {
+				levelSetValue = d;
+			}
+		}
+		last = id;
+	}
+	return std::sqrt(levelSetValue);
 }
 void SpringLevelSet::updateSignedLevelSet() {
 	openvdb::math::Transform::Ptr trans =
@@ -389,7 +424,7 @@ std::list<SpringlNeighbor>& SpringLevelSet::GetNearestNeighbors(
 }
 void SpringLevelSet::create(Mesh* mesh,
 		openvdb::math::Transform::Ptr _transform) {
-	this->transform = _transform;
+	this->mTransform = _transform;
 	openvdb::math::Transform::Ptr trans =
 			openvdb::math::Transform::createLinearTransform(1.0);
 	openvdb::tools::MeshToVolume<openvdb::FloatGrid> mtol(trans);
@@ -404,9 +439,11 @@ void SpringLevelSet::create(Mesh* mesh,
 	relax(10);
 }
 void SpringLevelSet::create(FloatGrid& grid) {
-	this->transform = grid.transformPtr();
-	signedLevelSet = boost::static_pointer_cast<FloatGrid>(grid.copyGrid(CopyPolicy::CP_COPY));
-	signedLevelSet->transform()=*openvdb::math::Transform::createLinearTransform(1.0);
+	this->mTransform = grid.transformPtr();
+	signedLevelSet = boost::static_pointer_cast<FloatGrid>(
+			grid.copyGrid(CopyPolicy::CP_COPY));
+	signedLevelSet->transform() =
+			*openvdb::math::Transform::createLinearTransform(1.0);
 	isoSurface.create(signedLevelSet);
 	constellation.create(&isoSurface);
 	updateIsoSurface();
@@ -572,6 +609,127 @@ int SpringLevelSet::fill() {
 	}
 	return added;
 }
+void SpringLevelSet::computeStatistics(Mesh& mesh) {
+	float area;
+	float minEdgeLength, maxEdgeLength;
+	int K;
+	std::vector<Index32> keepList;
+	Index32 newVertexCount = 0;
+	Index32 newSpringlCount = 0;
+	int N = constellation.getNumSpringls();
+	keepList.reserve(N);
+	Index32 index = 0;
+	double minls = 1E30, bias = 0, maxls = -1E30, meanls = 0, v, sqrs = 0,
+			stdev;
+	int count = 0;
+	for (Vec3s pt : mesh.vertexes) {
+		float levelSetValue = distanceToConstellation(pt);
+		count++;
+		v = fabs(levelSetValue);
+		sqrs += v * v;
+		meanls += v;
+		bias += levelSetValue;
+		minls = std::min(minls, v);
+		maxls = std::max(maxls, v);
+		count++;
+	}
+	meanls /= count;
+	bias /= count;
+	stdev = std::sqrt(sqrs / count - meanls * meanls);
+	std::cout << ">>Constellation Vertex mean=" << meanls << " std dev.=" << stdev
+			<< " bias=" << bias << " [" << minls << "," << maxls << "]"
+			<< std::endl;
+	meanls = 0;
+	bias = 0;
+	sqrs = 0;
+	minls = 1E30;
+	maxls = -1E30;
+	count = 0;
+
+	for (Vec3s pt : mesh.particles) {
+		float levelSetValue = distanceToConstellation(pt);
+		count++;
+		v = fabs(levelSetValue);
+		sqrs += v * v;
+		meanls += v;
+		bias += levelSetValue;
+		minls = std::min(minls, v);
+		maxls = std::max(maxls, v);
+		count++;
+	}
+	meanls /= count;
+	bias /= count;
+
+	stdev = std::sqrt(sqrs / count - meanls * meanls);
+	if (count > 0)
+		std::cout << ">>Constellation Particle mean=" << meanls << " std dev.=" << stdev
+				<< " bias=" << bias << " [" << minls << "," << maxls << "]"
+				<< std::endl;
+}
+void SpringLevelSet::computeStatistics(Mesh& mesh, FloatGrid& levelSet) {
+	openvdb::math::BoxStencil<openvdb::FloatGrid> stencil(levelSet);
+	float area;
+	float minEdgeLength, maxEdgeLength;
+	int K;
+	std::vector<Index32> keepList;
+	Index32 newVertexCount = 0;
+	Index32 newSpringlCount = 0;
+	int N = constellation.getNumSpringls();
+	keepList.reserve(N);
+	Index32 index = 0;
+	double minls = 1E30, bias = 0, maxls = -1E30, meanls = 0, v, sqrs = 0,
+			stdev;
+	int count = 0;
+	for (Vec3s pt : mesh.vertexes) {
+		stencil.moveTo(
+				Coord(std::floor(pt[0]), std::floor(pt[1]), std::floor(pt[2])));
+		float levelSetValue = stencil.interpolation(pt);
+		count++;
+		v = fabs(levelSetValue);
+		sqrs += v * v;
+		meanls += v;
+		bias += levelSetValue;
+		minls = std::min(minls, v);
+		maxls = std::max(maxls, v);
+		count++;
+	}
+	meanls /= count;
+	bias /= count;
+
+	stdev = std::sqrt(sqrs / count - meanls * meanls);
+	std::cout << ">>Vertex mean=" << meanls << " std dev.=" << stdev << " bias="
+			<< bias << " [" << minls << "," << maxls << "]" << std::endl;
+
+	meanls = 0;
+	bias = 0;
+	sqrs = 0;
+	minls = 1E30;
+	maxls = -1E30;
+	count = 0;
+
+	for (Vec3s pt : mesh.particles) {
+		stencil.moveTo(
+				Coord(std::floor(pt[0]), std::floor(pt[1]), std::floor(pt[2])));
+		float levelSetValue = stencil.interpolation(pt);
+		count++;
+		v = fabs(levelSetValue);
+		sqrs += v * v;
+		meanls += v;
+		bias += levelSetValue;
+		minls = std::min(minls, v);
+		maxls = std::max(maxls, v);
+		count++;
+	}
+	meanls /= count;
+	bias /= count;
+
+	stdev = std::sqrt(sqrs / count - meanls * meanls);
+	if (count > 0)
+		std::cout << ">>Particle mean=" << meanls << " std dev.=" << stdev
+				<< " bias=" << bias << " [" << minls << "," << maxls << "]"
+				<< std::endl;
+
+}
 void Constellation::create(Mesh* mesh) {
 	size_t faceCount = mesh->faces.size();
 	size_t counter = 0;
@@ -636,7 +794,7 @@ int SpringLevelSet::clean() {
 	openvdb::math::BoxStencil<openvdb::FloatGrid> stencil(*signedLevelSet);
 	Vec3s pt, pt1, pt2, pt3;
 	float area;
-	float minEdgeLength,maxEdgeLength;
+	float minEdgeLength, maxEdgeLength;
 	int K;
 	std::vector<Index32> keepList;
 	Index32 newVertexCount = 0;
@@ -644,11 +802,11 @@ int SpringLevelSet::clean() {
 	int N = constellation.getNumSpringls();
 	keepList.reserve(N);
 	Index32 index = 0;
-	double minls=1E30,bias=0,maxls=-1E30,meanls=0,v;
-	int count=0;
-	int removeFarCount=0;
-	int removeSmallCount=0;
-	int removeAspectCount=0;
+	double minls = 1E30, bias = 0, maxls = -1E30, meanls = 0, v;
+	int count = 0;
+	int removeFarCount = 0;
+	int removeSmallCount = 0;
+	int removeAspectCount = 0;
 	for (Springl& springl : constellation.springls) {
 		pt = springl.particle();
 		stencil.moveTo(
@@ -656,33 +814,34 @@ int SpringLevelSet::clean() {
 		float levelSetValue = stencil.interpolation(pt);
 		K = springl.size();
 		count++;
-		v=fabs(levelSetValue);
-		meanls+=v;
-		bias+=levelSetValue;
-		minls=std::min(minls,v);
-		maxls=std::max(maxls,v);
+		v = fabs(levelSetValue);
+		meanls += v;
+		bias += levelSetValue;
+		minls = std::min(minls, v);
+		maxls = std::max(maxls, v);
 		if (fabs(levelSetValue) <= CLEAN_DISTANCE) {
-			minEdgeLength=1E30;
-			maxEdgeLength=-1E30;
+			minEdgeLength = 1E30;
+			maxEdgeLength = -1E30;
 			area = 0.0f;
 			for (int i = 0; i < K; i++) {
 				pt1 = springl[i];
 				pt2 = springl[(i + 1) % K];
-				float len=(pt1-pt2).length();
-				minEdgeLength=std::min(minEdgeLength,len);
-				maxEdgeLength=std::max(maxEdgeLength,len);
+				float len = (pt1 - pt2).length();
+				minEdgeLength = std::min(minEdgeLength, len);
+				maxEdgeLength = std::max(maxEdgeLength, len);
 			}
-			float aspect=minEdgeLength/maxEdgeLength;
+			float aspect = minEdgeLength / maxEdgeLength;
 			area = springl.area();
-			if (area >=MIN_AREA&&area<MAX_AREA&&aspect>=MIN_ASPECT_RATIO) {
+			if (area >= MIN_AREA && area < MAX_AREA
+					&& aspect >= MIN_ASPECT_RATIO) {
 				keepList.push_back(springl.id);
 				newSpringlCount++;
 				newVertexCount += K;
 			} else {
-				if(area <MIN_AREA||area>=MAX_AREA){
+				if (area < MIN_AREA || area >= MAX_AREA) {
 					removeSmallCount++;
 				}
-				if(aspect<MIN_ASPECT_RATIO){
+				if (aspect < MIN_ASPECT_RATIO) {
 					removeAspectCount++;
 				}
 			}
@@ -691,9 +850,11 @@ int SpringLevelSet::clean() {
 		}
 		index++;
 	}
-	meanls/=count;
-	bias/=count;
-	std::cout<<"Clean mean="<<meanls<<" bias="<<bias<<" ["<<minls<<","<<maxls<<"] ["<<removeFarCount<<","<<removeSmallCount<<","<<removeAspectCount<<"]"<<std::endl;
+	meanls /= count;
+	bias /= count;
+	std::cout << "Clean mean=" << meanls << " bias=" << bias << " [" << minls
+			<< "," << maxls << "] [" << removeFarCount << ","
+			<< removeSmallCount << "," << removeAspectCount << "]" << std::endl;
 
 	if (newSpringlCount == N)
 		return 0;

@@ -193,6 +193,7 @@ bool EnrightSpringls::openMesh(const std::string& fileName){
 	rootFile=GetFileWithoutExtension(fileName);
     return true;
 }
+
 bool EnrightSpringls::openGrid(FloatGrid& signedLevelSet){
     openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     springlGrid.create(signedLevelSet);
@@ -302,9 +303,15 @@ bool EnrightSpringls::init(int width,int height){
     	   meshLock.lock();
     	   try {
 				springlGrid.isoSurface.updateGL();
-				springlGrid.constellation.updateGL();
-    	   } catch(std::exception* e){
-    		   std::cerr<<"UpdateGL Error: "<<e->what()<<std::endl;
+    	   } catch(Exception& e){
+    		   std::cerr<<"Iso-Surface "<<e.what()<<std::endl;
+      		   std::cerr<<"VERTS "<<springlGrid.isoSurface.vertexes.size()<<" QUADS "<<springlGrid.isoSurface.quadIndexes.size()<<std::endl;
+
+    	   }
+    	   try {
+    		   springlGrid.constellation.updateGL();
+    	   } catch(Exception& e){
+    		   std::cerr<<"Constellation "<<e.what()<<std::endl;
     	   }
 			meshDirty=false;
 			meshLock.unlock();
@@ -344,40 +351,52 @@ bool EnrightSpringls::openRecording(const std::string& dirName){
 	springlGrid.isoSurface.updateVertexNormals();
 	springlGrid.constellation.updateVertexNormals();
 	meshDirty=true;
+		simTime=0.0f;
+		simulationIteration=0;
+		advect=boost::shared_ptr<AdvectT>(new AdvectT(springlGrid,field));
+		advect->setTemporalScheme(SpringlTemporalIntegrationScheme::RK4b);
 	setNeedsDisplay();
 	return true;
+}
+void EnrightSpringls::setFrameIndex(int frameIdx){
+	simulationIteration=frameIdx;
+	simTime=simulationIteration*dt;
+	std::cout<<"Set Frame Index "<<frameIdx<<" time "<<simTime<<std::endl;
+	if(simulationIteration>=constellationFiles.size()){
+		simulationIteration=0;
+		simTime=0;
+	}
+	Mesh c;
+	c.openMesh(constellationFiles[simulationIteration]);
+	springlGrid.constellation.create(&c);
+	springlGrid.isoSurface.openMesh(isoSurfaceFiles[simulationIteration]);
+	springlGrid.isoSurface.updateVertexNormals();
+	springlGrid.constellation.updateVertexNormals();
+	openvdb::io::File file(signedDistanceFiles[simulationIteration]);
+	file.open();
+	openvdb::GridPtrVecPtr grids =file.getGrids();
+	openvdb::GridPtrVec allGrids;
+	allGrids.insert(allGrids.end(), grids->begin(), grids->end());
+	GridBase::Ptr ptr = allGrids[0];
+	FloatGrid::Ptr signedLevelSet=boost::static_pointer_cast<FloatGrid>(ptr);
+
+	springlGrid.transform()=signedLevelSet->transform();
+	std::cout<<"Loaded Transform "<<springlGrid.transform()<<std::endl;
+	springlGrid.updateSignedLevelSet();
+	springlGrid.updateUnsignedLevelSet();
+	springlGrid.updateGradient();
+	meshDirty=true;
+	setNeedsDisplay();
 }
 bool EnrightSpringls::update(){
 	if(meshDirty){
 		std::this_thread::sleep_for(std::chrono::milliseconds());
 		return true;
 	}
-
-	if(playbackMode){
-		if(simulationIteration>=constellationFiles.size()){
-			simulationIteration=0;
-			simTime=0;
-		}
-		Mesh c;
-		c.openMesh(constellationFiles[simulationIteration]);
-		springlGrid.constellation.create(&c);
-		springlGrid.isoSurface.openMesh(isoSurfaceFiles[simulationIteration]);
-		springlGrid.isoSurface.updateVertexNormals();
-		springlGrid.constellation.updateVertexNormals();
-		openvdb::io::File file(signedDistanceFiles[simulationIteration]);
-		file.open();
-		openvdb::GridPtrVecPtr grids =file.getGrids();
-		openvdb::GridPtrVec allGrids;
-		allGrids.insert(allGrids.end(), grids->begin(), grids->end());
-		GridBase::Ptr ptr = allGrids[0];
-		springlGrid.signedLevelSet=boost::static_pointer_cast<FloatGrid>(ptr);
-	} else {
-		advect->advect(simTime,simTime+dt);
-	}
-	stash();
+	std::cout<<"---------------------- Simulation Iteration ["<<simulationIteration<<"] ----------------------"<<std::endl;
+	advect->advect(simTime,simTime+dt);
+	if(!playbackMode)stash();
 	simTime+=dt;
-	//openvdb::BBoxd bbox = worldSpaceBBox(springlGrid.signedLevelSet->transform(),springlGrid.signedLevelSet->evalActiveVoxelBoundingBox());
-	//mClipBox->setBBox(bbox);
 	meshDirty=true;
 	setNeedsDisplay();
 	simulationIteration++;
@@ -396,6 +415,7 @@ void EnrightSpringls::stash(){
 		ostr2 <<  rootFile<<"_iso" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
 		springlGrid.isoSurface.save(ostr2.str());
 
+
 		ostr5<<  rootFile<<"_sgn" <<std::setw(4)<<std::setfill('0')<< simulationIteration;
 		WriteToRawFile(springlGrid.signedLevelSet,ostr5.str());
 
@@ -409,6 +429,8 @@ void EnrightSpringls::stash(){
 		mCamera->setGeometryFile(ostr2.str(),Pose);
 		openvdb::io::File file(ostr3.str());
 		openvdb::GridPtrVec grids;
+		springlGrid.signedLevelSet->transform()=springlGrid.transform();
+		std::cout<<"Stash "<<springlGrid.signedLevelSet->transform()<<std::endl;
 		grids.push_back(springlGrid.signedLevelSet);
 		file.write(grids);
 	}
@@ -468,7 +490,7 @@ EnrightSpringls::render()
  //   mClipBox->render();
   //  mClipBox->enableClipping();
 	glColor3f(0.8f,0.8f,0.8f);
-	springlGrid.draw(false,true,false,false);
+	springlGrid.draw(false,true,true,false);
 //	mClipBox->disableClipping();
     glPopMatrix();
 

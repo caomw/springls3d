@@ -17,6 +17,18 @@
 #include <GL/glu.h>
 #include <GL/glfw.h>
 namespace imagesci {
+class Exception:public std::exception{
+protected:
+	std::string message;
+public:
+
+	Exception(const char* str){
+		message=str;
+	}
+	const char* what(){
+		return message.c_str();
+	}
+};
 class Mesh{
 	private:
 		openvdb::math::BBox<openvdb::Vec3d> bbox;
@@ -31,6 +43,7 @@ class Mesh{
 		GLuint mQuadIndexBuffer;
 		GLuint mLineBuffer;
 		GLuint triangleCount;
+		GLuint particleCount;
 		GLuint quadCount;
 		GLuint triangleIndexCount;
 		GLuint quadIndexCount;

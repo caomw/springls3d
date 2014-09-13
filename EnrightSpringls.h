@@ -102,6 +102,7 @@ public:
 	void setWindowTitle(double fps = 0.0);
 	void render();
 	void resume();
+	void setFrameIndex(int frameIdx);
 	void updateCutPlanes(int wheelPos);
 	bool init(int width, int height);
 	void keyCallback(int key, int action);

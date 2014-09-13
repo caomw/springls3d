@@ -69,6 +69,7 @@ typedef std::vector<std::list<SpringlNeighbor>> NearestNeighborMap;
 class SpringLevelSet {
 protected:
 	openvdb::tools::VolumeToMesh mesher;
+	openvdb::math::Transform::Ptr mTransform;
 public:
 	static const float NEAREST_NEIGHBOR_RANGE; //voxel units
 	static const int MAX_NEAREST_NEIGHBORS;
@@ -82,7 +83,7 @@ public:
 	static const float MIN_ASPECT_RATIO;
 	static const float MAX_AREA;
 	static const float MIN_AREA;
-	openvdb::math::Transform::Ptr transform;
+
 	openvdb::FloatGrid::Ptr signedLevelSet;
 	openvdb::FloatGrid::Ptr unsignedLevelSet;
 	openvdb::VectorGrid::Ptr gradient;
@@ -91,6 +92,12 @@ public:
 	Constellation constellation;
 	NearestNeighborMap nearestNeighbors;
 
+	openvdb::math::Transform& transform(){
+		return *mTransform;
+	}
+	openvdb::math::Transform::Ptr transformPtr(){
+		return mTransform;
+	}
 	Springl& GetSpringl(const openvdb::Index32 id);
 	openvdb::Vec3s& GetParticle(const openvdb::Index32 id);
 	openvdb::Vec3s& GetParticleNormal(const openvdb::Index32 id);
@@ -103,16 +110,15 @@ public:
 	int clean();
 	int fill();
 	void evolve();
-	inline openvdb::math::Transform::Ptr transformPtr() {
-		return transform;
-	}
 	void updateLines();
 	void updateGradient();
 	void updateIsoSurface();
 	void updateUnsignedLevelSet();
 	void updateSignedLevelSet();
-
+	void computeStatistics(Mesh& mesh,FloatGrid& levelSet);
+	void computeStatistics(Mesh& mesh);
 	void relax(int iters = 10);
+	double distanceToConstellation(const Vec3s& pt);
 	void updateNearestNeighbors(bool threaded = true);
 	void create(Mesh* mesh, openvdb::math::Transform::Ptr transform =
 			openvdb::math::Transform::createLinearTransform());

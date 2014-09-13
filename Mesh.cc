@@ -71,6 +71,7 @@ Mesh::Mesh() :
 		mTriIndexBuffer(0),
 		mQuadIndexBuffer(0),
 		quadIndexCount(0),
+		particleCount(0),
 		triangleIndexCount(0),
 		mLineBuffer(0),mParticleBuffer(0),mParticleNormalBuffer(0),
 		quadCount(0),triangleCount(0) {
@@ -223,7 +224,8 @@ bool Mesh::openMesh(const std::string& file) {
 	bool RGBPointsAvailable = false;
 	this->triIndexes.clear();
 	this->quadIndexes.clear();
-
+	this->faces.clear();
+	this->vertexes.clear();
 	if ((elem = find_element(ply, "vertex")) != NULL
 			&& find_property(elem, "red", &index) != NULL
 			&& find_property(elem, "green", &index) != NULL
@@ -548,13 +550,13 @@ void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showPar
 				glDrawArrays(GL_TRIANGLES, 0, triangleCount);
 			}
 		}
-		if (showParticles&&particles.size() > 0) {
+		if (showParticles&&particleCount > 0) {
 			glColor3f(0.3f, 1.0f, 0.3f);
-			glPointParameteri(GL_POINT_SMOOTH,GL_TRUE);
+			//glPointParameteri(GL_POINT_SMOOTH,GL_TRUE);
 			glPointSize(4.0f);
 			glBindBuffer(GL_ARRAY_BUFFER, mParticleBuffer);
 			glVertexPointer(3, GL_FLOAT, 0, 0);
-			glDrawArrays(GL_POINTS, 0, particles.size());
+			glDrawArrays(GL_POINTS, 0, particleCount);
 		}
 
 		if (lines.size() > 0) {
@@ -576,22 +578,28 @@ void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showPar
 
 	}
 }
+
 void Mesh::updateGL() {
 	quadCount=0;
 	triangleCount=0;
 	triangleIndexCount=0;
 	quadIndexCount=0;
+	particleCount=0;
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred");
+
 	if (vertexes.size() > 0) {
 		if (glIsBuffer(mVertexBuffer) == GL_TRUE)
 			glDeleteBuffers(1, &mVertexBuffer);
 		glGenBuffers(1, &mVertexBuffer);
 		glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
+		std::cout<<"Vertexes "<<vertexes.size()<<" "<<mVertexBuffer<<std::endl;
 		if (glIsBuffer(mVertexBuffer) == GL_FALSE)
-			throw "Error: Unable to create vertex buffer";
+			throw Exception("Error: Unable to create vertex buffer");
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * vertexes.size(),
 				&vertexes[0], GL_STATIC_DRAW);
 		if (GL_NO_ERROR != glGetError())
-			throw "Error: Unable to upload vertex buffer data";
+			throw Exception("Error: Unable to upload vertex buffer data");
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 	if (particles.size() > 0) {
@@ -599,13 +607,14 @@ void Mesh::updateGL() {
 			glDeleteBuffers(1, &mParticleBuffer);
 		glGenBuffers(1, &mParticleBuffer);
 		glBindBuffer(GL_ARRAY_BUFFER, mParticleBuffer);
-		if (glIsBuffer(mVertexBuffer) == GL_FALSE)
-			throw "Error: Unable to create particle buffer";
+		if (glIsBuffer(mParticleBuffer) == GL_FALSE)
+			throw Exception("Error: Unable to create particle buffer");
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * particles.size(),
 				&particles[0], GL_STATIC_DRAW);
 		if (GL_NO_ERROR != glGetError())
-			throw "Error: Unable to upload particle buffer data";
+			throw Exception("Error: Unable to upload particle buffer data");
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		particleCount=particles.size();
 	}
 	if (colors.size() > 0) {
 		if (glIsBuffer(mColorBuffer) == GL_TRUE)
@@ -614,12 +623,12 @@ void Mesh::updateGL() {
 		glGenBuffers(1, &mColorBuffer);
 		glBindBuffer(GL_ARRAY_BUFFER, mColorBuffer);
 		if (glIsBuffer(mColorBuffer) == GL_FALSE)
-			throw "Error: Unable to create color buffer";
+			throw Exception("Error: Unable to create color buffer");
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * colors.size(),
 				&colors[0], GL_STATIC_DRAW);
 		if (GL_NO_ERROR != glGetError())
-			throw "Error: Unable to upload color buffer data";
+			throw Exception("Error: Unable to upload color buffer data");
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
@@ -632,12 +641,12 @@ void Mesh::updateGL() {
 		glGenBuffers(1, &mLineBuffer);
 		glBindBuffer(GL_ARRAY_BUFFER, mLineBuffer);
 		if (glIsBuffer(mLineBuffer) == GL_FALSE)
-			throw "Error: Unable to create index buffer";
+			throw Exception("Error: Unable to create index buffer");
 		// upload data
 		glBufferData(GL_ARRAY_BUFFER,  sizeof(GLfloat) * 3  * lines.size(),
 				&lines[0], GL_STATIC_DRAW); // upload data
 		if (GL_NO_ERROR != glGetError())
-			throw "Error: Unable to upload index buffer data";
+			throw Exception("Error: Unable to upload index buffer data");
 		// release buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		std::cout<<"Disable Lines "<<std::endl;
@@ -651,7 +660,7 @@ void Mesh::updateGL() {
 		glGenBuffers(1, &mTriIndexBuffer);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mTriIndexBuffer);
 		if (glIsBuffer(mTriIndexBuffer) == GL_FALSE)
-			throw "Error: Unable to create index buffer";
+			throw Exception("Error: Unable to create index buffer");
 
 		// upload data
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * triIndexes.size(),
@@ -659,7 +668,7 @@ void Mesh::updateGL() {
 
 
 		if (GL_NO_ERROR != glGetError())
-			throw "Error: Unable to upload index buffer data";
+			throw Exception("Error: Unable to upload index buffer data");
 
 		triangleIndexCount = triIndexes.size();
 		// release buffer
@@ -674,13 +683,13 @@ void Mesh::updateGL() {
 		glGenBuffers(1, &mQuadIndexBuffer);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
 		if (glIsBuffer(mQuadIndexBuffer) == GL_FALSE)
-			throw "Error: Unable to create index buffer";
+			throw Exception("Error: Unable to create index buffer");
 
 		// upload data
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * quadIndexes.size(),
 				&quadIndexes[0], GL_STATIC_DRAW); // upload data
 		if (GL_NO_ERROR != glGetError())
-			throw "Error: Unable to upload index buffer data";
+			throw Exception("Error: Unable to upload index buffer data");
 
 		quadIndexCount = quadIndexes.size();
 		// release buffer
@@ -693,13 +702,13 @@ void Mesh::updateGL() {
 		glGenBuffers(1, &mParticleNormalBuffer);
 		glBindBuffer(GL_ARRAY_BUFFER, mParticleNormalBuffer);
 		if (glIsBuffer(mParticleNormalBuffer) == GL_FALSE)
-			throw "Error: Unable to create particle normal buffer";
+			throw Exception("Error: Unable to create particle normal buffer");
 
 		glBufferData(GL_ARRAY_BUFFER,
 				sizeof(GLfloat) * 3 * particleNormals.size(),
 				&particleNormals[0], GL_STATIC_DRAW);
 		if (GL_NO_ERROR != glGetError())
-			throw "Error: Unable to upload particle normal buffer data";
+			throw Exception("Error: Unable to upload particle normal buffer data");
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
@@ -710,12 +719,12 @@ void Mesh::updateGL() {
 		glGenBuffers(1, &mNormalBuffer);
 		glBindBuffer(GL_ARRAY_BUFFER, mNormalBuffer);
 		if (glIsBuffer(mNormalBuffer) == GL_FALSE)
-			throw "Error: Unable to create normal buffer";
+			throw Exception("Error: Unable to create normal buffer");
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * vertexNormals.size(),
 				&vertexNormals[0], GL_STATIC_DRAW);
 		if (GL_NO_ERROR != glGetError())
-			throw "Error: Unable to upload normal buffer data";
+			throw Exception("Error: Unable to upload normal buffer data");
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}

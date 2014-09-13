@@ -381,10 +381,12 @@ void EnrightSpringls::setFrameIndex(int frameIdx){
 	FloatGrid::Ptr signedLevelSet=boost::static_pointer_cast<FloatGrid>(ptr);
 
 	springlGrid.transform()=signedLevelSet->transform();
-	std::cout<<"Loaded Transform "<<springlGrid.transform()<<std::endl;
-	springlGrid.updateSignedLevelSet();
-	springlGrid.updateUnsignedLevelSet();
-	springlGrid.updateGradient();
+	signedLevelSet->transform()=springlGrid.unsignedLevelSet->transform();
+	springlGrid.signedLevelSet=signedLevelSet;
+
+	//WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/signed_init");
+	//WriteToRawFile(springlGrid.unsignedLevelSet,"/home/blake/unsigned_init");
+
 	meshDirty=true;
 	setNeedsDisplay();
 }
@@ -395,6 +397,7 @@ bool EnrightSpringls::update(){
 	}
 	std::cout<<"---------------------- Simulation Iteration ["<<simulationIteration<<"] ----------------------"<<std::endl;
 	advect->advect(simTime,simTime+dt);
+
 	if(!playbackMode)stash();
 	simTime+=dt;
 	meshDirty=true;
@@ -417,13 +420,13 @@ void EnrightSpringls::stash(){
 
 
 		ostr5<<  rootFile<<"_sgn" <<std::setw(4)<<std::setfill('0')<< simulationIteration;
-		WriteToRawFile(springlGrid.signedLevelSet,ostr5.str());
+		//WriteToRawFile(springlGrid.signedLevelSet,ostr5.str());
 
 		ostr6<<  rootFile<<"_usgn" <<std::setw(4)<<std::setfill('0')<< simulationIteration;
-		WriteToRawFile(springlGrid.unsignedLevelSet,ostr6.str());
+		//WriteToRawFile(springlGrid.unsignedLevelSet,ostr6.str());
 
 		ostr7<<  rootFile<<"_grad" <<std::setw(4)<<std::setfill('0')<< simulationIteration;
-		WriteToRawFile(springlGrid.gradient,ostr7.str());
+		//WriteToRawFile(springlGrid.gradient,ostr7.str());
 
 		ostr3 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << ".vdb";
 		mCamera->setGeometryFile(ostr2.str(),Pose);
@@ -440,9 +443,7 @@ void
 EnrightSpringls::setWindowTitle(double fps)
 {
     std::ostringstream ss;
-    ss  << mProgName << ": "
-        << (mGridName.empty() ? std::string("OpenVDB ") : mGridName)
-        << std::setprecision(1) << std::fixed << fps << " fps";
+    ss  << "Enright - t="<<simTime<<" ["<<simulationIteration<<"]";
     glfwSetWindowTitle(ss.str().c_str());
 }
 
@@ -490,7 +491,7 @@ EnrightSpringls::render()
  //   mClipBox->render();
   //  mClipBox->enableClipping();
 	glColor3f(0.8f,0.8f,0.8f);
-	springlGrid.draw(false,true,true,false);
+	springlGrid.draw(false,true,false,false);
 //	mClipBox->disableClipping();
     glPopMatrix();
 
@@ -550,10 +551,16 @@ EnrightSpringls::keyCallback(int key, int action)
     if(keyPress){
 		if(key==' '){
 			if(simulationRunning){
+				std::cout<<"############# STOP #############"<<std::endl;
 				stop();
 			} else {
+				std::cout<<"############# START #############"<<std::endl;
 				resume();
 			}
+		} else if(key==GLFW_KEY_LEFT){
+			setFrameIndex((simulationIteration-1+constellationFiles.size())%constellationFiles.size());
+		}  else if(key==GLFW_KEY_RIGHT){
+			setFrameIndex((simulationIteration+1)%constellationFiles.size());
 		}
     }
     switch (key) {

@@ -53,24 +53,27 @@ public:
 		const int RELAX_OUTER_ITERS=1;
 		const int RELAX_INNER_ITERS=5;
 		mGrid.updateUnsignedLevelSet();
-		mGrid.constellation.save("/home/blake/constellation.ply");
+		//mGrid.constellation.save("/home/blake/constellation.ply");
+
+
 		for(int iter=0;iter<RELAX_OUTER_ITERS;iter++){
 			mGrid.updateNearestNeighbors();
 			mGrid.relax(RELAX_INNER_ITERS);
 		}
-		mGrid.isoSurface.save("/home/blake/mesh_deform.ply");
-		mGrid.constellation.save("/home/blake/constellation_relax.ply");
+
+
+		//mGrid.isoSurface.save("/home/blake/mesh_deform.ply");
+		//mGrid.constellation.save("/home/blake/constellation_relax.ply");
 		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/signed_before");
 		mGrid.updateSignedLevelSet();
 		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/signed_after");
 		int cleaned=mGrid.clean();
 		std::cout<<"Cleaned "<<cleaned<<" "<<100*cleaned/(double)mGrid.constellation.getNumSpringls()<<"%"<<std::endl;
-
-		mGrid.constellation.save("/home/blake/constellation_cleaned.ply");
+		//mGrid.constellation.save("/home/blake/constellation_cleaned.ply");
 		mGrid.updateUnsignedLevelSet();
 		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/unsigned");
 		/*
-		std::cout<<"--> ISO Signed level set statistics"<<std::endl;
+		std::cout<<"--ck(> ISO Signed level set statistics"<<std::endl;
 		mGrid.computeStatistics(mGrid.isoSurface,*mGrid.signedLevelSet);
 		std::cout<<"--> ISO Unsigned level set statistics"<<std::endl;
 		mGrid.computeStatistics(mGrid.isoSurface,*mGrid.unsignedLevelSet);
@@ -94,9 +97,11 @@ public:
 		//mGrid.computeStatistics(mGrid.isoSurface,*mGrid.signedLevelSet);
 
 		mGrid.updateIsoSurface();
-		mGrid.isoSurface.save("/home/blake/mesh_iso.ply");
+
+		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/signed");
+		//mGrid.isoSurface.save("/home/blake/mesh_iso.ply");
 		int added=mGrid.fill();
-		mGrid.constellation.save("/home/blake/constellation_filled.ply");
+		//mGrid.constellation.save("/home/blake/constellation_filled.ply");
 		std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.constellation.getNumSpringls()<<"%"<<std::endl;
 	}
 	template<typename MapT> size_t advect1(double  mStartTime, double mEndTime) {
@@ -110,7 +115,6 @@ public:
 		const double EPS=1E-30f;
 		double voxelDistance=0;
 		const double MAX_TIME_STEP=SpringLevelSet::MAX_VEXT;
-		std::cout<<"Start Advect"<<std::endl;
 		for (double time = mStartTime; time < mEndTime; time += dt) {
 			MaxOperator<OpT, FieldT, InterruptT> op2(mGrid,mField,time, mInterrupt);
 			double maxV = std::max(EPS, std::sqrt(op2.process()));

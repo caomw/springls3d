@@ -738,6 +738,7 @@ void Constellation::create(Mesh* mesh) {
 	faces.clear();
 	quadIndexes.clear();
 	triIndexes.clear();
+	vertexes.clear();
 	vertexes.resize(mesh->quadIndexes.size() + mesh->triIndexes.size());
 	particles.resize(faceCount);
 	particleNormals.resize(faceCount);

@@ -791,6 +791,7 @@ public:
 		int K=springl.size();
 		for(int k=0;k<K;k++){
 			pt = trans->indexToWorld(springl[k]);
+			vel = ComputeVelocity(field,mIntegrationScheme,pt,t,h);
 			springl[k]=trans->worldToIndex(pt+vel);
 		}
 	}

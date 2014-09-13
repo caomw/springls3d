@@ -226,6 +226,9 @@ bool Mesh::openMesh(const std::string& file) {
 	this->quadIndexes.clear();
 	this->faces.clear();
 	this->vertexes.clear();
+	this->particles.clear();
+	this->particleNormals.clear();
+	this->vertexNormals.clear();
 	if ((elem = find_element(ply, "vertex")) != NULL
 			&& find_property(elem, "red", &index) != NULL
 			&& find_property(elem, "green", &index) != NULL
@@ -593,7 +596,6 @@ void Mesh::updateGL() {
 			glDeleteBuffers(1, &mVertexBuffer);
 		glGenBuffers(1, &mVertexBuffer);
 		glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
-		std::cout<<"Vertexes "<<vertexes.size()<<" "<<mVertexBuffer<<std::endl;
 		if (glIsBuffer(mVertexBuffer) == GL_FALSE)
 			throw Exception("Error: Unable to create vertex buffer");
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * vertexes.size(),

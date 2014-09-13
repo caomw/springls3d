@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
 	int status = EXIT_SUCCESS;
 
 	try {
-		if (argc > 1) {
+		if (argc > 2) {
 			if (std::string(argv[1]) == "-playback") {
 				std::string fileName(argv[2]);
 
@@ -86,8 +86,8 @@ int main(int argc, char *argv[]) {
 					viewer->init(1600, 800);
 				}
 
-			} else {
-				std::string fileName(argv[1]);
+			} else if (std::string(argv[1]) == "-simulate") {
+				std::string fileName(argv[2]);
 				openvdb::initialize();
 				tbb::mutex::scoped_lock(sLock);
 				OPENVDB_START_THREADSAFE_STATIC_WRITE
@@ -112,7 +112,10 @@ int main(int argc, char *argv[]) {
 					imagesci::EnrightSpringls::GetInstance();
 			const float radius = 0.15f;
 			const openvdb::Vec3f center(0.35f, 0.35f, 0.35f);
-			const int dim = 256;
+			int dim = 256;
+			if(argc>1){
+				dim=atoi(argv[1]);
+			}
 			float voxelSize = 1 / (float) (dim - 1);
 			FloatGrid::Ptr signedLevelSet =
 					openvdb::tools::createLevelSetSphere<FloatGrid>(radius,

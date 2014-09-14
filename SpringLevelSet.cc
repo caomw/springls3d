@@ -358,16 +358,16 @@ void SpringLevelSet::evolve() {
 	std::cout << "Evolution steps " << steps << std::endl;
 
 }
-void SpringLevelSet::updateUnsignedLevelSet() {
+void SpringLevelSet::updateUnsignedLevelSet(double distance) {
 	openvdb::math::Transform::Ptr trans =
 			openvdb::math::Transform::createLinearTransform(1.0f);
 	using namespace openvdb::tools;
 	using namespace openvdb;
 	MeshToVolume<FloatGrid> mtol(trans, GENERATE_PRIM_INDEX_GRID);
 	mtol.convertToUnsignedDistanceField(constellation.vertexes,
-			constellation.faces, 2.5*float(LEVEL_SET_HALF_WIDTH));
+			constellation.faces,distance);
 	unsignedLevelSet = mtol.distGridPtr();
-	unsignedLevelSet->setBackground(2.5*float(LEVEL_SET_HALF_WIDTH));
+	unsignedLevelSet->setBackground(distance);
 	springlIndexGrid = mtol.indexGridPtr();
 }
 double SpringLevelSet::distanceToConstellation(const Vec3s& pt) {

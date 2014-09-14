@@ -113,7 +113,7 @@ public:
 	void updateLines();
 	void updateGradient();
 	void updateIsoSurface();
-	void updateUnsignedLevelSet();
+	void updateUnsignedLevelSet(double distance=openvdb::LEVEL_SET_HALF_WIDTH);
 	void updateSignedLevelSet();
 	void computeStatistics(Mesh& mesh,FloatGrid& levelSet);
 	void computeStatistics(Mesh& mesh);

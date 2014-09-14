@@ -49,68 +49,27 @@ public:
 	        return 0;
 	    }
 	}
-	template<typename MapT> void track(double time){
+	template<typename MapT> void track(double time,bool clean){
 		const int RELAX_OUTER_ITERS=1;
 		const int RELAX_INNER_ITERS=5;
 		mGrid.updateUnsignedLevelSet();
-		//mGrid.constellation.save("/home/blake/constellation.ply");
-
-
 		for(int iter=0;iter<RELAX_OUTER_ITERS;iter++){
 			mGrid.updateNearestNeighbors();
 			mGrid.relax(RELAX_INNER_ITERS);
 		}
-
-
-		//mGrid.isoSurface.save("/home/blake/mesh_deform.ply");
-		//mGrid.constellation.save("/home/blake/constellation_relax.ply");
-		//mGrid.updateSignedLevelSet();
-
-
-		//mGrid.constellation.save("/home/blake/constellation_cleaned.ply");
-		mGrid.updateUnsignedLevelSet();
-		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/unsigned");
-		/*
-		std::cout<<"--ck(> ISO Signed level set statistics"<<std::endl;
-		mGrid.computeStatistics(mGrid.isoSurface,*mGrid.signedLevelSet);
-		std::cout<<"--> ISO Unsigned level set statistics"<<std::endl;
-		mGrid.computeStatistics(mGrid.isoSurface,*mGrid.unsignedLevelSet);
-
-		std::cout<<"--> SPRING Signed level set statistics"<<std::endl;
-		mGrid.computeStatistics(mGrid.constellation,*mGrid.signedLevelSet);
-		std::cout<<"--> SPRING Unsigned level set statistics"<<std::endl;
-		mGrid.computeStatistics(mGrid.constellation,*mGrid.unsignedLevelSet);
-		mGrid.computeStatistics(mGrid.isoSurface);
-		mGrid.computeStatistics(mGrid.constellation);
-		*/
+		mGrid.updateUnsignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
 		mGrid.updateGradient();
-
-		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/signed_before");
-		//WriteToRawFile(mGrid.gradient,"/home/blake/grad_before");
-		//WriteToRawFile(mGrid.unsignedLevelSet,"/home/blake/unsigned_before");
-
 		TrackerT mTracker(*mGrid.signedLevelSet,mInterrupt);
-
-		SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,1.0,32);
+		SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,32);
 		evolve.process();
-
-		int cleaned=mGrid.clean();
-		std::cout<<"Cleaned "<<cleaned<<" "<<100*cleaned/(double)mGrid.constellation.getNumSpringls()<<"%"<<std::endl;
-
-		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/signed_after");
-
-
-		//std::cout<<"--> Evolve signed level set"<<std::endl;
-		//mGrid.computeStatistics(mGrid.isoSurface,*mGrid.signedLevelSet);
-		//std::exit(0);
-
+		if(clean){
+			int cleaned=mGrid.clean();
+			mGrid.updateUnsignedLevelSet();
+			std::cout<<"Cleaned "<<cleaned<<" "<<100*cleaned/(double)mGrid.constellation.getNumSpringls()<<"%"<<std::endl;
+		}
 		mGrid.updateIsoSurface();
-		mGrid.updateUnsignedLevelSet();
-		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/signed");
-		//mGrid.isoSurface.save("/home/blake/mesh_iso.ply");
 		int added=mGrid.fill();
-		//mGrid.constellation.save("/home/blake/constellation_filled.ply");
-		std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.constellation.getNumSpringls()<<"%"<<std::endl;
+		std::cout<<time<<"Filled "<<added<<" "<<100*added/(double)mGrid.constellation.getNumSpringls()<<"%"<<std::endl;
 	}
 	template<typename MapT> size_t advect1(double  mStartTime, double mEndTime) {
 //	    typedef AdvectVertexOperation<FieldT> OpT
@@ -126,18 +85,16 @@ public:
 		for (double time = mStartTime; time < mEndTime; time += dt) {
 			MaxOperator<OpT, FieldT, InterruptT> op2(mGrid,mField,time, mInterrupt);
 			double maxV = std::max(EPS, std::sqrt(op2.process()));
-			dt=clamp(MAX_TIME_STEP*scale/std::max(1E-30,maxV),0.0,mEndTime-mStartTime);
+			dt=clamp(MAX_TIME_STEP*scale/std::max(1E-30,maxV),0.0,mEndTime-time);
 			if (dt < EPS)break;
 			AdvectSpringlOperator<OpT, FieldT, InterruptT> op1(mGrid, mField,mTemporalScheme, time,dt,mInterrupt);
 			op1.process();
-			AdvectMeshOperator<OpS, FieldT, InterruptT> opm1(mGrid, mField,mTemporalScheme, time,dt,mInterrupt);
-			opm1.process();
+			//AdvectMeshOperator<OpS, FieldT, InterruptT> opm1(mGrid, mField,mTemporalScheme, time,dt,mInterrupt);
+			//opm1.process();
 		}
-
-		track<MapT>(mEndTime);
+		track<MapT>(mEndTime,true);
 
 		mGrid.constellation.updateVertexNormals();
-
 		return 0;
 	}
 

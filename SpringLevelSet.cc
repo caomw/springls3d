@@ -365,9 +365,9 @@ void SpringLevelSet::updateUnsignedLevelSet() {
 	using namespace openvdb;
 	MeshToVolume<FloatGrid> mtol(trans, GENERATE_PRIM_INDEX_GRID);
 	mtol.convertToUnsignedDistanceField(constellation.vertexes,
-			constellation.faces, float(LEVEL_SET_HALF_WIDTH));
+			constellation.faces, 2.5*float(LEVEL_SET_HALF_WIDTH));
 	unsignedLevelSet = mtol.distGridPtr();
-	unsignedLevelSet->setBackground(float(LEVEL_SET_HALF_WIDTH));
+	unsignedLevelSet->setBackground(2.5*float(LEVEL_SET_HALF_WIDTH));
 	springlIndexGrid = mtol.indexGridPtr();
 }
 double SpringLevelSet::distanceToConstellation(const Vec3s& pt) {
@@ -442,14 +442,15 @@ void SpringLevelSet::create(FloatGrid& grid) {
 	this->mTransform = grid.transformPtr();
 	signedLevelSet = boost::static_pointer_cast<FloatGrid>(
 			grid.copyGrid(CopyPolicy::CP_COPY));
-	signedLevelSet->transform() =
-			*openvdb::math::Transform::createLinearTransform(1.0);
+	signedLevelSet->setTransform(openvdb::math::Transform::createLinearTransform(1.0));
 	isoSurface.create(signedLevelSet);
 	constellation.create(&isoSurface);
+	updateSignedLevelSet();
 	updateIsoSurface();
 	updateUnsignedLevelSet();
 	updateNearestNeighbors();
 	updateGradient();
+
 	relax(10);
 }
 void SpringLevelSet::updateIsoSurface() {

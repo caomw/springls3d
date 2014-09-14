@@ -64,11 +64,9 @@ public:
 
 		//mGrid.isoSurface.save("/home/blake/mesh_deform.ply");
 		//mGrid.constellation.save("/home/blake/constellation_relax.ply");
-		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/signed_before");
-		mGrid.updateSignedLevelSet();
-		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/signed_after");
-		int cleaned=mGrid.clean();
-		std::cout<<"Cleaned "<<cleaned<<" "<<100*cleaned/(double)mGrid.constellation.getNumSpringls()<<"%"<<std::endl;
+		//mGrid.updateSignedLevelSet();
+
+
 		//mGrid.constellation.save("/home/blake/constellation_cleaned.ply");
 		mGrid.updateUnsignedLevelSet();
 		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/unsigned");
@@ -85,19 +83,29 @@ public:
 		mGrid.computeStatistics(mGrid.isoSurface);
 		mGrid.computeStatistics(mGrid.constellation);
 		*/
-
-
 		mGrid.updateGradient();
+
+		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/signed_before");
+		//WriteToRawFile(mGrid.gradient,"/home/blake/grad_before");
+		//WriteToRawFile(mGrid.unsignedLevelSet,"/home/blake/unsigned_before");
+
 		TrackerT mTracker(*mGrid.signedLevelSet,mInterrupt);
-		SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,1.0,4);
+
+		SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,1.0,32);
 		evolve.process();
+
+		int cleaned=mGrid.clean();
+		std::cout<<"Cleaned "<<cleaned<<" "<<100*cleaned/(double)mGrid.constellation.getNumSpringls()<<"%"<<std::endl;
+
+		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/signed_after");
 
 
 		//std::cout<<"--> Evolve signed level set"<<std::endl;
 		//mGrid.computeStatistics(mGrid.isoSurface,*mGrid.signedLevelSet);
+		//std::exit(0);
 
 		mGrid.updateIsoSurface();
-
+		mGrid.updateUnsignedLevelSet();
 		//WriteToRawFile(mGrid.signedLevelSet,"/home/blake/signed");
 		//mGrid.isoSurface.save("/home/blake/mesh_iso.ply");
 		int added=mGrid.fill();
@@ -167,6 +175,7 @@ public:
 				leafs.removeAuxBuffers();
 				mTracker.track();
 			}
+
 			if (mParent.mInterrupt){
 				mParent.mInterrupt->end();
 			}

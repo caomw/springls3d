@@ -379,9 +379,8 @@ void EnrightSpringls::setFrameIndex(int frameIdx){
 	allGrids.insert(allGrids.end(), grids->begin(), grids->end());
 	GridBase::Ptr ptr = allGrids[0];
 	FloatGrid::Ptr signedLevelSet=boost::static_pointer_cast<FloatGrid>(ptr);
-
 	springlGrid.transform()=signedLevelSet->transform();
-	signedLevelSet->transform()=springlGrid.unsignedLevelSet->transform();
+	signedLevelSet->setTransform(openvdb::math::Transform::createLinearTransform(1.0));
 	springlGrid.signedLevelSet=signedLevelSet;
 
 	//WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/signed_init");
@@ -432,10 +431,13 @@ void EnrightSpringls::stash(){
 		mCamera->setGeometryFile(ostr2.str(),Pose);
 		openvdb::io::File file(ostr3.str());
 		openvdb::GridPtrVec grids;
-		springlGrid.signedLevelSet->transform()=springlGrid.transform();
-		std::cout<<"Stash "<<springlGrid.signedLevelSet->transform()<<std::endl;
-		grids.push_back(springlGrid.signedLevelSet);
+		FloatGrid::Ptr signedLevelSet=boost::static_pointer_cast<FloatGrid>(springlGrid.signedLevelSet->copyGrid(CopyPolicy::CP_COPY));
+		signedLevelSet->transform()=springlGrid.transform();
+		//std::cout<<"Stash "<<springlGrid.signedLevelSet->transform()<<std::endl;
+		grids.push_back(signedLevelSet);
+		std::cout<<"Saving "<<ostr3.str()<<" ...";
 		file.write(grids);
+		std::cout<<"Done."<<std::endl;
 	}
 	//mCamera->write(ostr4.str(),640,640);
 }

@@ -9,53 +9,56 @@
 #include <openvdb/tools/Dense.h>
 #include <openvdb/tools/LevelSetUtil.h>
 #include <boost/filesystem.hpp>
+#include <png.h>
 namespace imagesci {
 using namespace openvdb;
 using namespace openvdb::tools;
 using namespace boost::filesystem;
-std::string GetFileWithoutExtension(const std::string& file){
+std::string GetFileWithoutExtension(const std::string& file) {
 	path p(file);
-	std::string ext=extension(p);
-	if(ext.length()>0){
-		return file.substr(0,file.length()-ext.length());
+	std::string ext = extension(p);
+	if (ext.length() > 0) {
+		return file.substr(0, file.length() - ext.length());
 	} else {
 		return file;
 	}
 }
-std::string GetFileNameWithoutExtension(const std::string& file){
+std::string GetFileNameWithoutExtension(const std::string& file) {
 	path p(file);
 
 	//std::string ext=extension(p);
 	return boost::filesystem::basename(p);
 	/*
-	if(ext.length()>0){
-		return file.substr(0,file.length()-ext.length());
-	} else {
-		return file;
-	}
-	*/
+	 if(ext.length()>0){
+	 return file.substr(0,file.length()-ext.length());
+	 } else {
+	 return file;
+	 }
+	 */
 }
-int GetDirectoryListing(const std::string& dirName,std::vector<std::string>& files,const std::string& mask,const std::string& ext){
+int GetDirectoryListing(const std::string& dirName,
+		std::vector<std::string>& files, const std::string& mask,
+		const std::string& ext) {
 
 	path someDir(dirName);
 	directory_iterator end_iter;
 	files.clear();
-	if ( exists(someDir) && is_directory(someDir))
-	{
-	  for( directory_iterator dir_iter(someDir) ; dir_iter != end_iter ; ++dir_iter)
-	  {
-	    if (is_regular_file(dir_iter->status()) )
-	    {
-	    	path file=*dir_iter;
-	    	if(extension(file)==ext){
-	    		std::string fstring=file.string();
-	    		if(mask.length()==0||(mask.length()>0&&fstring.find(mask)<fstring.length()))
-	    		files.push_back(file.string());
-	    	}
-	    }
-	  }
+	if (exists(someDir) && is_directory(someDir)) {
+		for (directory_iterator dir_iter(someDir); dir_iter != end_iter;
+				++dir_iter) {
+			if (is_regular_file(dir_iter->status())) {
+				path file = *dir_iter;
+				if (extension(file) == ext) {
+					std::string fstring = file.string();
+					if (mask.length() == 0
+							|| (mask.length() > 0
+									&& fstring.find(mask) < fstring.length()))
+						files.push_back(file.string());
+				}
+			}
+		}
 	}
-	sort(files.begin(),files.end());
+	sort(files.begin(), files.end());
 	return files.size();
 }
 openvdb::math::Mat3<float> CreateAxisAngle(Vec3s a1, float angle) {
@@ -343,18 +346,15 @@ inline Vec3s parametricTriangle(Vec3s e0, Vec3s e1, float s, float t, Vec3s B) {
 	Vec3s Bsum = B + s * e0 + t * e1;
 	return Bsum;
 }
-float Angle(openvdb::Vec3s& v0,openvdb::Vec3s& v1, openvdb::Vec3s& v2) {
+float Angle(openvdb::Vec3s& v0, openvdb::Vec3s& v1, openvdb::Vec3s& v2) {
 	Vec3s v = v0 - v1;
 	Vec3s w = v2 - v1;
 	float len1 = v.length();
 	float len2 = w.length();
-	return std::acos(v.dot(w) / std::max(1E-8f,len1 * len2));
+	return std::acos(v.dot(w) / std::max(1E-8f, len1 * len2));
 }
-float DistanceToTriangleSqr(
-		const openvdb::Vec3s& p,
-		const openvdb::Vec3s& v0,
-		const openvdb::Vec3s& v1,
-		const openvdb::Vec3s& v2,
+float DistanceToTriangleSqr(const openvdb::Vec3s& p, const openvdb::Vec3s& v0,
+		const openvdb::Vec3s& v1, const openvdb::Vec3s& v2,
 		openvdb::Vec3s* closestPoint) {
 	float distanceSquared = 0;
 	int region_id = 0;
@@ -507,31 +507,277 @@ float DistanceToTriangleSqr(
 }
 
 //What if quad is non-convex? Does this hold?
-float DistanceToQuadSqr(
-		const openvdb::Vec3s& p,
-		const openvdb::Vec3s& v0,
-		const openvdb::Vec3s& v1,
-		const openvdb::Vec3s& v2,
-		const openvdb::Vec3s& v3,
-		const openvdb::Vec3s& norm,
+float DistanceToQuadSqr(const openvdb::Vec3s& p, const openvdb::Vec3s& v0,
+		const openvdb::Vec3s& v1, const openvdb::Vec3s& v2,
+		const openvdb::Vec3s& v3, const openvdb::Vec3s& norm,
 		openvdb::Vec3s* closestPoint) {
 	Vec3s cp1;
 	Vec3s cp2;
-	float d1,d2;
-	if((v2-v0).cross(v1-v0).dot(norm)>0){
-		d1=DistanceToTriangleSqr(p,v0,v1,v2,&cp1);
-		d2=DistanceToTriangleSqr(p,v2,v3,v0,&cp2);
+	float d1, d2;
+	if ((v2 - v0).cross(v1 - v0).dot(norm) > 0) {
+		d1 = DistanceToTriangleSqr(p, v0, v1, v2, &cp1);
+		d2 = DistanceToTriangleSqr(p, v2, v3, v0, &cp2);
 	} else {
-		d1=DistanceToTriangleSqr(p,v1,v2,v3,&cp1);
-		d2=DistanceToTriangleSqr(p,v3,v0,v1,&cp2);
+		d1 = DistanceToTriangleSqr(p, v1, v2, v3, &cp1);
+		d2 = DistanceToTriangleSqr(p, v3, v0, v1, &cp2);
 	}
 
-	if(d1<d2){
-		*closestPoint=cp1;
+	if (d1 < d2) {
+		*closestPoint = cp1;
 		return d1;
 	} else {
-		*closestPoint=cp2;
+		*closestPoint = cp2;
 		return d2;
 	}
 }
+#define PNG_DEBUG 3
+#include <png.h>
+
+void abort_(const char * s, ...) {
+	va_list args;
+	va_start(args, s);
+	vfprintf(stderr, s, args);
+	fprintf(stderr, "\n");
+	va_end(args);
+	abort();
+}
+
+int x, y;
+
+int width, height;
+png_byte color_type;
+png_byte bit_depth;
+
+png_structp png_ptr;
+png_infop info_ptr;
+int number_of_passes;
+png_bytep * row_pointers;
+
+bool ReadImageFromFile(const std::string& file,
+		std::vector<openvdb::math::Vec4<unsigned char>>& image, int& w,
+		int& h) {
+	int x, y;
+
+	int width, height;
+	png_byte color_type;
+	png_byte bit_depth;
+
+	png_structp png_ptr;
+	png_infop info_ptr;
+	int number_of_passes;
+	png_bytep * row_pointers;
+
+	unsigned char header[8];    // 8 is the maximum size that can be checked
+	const char* file_name = file.c_str();
+	/* open file and test for it being a png */
+	FILE *fp = fopen(file_name, "rb");
+	if (!fp) {
+		printf("[read_png_file] File %s could not be opened for reading",
+				file_name);
+		return false;
+	}
+	fread(header, 1, 8, fp);
+	if (png_sig_cmp(header, 0, 8)) {
+		printf("[read_png_file] File %s is not recognized as a PNG file",
+				file_name);
+		return false;
+	}
+
+	/* initialize stuff */
+	png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+
+	if (!png_ptr) {
+		printf("[read_png_file] png_create_read_struct failed");
+		return false;
+	}
+
+	info_ptr = png_create_info_struct(png_ptr);
+	if (!info_ptr) {
+		printf("[read_png_file] png_create_info_struct failed");
+		return false;
+	}
+
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		printf("[read_png_file] Error during init_io");
+		return false;
+	}
+
+	png_init_io(png_ptr, fp);
+	png_set_sig_bytes(png_ptr, 8);
+
+	png_read_info(png_ptr, info_ptr);
+
+	width = png_get_image_width(png_ptr, info_ptr);
+	height = png_get_image_height(png_ptr, info_ptr);
+	color_type = png_get_color_type(png_ptr, info_ptr);
+	bit_depth = png_get_bit_depth(png_ptr, info_ptr);
+
+	number_of_passes = png_set_interlace_handling(png_ptr);
+	png_read_update_info(png_ptr, info_ptr);
+
+	/* read file */
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		printf("[read_png_file] Error during read_image");
+		return false;
+	}
+
+	row_pointers = (png_bytep*) malloc(sizeof(png_bytep) * height);
+	for (y = 0; y < height; y++)
+		row_pointers[y] = (png_byte*) malloc(
+				png_get_rowbytes(png_ptr, info_ptr));
+
+	png_read_image(png_ptr, row_pointers);
+	fclose(fp);
+	image.resize(width * height);
+	int index = 0;
+
+	if (png_get_color_type(png_ptr, info_ptr) != PNG_COLOR_TYPE_RGBA) {
+		for (y = 0; y < height; y++) {
+			png_byte* row = row_pointers[y];
+			for (x = 0; x < width; x++) {
+				png_byte* ptr = &(row[x * 4]);
+				image[index++] = openvdb::math::Vec4<unsigned char>(ptr[0],
+						ptr[1], ptr[2], ptr[3]);
+			}
+		}
+	} else if (png_get_color_type(png_ptr, info_ptr) != PNG_COLOR_TYPE_RGB) {
+		for (y = 0; y < height; y++) {
+			png_byte* row = row_pointers[y];
+			for (x = 0; x < width; x++) {
+				png_byte* ptr = &(row[x * 3]);
+				image[index++] = openvdb::math::Vec4<unsigned char>(ptr[0],
+						ptr[1], ptr[2], 255);
+			}
+		}
+	} else {
+		printf("Color format not supported");
+		for (y = 0; y < height; y++)
+			free(row_pointers[y]);
+		free(row_pointers);
+		return false;
+	}
+	w = width;
+	h = height;
+	/* cleanup heap allocation */
+	for (y = 0; y < height; y++)
+		free(row_pointers[y]);
+	free(row_pointers);
+
+	return true;
+}
+
+bool WriteImageToFile(const std::string& file,const std::vector<openvdb::math::Vec4<unsigned char>>& image,const int width,const int height) {
+	const char* file_name = file.c_str();
+	png_byte color_type=PNG_COLOR_TYPE_RGBA;
+	png_byte bit_depth=8;
+	png_structp png_ptr;
+	png_infop info_ptr;
+	int number_of_passes;
+	png_bytep * row_pointers;
+
+	int index=0;
+
+	row_pointers = (png_bytep*) malloc(sizeof(png_bytep) * height);
+	for (y = 0; y < height; y++){
+		row_pointers[y] = (png_byte*) malloc(
+				png_get_rowbytes(png_ptr, info_ptr));
+		png_byte* ptr = row_pointers[y];
+		for (x = 0; x < width; x++) {
+			openvdb::math::Vec4<unsigned char> c=image[index++];
+			ptr[0]=c[0];
+			ptr[1]=c[1];
+			ptr[2]=c[2];
+			ptr[3]=c[3];
+			ptr+=4;
+		}
+	}
+	/* create file */
+	FILE *fp = fopen(file_name, "wb");
+	if (!fp) {
+		printf("[write_png_file] File %s could not be opened for writing",
+				file_name);
+		return false;
+	}
+
+	/* initialize stuff */
+	png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL,
+	NULL, NULL);
+
+	if (!png_ptr) {
+		printf("[write_png_file] png_create_write_struct failed");
+		return false;
+	}
+	info_ptr = png_create_info_struct(png_ptr);
+	if (!info_ptr) {
+		printf("[write_png_file] png_create_info_struct failed");
+		return false;
+	}
+
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		printf("[write_png_file] Error during init_io");
+		return false;
+	}
+
+	png_init_io(png_ptr, fp);
+
+	/* write header */
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		printf("[write_png_file] Error during writing header");
+		return false;
+	}
+	png_set_IHDR(png_ptr, info_ptr, width, height, bit_depth, color_type,
+	PNG_INTERLACE_NONE,
+	PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+
+	png_write_info(png_ptr, info_ptr);
+
+	/* write bytes */
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		printf("[write_png_file] Error during writing bytes");
+		return false;
+	}
+	png_write_image(png_ptr, row_pointers);
+
+	/* end write */
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		printf("[write_png_file] Error during end of write");
+		return false;
+	}
+	png_write_end(png_ptr, NULL);
+
+	/* cleanup heap allocation */
+	for (y = 0; y < height; y++)
+		free(row_pointers[y]);
+	free(row_pointers);
+
+	fclose(fp);
+	return true;
+}
+
+void process_file(void) {
+	if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
+		abort_(
+				"[process_file] input file is PNG_COLOR_TYPE_RGB but must be PNG_COLOR_TYPE_RGBA "
+						"(lacks the alpha channel)");
+
+	if (png_get_color_type(png_ptr, info_ptr) != PNG_COLOR_TYPE_RGBA)
+		abort_(
+				"[process_file] color_type of input file must be PNG_COLOR_TYPE_RGBA (%d) (is %d)",
+				PNG_COLOR_TYPE_RGBA, png_get_color_type(png_ptr, info_ptr));
+
+	for (y = 0; y < height; y++) {
+		png_byte* row = row_pointers[y];
+		for (x = 0; x < width; x++) {
+			png_byte* ptr = &(row[x * 4]);
+			printf(
+					"Pixel at position [ %d - %d ] has RGBA values: %d - %d - %d - %d\n",
+					x, y, ptr[0], ptr[1], ptr[2], ptr[3]);
+
+			/* set red value to 0 and green value to the blue one */
+			ptr[0] = 0;
+			ptr[1] = ptr[2];
+		}
+	}
+}
+
 } /* namespace imagesci */

@@ -123,7 +123,7 @@ public:
 	void create(Mesh* mesh, openvdb::math::Transform::Ptr transform =
 			openvdb::math::Transform::createLinearTransform());
 	void create(FloatGrid& grid);
-	SpringLevelSet():mesher(0.0) {
+	SpringLevelSet():mesher(0.0),mTransform(openvdb::math::Transform::createLinearTransform(1.0)) {
 	}
 
 	~SpringLevelSet() {

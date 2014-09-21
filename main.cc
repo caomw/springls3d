@@ -71,8 +71,9 @@ int main(int argc, char *argv[]) {
 	try {
 		if (argc > 2) {
 			if (std::string(argv[1]) == "-playback") {
-				std::string fileName(argv[2]);
 
+				std::string fileName(argv[2]);
+				std::cout<<"Playback "<<argv[2]<<std::endl;
 				openvdb::initialize();
 				tbb::mutex::scoped_lock(sLock);
 				OPENVDB_START_THREADSAFE_STATIC_WRITE
@@ -81,6 +82,7 @@ int main(int argc, char *argv[]) {
 				OPENVDB_FINISH_THREADSAFE_STATIC_WRITE
 				if(viewer->openRecording(fileName)){
 					if(argc>3){
+						std::cout<<"Frame index "<<atoi(argv[3])<<std::endl;
 						viewer->setFrameIndex(atoi(argv[3]));
 					}
 					viewer->init(1600, 800);

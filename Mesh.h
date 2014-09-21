@@ -55,6 +55,7 @@ class Mesh{
 		std::vector<openvdb::Vec3s> vertexNormals;
 		std::vector<openvdb::Index32> quadIndexes;
 		std::vector<openvdb::Index32> triIndexes;
+		std::vector<openvdb::Vec2s> uvMap;
 		std::vector<openvdb::Vec3s> vertexDisplacement;
 		std::vector<openvdb::Vec3s> particleDisplacement;
 		std::vector<openvdb::Vec4I> faces;

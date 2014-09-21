@@ -41,7 +41,18 @@ typedef struct _plyFace {
 		verts = NULL;
 	}
 } plyFace;
-
+typedef struct _plyFaceTexutre {
+	unsigned char nverts;    // number of vertex indices in list
+	int *verts;              // vertex index list
+	unsigned char uvcount;
+	float* uvs;
+	_plyFaceTexutre(){
+		nverts = 0;
+		uvs=NULL;
+		verts = NULL;
+		uvcount = 6;
+	}
+} plyFaceTexutre;
 
 PlyProperty vertProps[] = { // property information for a vertex
 		{ "x", Float32, Float32, static_cast<int>(offsetof(plyVertex, x)), 0, 0,
@@ -60,9 +71,10 @@ PlyProperty vertProps[] = { // property information for a vertex
 						alpha)), 0, 0, 0, 0 }, };
 
 PlyProperty faceProps[] = { // property information for a face
-		{ "vertex_indices", Int32, Int32, static_cast<int>(offsetof(plyFace,
-				verts)), 1, Uint8, Uint8, static_cast<int>(offsetof(plyFace,
-				nverts)) }};
+	{ "vertex_indices", Int32, Int32, static_cast<int>(offsetof(plyFace, verts)), 1, Uint8, Uint8, static_cast<int>(offsetof(plyFace, nverts)) },
+	{ "vertex_indices", Int32, Int32, static_cast<int>(offsetof(plyFaceTexutre, verts)), 1, Uint8, Uint8, static_cast<int>(offsetof(plyFaceTexutre, nverts)) },
+	{ "texcoord", Float32, Float32, static_cast<int>(offsetof(plyFaceTexutre, uvs)), 1, Uint8, Uint8, static_cast<int>(offsetof(plyFaceTexutre, uvcount)) },
+};
 
 Mesh::Mesh() :
 		mVertexBuffer(0),
@@ -80,11 +92,12 @@ bool Mesh::save(const std::string& f) {
 	std::cout<<"Saving "<<f<<" ... ";
 	int i, j, idx;
 	const char* fileName = f.c_str();
+	bool usingTexture=(uvMap.size()>0);
 
 	PlyFile *ply;
 
 	// Get input and check data
-	ply = open_for_writing_ply(fileName, 2, elemNames, PLY_BINARY_LE);
+	ply = open_for_writing_ply(fileName, 2, elemNames, PLY_ASCII);
 
 	if (ply == NULL){
 		std::cout<<"Failed. "<<std::endl;
@@ -122,9 +135,20 @@ bool Mesh::save(const std::string& f) {
 		ply_describe_property(ply, "vertex", &vertProps[5]);
 	}
 	element_count_ply(ply, "face", numPolys);
-	ply_describe_property(ply, "face", &faceProps[0]);
+
+	if (usingTexture){
+		ply_describe_property(ply, "face", &faceProps[1]);
+		ply_describe_property(ply, "face", &faceProps[2]);
+	} else {
+		ply_describe_property(ply, "face", &faceProps[0]);
+	}
+
 	// write a comment and an object information field
 	append_comment_ply(ply, "PLY File");
+	if (usingTexture){
+		std::string comment = "TextureFile texture.png";
+		append_comment_ply(ply, (char*)comment.c_str());
+	}
 	append_obj_info_ply(ply, "ImageSci");
 
 	// complete the header
@@ -149,26 +173,51 @@ bool Mesh::save(const std::string& f) {
 	}
 	// set up and write the face elements
 	plyFace face;
+	plyFaceTexutre faceT;
 	int verts[256];
+	Vec2s uvs[3];
 	face.verts = verts;
+	faceT.verts = verts;
+	faceT.uvs = (float*)uvs;
 	put_element_setup_ply(ply, "face");
-
-	int sz=quadIndexes.size()/4;
-
-	for (int i = 0; i < sz; i++) {
-		for (j = 0; j < 4; j++) {
-			face.nverts =4;
-			face.verts[j] = quadIndexes[4 * i + j];
+	if (usingTexture){
+		int sz=quadIndexes.size()/4;
+		for (int i = 0; i < sz; i++) {
+			faceT.nverts =4;
+			faceT.uvcount=8;
+			for (j = 0; j < 4; j++) {
+				faceT.verts[j] = quadIndexes[4 * i + j];
+				uvs[j] = uvMap[4*i+j];
+			}
+			put_element_ply(ply, (void *) &faceT);
 		}
-		put_element_ply(ply, (void *) &face);
-	}
-	sz=triIndexes.size()/3;
-	for (int i = 0; i < sz; i++) {
-		for (j = 0; j < 3; j++) {
-			face.nverts =3;
-			face.verts[j] = triIndexes[3 * i + j];
+		sz=triIndexes.size()/3;
+		for (int i = 0; i < sz; i++) {
+			faceT.nverts =3;
+			faceT.uvcount=6;
+			for (j = 0; j < 3; j++) {
+				faceT.verts[j] = triIndexes[3 * i + j];
+				uvs[j] = uvMap[3 * i + j];
+			}
+			put_element_ply(ply, (void *) &faceT);
 		}
-		put_element_ply(ply, (void *) &face);
+	} else {
+		int sz=quadIndexes.size()/4;
+		for (int i = 0; i < sz; i++) {
+			for (j = 0; j < 4; j++) {
+				face.nverts =4;
+				face.verts[j] = quadIndexes[4 * i + j];
+			}
+			put_element_ply(ply, (void *) &face);
+		}
+		sz=triIndexes.size()/3;
+		for (int i = 0; i < sz; i++) {
+			for (j = 0; j < 3; j++) {
+				face.nverts =3;
+				face.verts[j] = triIndexes[3 * i + j];
+			}
+			put_element_ply(ply, (void *) &face);
+		}
 	}
 	// close the PLY file
 	close_ply(ply);

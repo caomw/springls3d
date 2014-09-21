@@ -69,6 +69,7 @@
 									<listOptionValue builtIn="false" value="Half"/>
 									<listOptionValue builtIn="false" value="glfw"/>
 									<listOptionValue builtIn="false" value="GL"/>
+									<listOptionValue builtIn="false" value="png"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.1050895963" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="/usr/local/lib/"/>
@@ -157,6 +158,7 @@
 									<listOptionValue builtIn="false" value="GL"/>
 									<listOptionValue builtIn="false" value="GLU"/>
 									<listOptionValue builtIn="false" value="log4cplus"/>
+									<listOptionValue builtIn="false" value="png"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.223910714" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="/usr/lib/"/>

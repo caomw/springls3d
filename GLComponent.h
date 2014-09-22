@@ -11,7 +11,6 @@
 #include <list>
 #include <memory>
 namespace imagesci {
-class GLComponent;
 //std::vector<std::unique_ptr<GLComponent>> GLRenderComponents;
 class GLComponent {
 protected:
@@ -20,13 +19,12 @@ public:
 	int y;
 	int w;
 	int h;
-
-	GLComponent() : x(0), y(0), w(0), h(0) {
-
-	}
-	virtual void render();
-	virtual void updateGL();
+	virtual ~GLComponent();
+	GLComponent() : x(0), y(0), w(0), h(0) {}
+	virtual void render()=0;
+	virtual void updateGL()=0;
 };
+
 class GLComponentGroup: public GLComponent {
 protected:
 	std::list<std::unique_ptr<GLComponent>> components;
@@ -45,7 +43,9 @@ public:
 			comp->updateGL();
 		}
 	}
+	~GLComponentGroup(){}
 };
+
 } /* namespace imagesci */
 
 #endif /* GLCOMPONENT_H_ */

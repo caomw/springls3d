@@ -7,12 +7,11 @@
 
 #include "Text.h"
 
-namespace imagesci {
 #include <GL/gl.h>
 
 
+namespace imagesci {
 Text::~Text() {
-	// TODO Auto-generated destructor stub
 }
 inline int next_p2 ( int a )
 {
@@ -122,6 +121,9 @@ void Text::CreateBitmapString(FT_Face face, const char* message,int fontHeight,i
 	delete [] expanded_data_swap;
 }
 void Text::setText(const std::string& message,bool center){
+	if(mTextureId==0){
+		glGenTextures(1,&mTextureId);
+	}
 	CreateBitmapString(m_face,message.c_str(),m_fontHeight,mTextureId,center);
 }
 } /* namespace imagesci */

@@ -6,7 +6,9 @@
  */
 
 #include "GLComponent.h"
-
 namespace imagesci {
+GLComponent::~GLComponent(){
+
+}
 
 } /* namespace imagesci */

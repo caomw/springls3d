@@ -22,6 +22,12 @@ void Image::render() {
 	glEnd();
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
+Image::Image(int width,int height):GLComponent(),mWidth(width),mHeight(height),mTextureId(0),mData(width*height,RGBA(0,0,0,0)){
+
+}
+Image::Image(const std::vector<RGBA>& data,int width,int height):GLComponent(),mWidth(width),mHeight(height),mTextureId(0){
+	mData=data;
+}
 std::unique_ptr<Image> Image::read(const std::string& file){
 	int w,h;
 	std::vector<RGBA> data;
@@ -34,12 +40,13 @@ std::unique_ptr<Image> Image::read(const std::string& file){
 bool Image::write(const std::string& file){
 	return WriteImageToFile(file,mData,mWidth,mHeight);
 }
-
+Image::~Image(){
+	if(mTextureId>0)glDeleteTextures(1,&mTextureId);
+}
 void Image::updateGL() {
-	if(mTextureId>0){
-		glDeleteTextures(1,&mTextureId);
+	if(mTextureId==0){
+		glGenTextures( 1,&mTextureId);
 	}
-	glGenTextures( 1,&mTextureId);
 	glBindTexture( GL_TEXTURE_2D, mTextureId);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -47,8 +54,4 @@ void Image::updateGL() {
 			GL_UNSIGNED_BYTE, &mData[0]);
 	glBindTexture( GL_TEXTURE_2D, 0);
 }
-Image::~Image() {
-	// TODO Auto-generated destructor stub
-}
-
 } /* namespace imagesci */

@@ -630,23 +630,24 @@ bool ReadImageFromFile(const std::string& file,
 	fclose(fp);
 	image.resize(width * height);
 	int index = 0;
-
-	if (png_get_color_type(png_ptr, info_ptr) != PNG_COLOR_TYPE_RGBA) {
+	if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGBA) {
 		for (y = 0; y < height; y++) {
 			png_byte* row = row_pointers[y];
 			for (x = 0; x < width; x++) {
 				png_byte* ptr = &(row[x * 4]);
-				image[index++] = openvdb::math::Vec4<unsigned char>(ptr[0],
-						ptr[1], ptr[2], ptr[3]);
+				RGBA rgba=RGBA(ptr[0],ptr[1], ptr[2], ptr[3]);
+				//std::cout<<"RGB "<<rgba<<std::endl;
+				image[index++] =rgba;
 			}
 		}
-	} else if (png_get_color_type(png_ptr, info_ptr) != PNG_COLOR_TYPE_RGB) {
+	} else if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB) {
 		for (y = 0; y < height; y++) {
 			png_byte* row = row_pointers[y];
 			for (x = 0; x < width; x++) {
 				png_byte* ptr = &(row[x * 3]);
-				image[index++] = openvdb::math::Vec4<unsigned char>(ptr[0],
-						ptr[1], ptr[2], 255);
+				RGBA rgba=RGBA(ptr[0],ptr[1], ptr[2],255);
+				//std::cout<<"RGB "<<rgba<<std::endl;
+				image[index++] = rgba;
 			}
 		}
 	} else {
@@ -677,20 +678,6 @@ bool WriteImageToFile(const std::string& file,const std::vector<openvdb::math::V
 
 	int index=0;
 
-	row_pointers = (png_bytep*) malloc(sizeof(png_bytep) * height);
-	for (y = 0; y < height; y++){
-		row_pointers[y] = (png_byte*) malloc(
-				png_get_rowbytes(png_ptr, info_ptr));
-		png_byte* ptr = row_pointers[y];
-		for (x = 0; x < width; x++) {
-			openvdb::math::Vec4<unsigned char> c=image[index++];
-			ptr[0]=c[0];
-			ptr[1]=c[1];
-			ptr[2]=c[2];
-			ptr[3]=c[3];
-			ptr+=4;
-		}
-	}
 	/* create file */
 	FILE *fp = fopen(file_name, "wb");
 	if (!fp) {
@@ -730,7 +717,19 @@ bool WriteImageToFile(const std::string& file,const std::vector<openvdb::math::V
 	PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
 
 	png_write_info(png_ptr, info_ptr);
-
+	row_pointers = (png_bytep*) malloc(sizeof(png_bytep) * height);
+	for (y = 0; y < height; y++){
+		row_pointers[y] = (png_byte*) malloc(png_get_rowbytes(png_ptr, info_ptr));
+		png_byte* ptr = row_pointers[y];
+		for (x = 0; x < width; x++) {
+			openvdb::math::Vec4<unsigned char> c=image[index++];
+			ptr[0]=c[0];
+			ptr[1]=c[1];
+			ptr[2]=c[2];
+			ptr[3]=c[3];
+			ptr+=4;
+		}
+	}
 	/* write bytes */
 	if (setjmp(png_jmpbuf(png_ptr))) {
 		printf("[write_png_file] Error during writing bytes");

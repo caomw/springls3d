@@ -28,12 +28,18 @@ public:
 	Image():GLComponent(),mWidth(0),mHeight(0),mData(0),mTextureId(0){
 
 	}
-	Image(int width,int height);
+	void setBounds(int _x,int _y,int _w,int _h){
+		x=_x;
+		y=_y;
+		w=_w;
+		h=_h;
+	}
+	Image(int _x,int _y,int _width,int _height,int imageWidth,int imageHeight);
 	Image(const std::vector<RGBA>& data,int width,int height);
-	static std::unique_ptr<Image> read(const std::string& file);
+	static Image* read(const std::string& file);
 	bool write(const std::string& file);
-	void updateGL();
-	void render();
+	virtual void updateGL();
+	virtual void render();
 	virtual ~Image();
 };
 

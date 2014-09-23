@@ -57,6 +57,7 @@
 #include "Mesh.h"
 #include "SpringLevelSet.h"
 #include "SpringLevelSetAdvection.h"
+#include "GLRenderUI.h"
 namespace imagesci{
 
 typedef openvdb::tools::EnrightField<float> FieldT;
@@ -86,6 +87,7 @@ protected:
 	openvdb::Mat4s Pose;
 public:
 	typedef std::unique_ptr<LuxCamera> CameraPtr;
+
 	typedef std::unique_ptr<openvdb_viewer::ClipBox> ClipBoxPtr;
 
 	static EnrightSpringls* GetInstance();
@@ -115,6 +117,7 @@ public:
 	void stop();
 private:
 	CameraPtr mCamera;
+	GLRenderUI mUI;
 	ClipBoxPtr mClipBox;
 	std::string mGridName, mProgName, mGridInfo, mTransformInfo, mTreeInfo;
 	int mWheelPos;

@@ -11,16 +11,19 @@
 #include <list>
 #include <memory>
 namespace imagesci {
-//std::vector<std::unique_ptr<GLComponent>> GLRenderComponents;
+//
 class GLComponent {
 protected:
+
 public:
 	int x;
 	int y;
 	int w;
 	int h;
+
 	virtual ~GLComponent();
 	GLComponent() : x(0), y(0), w(0), h(0) {}
+	GLComponent(int _x,int _y,int _w,int _h) : x(_x), y(_y), w(_w), h(_h) {}
 	virtual void render()=0;
 	virtual void updateGL()=0;
 };

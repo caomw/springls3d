@@ -22,13 +22,13 @@ protected:
 	void CreateBitmapString(FT_Face face, const char* message,int fontHeight,int textureId,bool center);
 	FT_Face m_face;
 	FT_Library m_library;
-	int m_fontHeight;
+	std::string fontName;
+	std::string mText;
 public:
 
-	Text(int width,int height):Image(width,height){
-
-	}
-	void setText(const std::string& message,bool center);
+	Text(int x,int y,int width,int height,const char* fname="verdana.ttf");
+	void updateGL();
+	void setText(const std::string& message,int fontHeight=14,bool center=false);
 	virtual ~Text();
 };
 

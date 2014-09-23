@@ -56,6 +56,8 @@
 #include <chrono>
 #include <thread>
 
+#include "Image.h"
+#include "Text.h"
 namespace imagesci{
 EnrightSpringls* viewer=NULL;
 
@@ -261,10 +263,17 @@ bool EnrightSpringls::init(int width,int height){
     double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
 
     mCamera->setTarget(bbox.getCenter(), max_extent);
+
     mCamera->lookAtTarget();
     mCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.02);
 
-
+    Image* img=Image::read("buddha.png");
+    Text* txt=new Text(100,100,300,100);
+    img->setBounds(0,0,100,100);
+    mUI.Add(img);
+    mUI.Add(txt);
+    mUI.init();
+    txt->setText("Hello World",14,true);
     glfwSetKeyCallback(keyCB);
     glfwSetMouseButtonCallback(mouseButtonCB);
     glfwSetMousePosCallback(mousePosCB);
@@ -505,7 +514,7 @@ EnrightSpringls::render()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     int width,height;
     glfwGetWindowSize(&width, &height);
-    mCamera->aim(0,0,width/2,height);
+    mCamera->aim(0,0,height/2,height/2);
     glPushMatrix();
     glMultMatrixf(Pose.asPointer());
 /*
@@ -521,13 +530,16 @@ EnrightSpringls::render()
 //	mClipBox->disableClipping();
     glPopMatrix();
 
-    mCamera->aim(width/2,0,width/2,height);
+    mCamera->aim(0,height/2,height/2,height/2);
     glPushMatrix();
     glMultMatrixf(Pose.asPointer());
     mClipBox->render();
  	glColor3f(0.8f,0.3f,0.3f);
 	springlGrid.isoSurface.draw(false,false,false,false);
     glPopMatrix();
+
+    mUI.aim(height/2,0,width-height/2,height);
+    mUI.render();
     //
     // Render text
     /*

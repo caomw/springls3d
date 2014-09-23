@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
 						std::cout<<"Frame index "<<atoi(argv[3])<<std::endl;
 						viewer->setFrameIndex(atoi(argv[3]));
 					}
-					viewer->init(1600, 800);
+					viewer->init(1200, 800);
 				}
 
 			} else if (std::string(argv[1]) == "-simulate") {
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
 					viewer->openGrid(fileName);
 				}
 				viewer->start();
-				viewer->init(1600, 800);
+				viewer->init(1200, 800);
 			}
 		} else {
 			openvdb::initialize();
@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
 							center, voxelSize);
 			viewer->openGrid(*signedLevelSet);
 			viewer->start();
-			viewer->init(1600, 800);
+			viewer->init(1200, 800);
 		}
 	} catch (std::exception& e) {
 		std::cout << e.what() << std::endl;

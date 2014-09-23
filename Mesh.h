@@ -47,6 +47,7 @@ class Mesh{
 		GLuint quadCount;
 		GLuint triangleIndexCount;
 		GLuint quadIndexCount;
+		openvdb::math::Mat4f mPose;
 		std::vector<openvdb::Vec3s> lines;
 		std::vector<openvdb::Vec3s> particles;
 		std::vector<openvdb::Vec3s> particleNormals;
@@ -63,8 +64,11 @@ class Mesh{
 		void create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr grid);
 		inline openvdb::BBoxd GetBBox(){return bbox;}
 		openvdb::math::BBox<openvdb::Vec3d>& updateBBox();
-		void draw(bool colorEnabled=false,bool wireframe=true,bool particles=false,bool particleNormals=false);
+		void draw(bool colorEnabled=false,bool wireframe=true,bool particles=false,bool particleNormals=false,bool lighting=true);
 		void scale(float sc);
+		void setPose(openvdb::math::Mat4f& pose){
+			mPose=pose;
+		}
 		void updateGL();
 		void updateVertexNormals();
 		void mapIntoBoundingBox(float voxelSize);

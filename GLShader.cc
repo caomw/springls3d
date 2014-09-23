@@ -7,6 +7,8 @@
 
 #include "GLShader.h"
 #include <iostream>
+#include <GL/glx.h>
+#include <GL/glu.h>
 namespace imagesci {
 
 GLShader::GLShader() :

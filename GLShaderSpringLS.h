@@ -8,19 +8,24 @@
 #ifndef GLSHADERSPRINGLS_H_
 #define GLSHADERSPRINGLS_H_
 #include "ImageSciUtil.h"
+#include "GLShader.h"
+#include "GLComponent.h"
+#include "Mesh.h"
+#include "Camera.h"
 namespace imagesci {
 
 class GLShaderSpringLS: public GLComponent {
 private:
 	GLShader mProgram;
-	unsigned int FramebufferName;
-	unsigned int depthrenderbuffer;
+	unsigned int mFrameBufferId;
+	unsigned int mDepthBufferId;
 	unsigned int mTextureId;
 	Camera* mCamera;
 	Mesh* mMesh;
-	std::vector<RGBA> mData;
+	std::vector<openvdb::Vec4f> mData;
 public:
-	GLShaderSpringLS(int x,int y,int w,int h,Camera* camera,Mesh* mesh);
+	GLShaderSpringLS(int x,int y,int w,int h);
+	void setMesh(Camera* camera,Mesh* mesh);
 	void updateGL();
 	void render();
 	virtual ~GLShaderSpringLS();

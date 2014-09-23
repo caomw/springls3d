@@ -7,7 +7,8 @@
 
 #ifndef GLSHADER_H_
 #define GLSHADER_H_
-#include <GL/glew.h>
+#include <GL/gl.h>
+
 
 namespace imagesci {
 

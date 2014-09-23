@@ -85,6 +85,7 @@ Mesh::Mesh() :
 		quadIndexCount(0),
 		particleCount(0),
 		triangleIndexCount(0),
+		mPose(openvdb::math::Mat4f::identity()),
 		mLineBuffer(0),mParticleBuffer(0),mParticleNormalBuffer(0),
 		quadCount(0),triangleCount(0) {
 }
@@ -542,9 +543,11 @@ void Mesh::mapOutOfBoundingBox(float voxelSize) {
 		pt = pt * voxelSize + minPt;
 	}
 }
-void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showParticleNormals) {
+void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showParticleNormals,bool lighting) {
+	glPushMatrix();
+	glMultMatrixf(mPose.asPointer());
 	if (mVertexBuffer > 0) {
-		glEnable(GL_LIGHTING);
+		if(lighting)glEnable(GL_LIGHTING);
 		if (quadIndexes.size()+triIndexes.size() > 0) {
 			glShadeModel(GL_SMOOTH);
 		} else {
@@ -627,8 +630,8 @@ void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showPar
 		glDisableClientState(GL_VERTEX_ARRAY);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
 	}
+	glPopMatrix();
 }
 
 void Mesh::updateGL() {

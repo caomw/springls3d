@@ -204,7 +204,6 @@ bool EnrightSpringls::openGrid(FloatGrid& signedLevelSet){
 }
 bool EnrightSpringls::openGrid(const std::string& fileName){
 	openvdb::io::File file(fileName);
-	std::cout<<"Open grid "<<fileName<<std::endl;
 	file.open();
 	openvdb::GridPtrVecPtr grids = file.getGrids();
 	openvdb::GridPtrVec allGrids;
@@ -267,13 +266,18 @@ bool EnrightSpringls::init(int width,int height){
     mCamera->lookAtTarget();
     mCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.02);
 
+
     Image* img=Image::read("buddha.png");
     Text* txt=new Text(100,100,300,100);
+    mSpringlsShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(0,0,width-height/2,height));
+    mSpringlsShader->setMesh(mCamera.get(),&springlGrid.isoSurface);
+    mSpringlsShader->updateGL();
     img->setBounds(0,0,100,100);
     mUI.Add(img);
     mUI.Add(txt);
     mUI.init();
     txt->setText("Hello World",14,true);
+
     glfwSetKeyCallback(keyCB);
     glfwSetMouseButtonCallback(mouseButtonCB);
     glfwSetMousePosCallback(mousePosCB);
@@ -515,32 +519,21 @@ EnrightSpringls::render()
     int width,height;
     glfwGetWindowSize(&width, &height);
     mCamera->aim(0,0,height/2,height/2);
-    glPushMatrix();
-    glMultMatrixf(Pose.asPointer());
-/*
-    glTranslatef(rminPt[0],rminPt[1],rminPt[2]);
-    glScalef(scale,scale,scale);
-    glTranslatef(-minPt[0],-minPt[1],-minPt[2]);
-*/
 
- //   mClipBox->render();
-  //  mClipBox->enableClipping();
+    springlGrid.constellation.setPose(Pose);
+    springlGrid.isoSurface.setPose(Pose);
+
 	glColor3f(0.8f,0.8f,0.8f);
 	springlGrid.draw(false,true,false,false);
-//	mClipBox->disableClipping();
-    glPopMatrix();
 
     mCamera->aim(0,height/2,height/2,height/2);
-    glPushMatrix();
-    glMultMatrixf(Pose.asPointer());
-    mClipBox->render();
  	glColor3f(0.8f,0.3f,0.3f);
 	springlGrid.isoSurface.draw(false,false,false,false);
-    glPopMatrix();
+	mSpringlsShader->render();
+	//mUI.aim(height/2,0,width-height/2,height);
+    //mUI.render();
 
-    mUI.aim(height/2,0,width-height/2,height);
-    mUI.render();
-    //
+	//
     // Render text
     /*
         BitmapFont13::enableFontRendering();

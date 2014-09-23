@@ -10,7 +10,6 @@
 namespace imagesci {
 void Image::render() {
 	glEnable(GL_TEXTURE_2D);
-
 	glColor4f(1.0f,1.0f,1.0f,1.0f);
 	glBindTexture(GL_TEXTURE_2D, mTextureId);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

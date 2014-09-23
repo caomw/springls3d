@@ -58,6 +58,7 @@
 #include "SpringLevelSet.h"
 #include "SpringLevelSetAdvection.h"
 #include "GLRenderUI.h"
+#include "GLShaderSpringLS.h"
 namespace imagesci{
 
 typedef openvdb::tools::EnrightField<float> FieldT;
@@ -81,6 +82,7 @@ protected:
 	boost::shared_ptr<AdvectT> advect;
 	std::thread simThread;
 	std::string rootFile;
+	std::unique_ptr<GLShaderSpringLS> mSpringlsShader;
 	std::vector<std::string> isoSurfaceFiles;
 	std::vector<std::string> constellationFiles;
 	std::vector<std::string> signedDistanceFiles;

@@ -61,7 +61,8 @@ public:
     void mouseButtonCallback(int button, int action);
     void mousePosCallback(int x, int y);
     void mouseWheelCallback(int pos, int prevPos);
-
+    float nearPlane(){return mNearPlane;}
+    float farPlane(){return mFarPlane;}
     bool needsDisplay() const { return mNeedsDisplay; }
 
 protected:

@@ -262,21 +262,21 @@ bool EnrightSpringls::init(int width,int height){
     double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
 
     mCamera->setTarget(bbox.getCenter(), max_extent);
-
+    mCamera->setNearFarPlanes(0.1f,500.0f);
     mCamera->lookAtTarget();
     mCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.02);
 
 
-    Image* img=Image::read("buddha.png");
-    Text* txt=new Text(100,100,300,100);
-    mSpringlsShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(0,0,width-height/2,height));
-    mSpringlsShader->setMesh(mCamera.get(),&springlGrid.isoSurface);
+    //Image* img=Image::read("buddha.png");
+    //Text* txt=new Text(100,100,300,100);
+    mSpringlsShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(height/2,0,width-height/2,height));
+    mSpringlsShader->setMesh(mCamera.get(),&springlGrid);
     mSpringlsShader->updateGL();
-    img->setBounds(0,0,100,100);
-    mUI.Add(img);
-    mUI.Add(txt);
+    //img->setBounds(0,0,100,100);
+    //mUI.Add(img);
+    //mUI.Add(txt);
     mUI.init();
-    txt->setText("Hello World",14,true);
+    //txt->setText("Hello World",14,true);
 
     glfwSetKeyCallback(keyCB);
     glfwSetMouseButtonCallback(mouseButtonCB);
@@ -518,18 +518,23 @@ EnrightSpringls::render()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     int width,height;
     glfwGetWindowSize(&width, &height);
-    mCamera->aim(0,0,height/2,height/2);
-
     springlGrid.constellation.setPose(Pose);
     springlGrid.isoSurface.setPose(Pose);
 
+	mSpringlsShader->render();
+
+
+    mCamera->aim(0,0,height/2,height/2);
+    glColor3f(0.8f,0.3f,0.3f);
+	springlGrid.isoSurface.draw(false,false,false,false);
+
+    mCamera->aim(0,height/2,height/2,height/2);
 	glColor3f(0.8f,0.8f,0.8f);
 	springlGrid.draw(false,true,false,false);
 
-    mCamera->aim(0,height/2,height/2,height/2);
- 	glColor3f(0.8f,0.3f,0.3f);
-	springlGrid.isoSurface.draw(false,false,false,false);
-	mSpringlsShader->render();
+    //
+
+
 	//mUI.aim(height/2,0,width-height/2,height);
     //mUI.render();
 

@@ -666,8 +666,16 @@ bool ReadImageFromFile(const std::string& file,
 
 	return true;
 }
-
-bool WriteImageToFile(const std::string& file,const std::vector<openvdb::math::Vec4<unsigned char>>& image,const int width,const int height) {
+bool WriteImageToFile(const std::string& file,const std::vector<openvdb::math::Vec4s>& image,const int width,const int height) {
+	std::vector<RGBA> tmp(image.size());
+	size_t index=0;
+	for(index=0;index<image.size();index++){
+		Vec4f rgba=image[index];
+		tmp[index]=RGBA(clamp(255.0f*rgba[0],0.0f,255.0f),clamp(255.0f*rgba[1],0.0f,255.0f),clamp(255.0f*rgba[2],0.0f,255.0f),clamp(255.0f*rgba[3],0.0f,255.0f));
+	}
+	return WriteImageToFile(file,tmp,width,height);
+}
+bool WriteImageToFile(const std::string& file,const std::vector<RGBA>& image,const int width,const int height) {
 	const char* file_name = file.c_str();
 	png_byte color_type=PNG_COLOR_TYPE_RGBA;
 	png_byte bit_depth=8;

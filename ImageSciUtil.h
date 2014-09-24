@@ -23,7 +23,10 @@ int GetDirectoryListing(const std::string& dirName,
 bool ReadImageFromFile(const std::string& file,
 		std::vector<openvdb::math::Vec4<unsigned char>>& image, int& w, int& h);
 bool WriteImageToFile(const std::string& file,
-		const std::vector<openvdb::math::Vec4<unsigned char>>& image,
+		const std::vector<RGBA>& image,
+		const int w, const int h);
+bool WriteImageToFile(const std::string& file,
+		const std::vector<openvdb::math::Vec4s>& image,
 		const int w, const int h);
 bool WriteToRawFile(openvdb::FloatGrid::Ptr grid, const std::string& fileName);
 bool WriteToRawFile(openvdb::VectorGrid::Ptr grid, const std::string& fileName);

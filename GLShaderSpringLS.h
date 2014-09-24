@@ -12,20 +12,28 @@
 #include "GLComponent.h"
 #include "Mesh.h"
 #include "Camera.h"
+#include "SpringLevelSet.h"
 namespace imagesci {
 
 class GLShaderSpringLS: public GLComponent {
 private:
-	GLShader mProgram;
-	unsigned int mFrameBufferId;
-	unsigned int mDepthBufferId;
-	unsigned int mTextureId;
+	GLShader mNormalsAndDepthProgram;
+	GLShader mMixerProgram;
+	unsigned int mFrameBufferId1;
+	unsigned int mFrameBufferId2;
+	unsigned int mDepthBufferId1;
+	unsigned int mDepthBufferId2;
+	unsigned int mIsoTextureId;
+	unsigned int mSpringlTextureId;
+	unsigned int mRenderTextureId;
+	unsigned int mMatCapId1;
+	unsigned int mMatCapId2;
 	Camera* mCamera;
-	Mesh* mMesh;
+	SpringLevelSet* mSpringLS;
 	std::vector<openvdb::Vec4f> mData;
 public:
 	GLShaderSpringLS(int x,int y,int w,int h);
-	void setMesh(Camera* camera,Mesh* mesh);
+	void setMesh(Camera* camera,SpringLevelSet* mesh);
 	void updateGL();
 	void render();
 	virtual ~GLShaderSpringLS();

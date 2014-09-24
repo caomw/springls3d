@@ -47,7 +47,7 @@ const char* const fragmentMixerDepthGPU =
 			"if(isocolor.w>0.0f){\n"
 				"isoz = -2.0f*MAX_DEPTH*MIN_DEPTH / (isoz*(MAX_DEPTH-MIN_DEPTH)-(MAX_DEPTH+MIN_DEPTH));\n"
 				"spgz = -2.0f*MAX_DEPTH*MIN_DEPTH / (spgz*(MAX_DEPTH-MIN_DEPTH)-(MAX_DEPTH+MIN_DEPTH));\n"
-			"	if(spgcolor.w>0.0f&&abs(isoz-spgz)<0.000001f){\n"
+			"	if(spgcolor.w>0.0f&&abs(isoz-spgz)<0.3f){\n"
 			"		isocolor=texture2D(matcapTexture1,0.5f*isocolor.xy+0.5f);\n"
 			"	} else {\n"
 			"		isocolor=texture2D(matcapTexture2,0.5f*isocolor.xy+0.5f);\n"
@@ -84,17 +84,17 @@ void GLShaderSpringLS::updateGL() {
 
 		glGenTextures(1, &mIsoTextureId);
 		glBindTexture( GL_TEXTURE_2D, mIsoTextureId);
-		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA,GL_FLOAT, &mData[0]);
+		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA,GL_FLOAT, &mData[0]);
 		glBindTexture( GL_TEXTURE_2D, 0);
 
 		glGenTextures(1, &mSpringlTextureId);
 		glBindTexture( GL_TEXTURE_2D, mSpringlTextureId);
-		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA,GL_FLOAT, &mData[0]);
+		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA,GL_FLOAT, &mData[0]);
 		glBindTexture( GL_TEXTURE_2D, 0);
 
 		glGenTextures(1, &mRenderTextureId);
 		glBindTexture( GL_TEXTURE_2D, mRenderTextureId);
-		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA,GL_FLOAT, &mData[0]);
+		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA,GL_FLOAT, &mData[0]);
 		glBindTexture( GL_TEXTURE_2D, 0);
 
 		std::vector<RGBA> tmp1,tmp2;

@@ -85,6 +85,7 @@ Mesh::Mesh() :
 		quadIndexCount(0),
 		particleCount(0),
 		triangleIndexCount(0),
+		vao(0),
 		mPose(openvdb::math::Mat4f::identity()),
 		mLineBuffer(0),mParticleBuffer(0),mParticleNormalBuffer(0),
 		quadCount(0),triangleCount(0) {
@@ -544,94 +545,94 @@ void Mesh::mapOutOfBoundingBox(float voxelSize) {
 	}
 }
 void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showParticleNormals,bool lighting) {
-	glPushMatrix();
-	glMultMatrixf(mPose.asPointer());
+	/*
+    mShader.setVertShader(
+        "#version 120\n"
+        "varying vec3 normal;\n"
+        "void main() {\n"
+            "normal = normalize(gl_NormalMatrix * gl_Normal);\n"
+            "gl_Position =  ftransform();\n"
+            "gl_ClipVertex = gl_ModelViewMatrix * gl_Vertex;\n"
+        "}\n");
+
+    mShader.setFragShader(
+        "#version 120\n"
+        "varying vec3 normal;\n"
+        "const vec4 skyColor = vec4(0.9, 0.9, 1.0, 1.0);\n"
+        "const vec4 groundColor = vec4(0.3, 0.3, 0.2, 1.0);\n"
+        "void main() {\n"
+            "vec3 normalized_normal = normalize(normal);\n"
+            "float w = 0.5 * (1.0 + dot(normalized_normal, vec3(0.0, 1.0, 0.0)));\n"
+            "vec4 diffuseColor = w * skyColor + (1.0 - w) * groundColor;\n"
+            "gl_FragColor = diffuseColor;\n"
+        "}\n");
+
+
+de
+
+    mShader.build();
+    */
+	//glPushMatrix();
+
+	//glMultMatrixf(mPose.asPointer());
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at mesh render -1.");
+	std::cout<<"VAO "<<vao<<std::endl;
+	glBindVertexArray (vao);
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at mesh render 0.");
 	if (mVertexBuffer > 0) {
-		if(lighting)glEnable(GL_LIGHTING);
-		if (quadIndexes.size()+triIndexes.size() > 0) {
-			glShadeModel(GL_SMOOTH);
-		} else {
-			glShadeModel(GL_FLAT);
-		}
-		glEnableClientState(GL_VERTEX_ARRAY);
-		glEnableClientState(GL_NORMAL_ARRAY);
-		glEnableClientState(GL_INDEX_ARRAY);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		if (colorEnabled)
-			glEnableClientState(GL_COLOR_ARRAY);
+		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
-		glVertexPointer(3, GL_FLOAT, 0, 0);
-
-		if (colorEnabled) {
-			glBindBuffer(GL_ARRAY_BUFFER, mColorBuffer);
-			glColorPointer(3, GL_FLOAT, 0, 0);
-		}
-
-		glBindBuffer(GL_ARRAY_BUFFER, mNormalBuffer);
-		glNormalPointer(GL_FLOAT, 0, 0);
-
-		if (quadIndexCount > 0) {
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
-			glDrawElements(GL_QUADS, quadIndexCount, GL_UNSIGNED_INT, NULL);
-		} else if(quadCount>0){
-			glDrawArrays(GL_QUADS, 0, quadCount);
-		}
-
-		if (triangleIndexCount > 0) {
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mTriIndexBuffer);
-			glDrawElements(GL_TRIANGLES, triangleIndexCount, GL_UNSIGNED_INT, NULL);
-			//std::cout<<"DRAW TRIANGLE "<<triangleCount<<" "<<mTriIndexBuffer<<" "<<triIndexes.size()<<std::endl;
-		} else if(triangleCount>0){
-			glDrawArrays(GL_TRIANGLES, 0, triangleCount);
-		}
-
-		glLineWidth(1.0f);
-
-		glDisableClientState(GL_NORMAL_ARRAY);
-		glDisable(GL_LIGHTING);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		glColor3f(0.3f, 0.3f, 0.3f);
-		if(wireframe){
-			if (quadIndexCount > 0) {
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
-				glDrawElements(GL_QUADS, quadIndexCount, GL_UNSIGNED_INT, NULL);
-			} else if(quadCount>0){
-				glDrawArrays(GL_QUADS, 0, quadCount);
-			}
-			if (triangleIndexCount > 0) {
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mTriIndexBuffer);
-				glDrawElements(GL_TRIANGLES, triangleIndexCount, GL_UNSIGNED_INT, NULL);
-			} else if(triangleCount>0){
-				glDrawArrays(GL_TRIANGLES, 0, triangleCount);
-			}
-		}
-		if (showParticles&&particleCount > 0) {
-			glColor3f(0.3f, 1.0f, 0.3f);
-			//glPointParameteri(GL_POINT_SMOOTH,GL_TRUE);
-			glPointSize(4.0f);
-			glBindBuffer(GL_ARRAY_BUFFER, mParticleBuffer);
-			glVertexPointer(3, GL_FLOAT, 0, 0);
-			glDrawArrays(GL_POINTS, 0, particleCount);
-		}
-
-		if (lines.size() > 0) {
-			glColor3f(0.5f, 0.5f, 0.5f);
-			glEnable(GL_LINE_SMOOTH);
-			glLineWidth(2.0f);
-			glBindBuffer(GL_ARRAY_BUFFER, mLineBuffer);
-			glVertexPointer(3, GL_FLOAT, 0, 0);
-			glDrawArrays(GL_LINES, 0,lines.size());
-		}
-
-		glEnable(GL_LIGHTING);
-		if (colorEnabled)
-			glDisableClientState(GL_COLOR_ARRAY);
-		glDisableClientState(GL_INDEX_ARRAY);
-		glDisableClientState(GL_VERTEX_ARRAY);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	}
-	glPopMatrix();
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at mesh render 1.");
+	if (mNormalBuffer > 0) {
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, mNormalBuffer);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	}
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at mesh render 2.");
+	if (mColorBuffer > 0) {
+		glEnableVertexAttribArray(2);
+		glBindBuffer(GL_ARRAY_BUFFER, mColorBuffer);
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	}
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at mesh render 3.");
+	/*
+	if (quadIndexCount > 0) {
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
+		glDrawElements(GL_QUADS, quadIndexCount, GL_UNSIGNED_INT, NULL);
+	} else if(quadCount>0){
+		glDrawArrays(GL_QUADS, 0, quadCount);
+	}
+	if (triangleIndexCount > 0) {
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mTriIndexBuffer);
+		glDrawElements(GL_TRIANGLES, triangleIndexCount, GL_UNSIGNED_INT, NULL);
+	} else if(triangleCount>0){
+		glDrawArrays(GL_TRIANGLES, 0, triangleCount);
+	}*/
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at mesh render 4.");
+	/*
+	if (mVertexBuffer > 0) {
+		glDisableVertexAttribArray(0);
+	}
+	if (mNormalBuffer > 0) {
+		glDisableVertexAttribArray(1);
+	}
+	if (mColorBuffer > 0) {
+		glDisableVertexAttribArray(2);
+	}
+	*/
+	glBindVertexArray (0);
+	glBindBuffer(GL_ARRAY_BUFFER,0);
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at mesh render 5.");
+	std::cout<<"SUCCESS!"<<std::endl;
 }
 
 void Mesh::updateGL() {
@@ -641,7 +642,10 @@ void Mesh::updateGL() {
 	quadIndexCount=0;
 	particleCount=0;
 	if (GL_NO_ERROR != glGetError())
-		throw Exception("Error: OpenGL error occurred");
+		throw Exception("Error: OpenGL error occurred at mesh init.");
+
+
+	if(vao==0)glGenVertexArrays (1, &vao);
 
 	if (vertexes.size() > 0) {
 		if (glIsBuffer(mVertexBuffer) == GL_TRUE)
@@ -782,6 +786,7 @@ void Mesh::updateGL() {
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
+
 }
 Mesh::~Mesh() {
 	// TODO Auto-generated destructor stub

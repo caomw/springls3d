@@ -43,16 +43,10 @@
 #include <vector>
 #include <limits>
 #include <boost/smart_ptr.hpp>
-#if defined(__APPLE__) || defined(MACOSX)
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-#else
-#include <GL/gl.h>
-#include <GL/glu.h>
-#endif
-
-#include <GL/glfw.h>
-
+#define GLFW_INCLUDE_GLU
+#include <GL/glx.h>
+#include <GL/glxext.h>
+#include <GLFW/glfw3.h>
 #include <chrono>
 #include <thread>
 
@@ -77,42 +71,42 @@ void UpdateView(EnrightSpringls* v){
 
 
 void
-keyCB(int key, int action)
+keyCB(GLFWwindow * win, int key, int scancode, int action, int mods)
 {
-	if (viewer) viewer->keyCallback(key, action);
+	if (viewer) viewer->keyCallback(win,key, action,mods);
 }
 
 
 void
-mouseButtonCB(int button, int action)
+mouseButtonCB(GLFWwindow* win,int button, int action,int mods)
 {
 	if (viewer) viewer->mouseButtonCallback(button, action);
 }
 
 
 void
-mousePosCB(int x, int y)
+mousePosCB(GLFWwindow* win,double x, double y)
 {
 	if (viewer) viewer->mousePosCallback(x, y);
 }
 
 
 void
-mouseWheelCB(int pos)
+mouseWheelCB(GLFWwindow* win,double x, double y)
 {
-	if (viewer) viewer->mouseWheelCallback(pos);
+	if (viewer) viewer->mouseWheelCallback(y);
 }
 
 
 void
-windowSizeCB(int width, int height)
+windowSizeCB(GLFWwindow* win,int width, int height)
 {
 	if (viewer) viewer->windowSizeCallback(width, height);
 }
 
 
 void
-windowRefreshCB()
+windowRefreshCB(GLFWwindow* win)
 {
 	if (viewer) viewer->windowRefreshCallback();
 }
@@ -127,7 +121,6 @@ void EnrightSpringls::windowRefreshCallback(){
 EnrightSpringls::EnrightSpringls()
     : mCamera(new LuxCamera())
     , mClipBox(new openvdb_viewer::ClipBox)
-    , mWheelPos(0)
     , mShiftIsDown(false)
     , mCtrlIsDown(false)
     , mShowInfo(true)
@@ -238,29 +231,39 @@ bool EnrightSpringls::openGrid(const std::string& fileName){
 bool EnrightSpringls::init(int width,int height){
 
 
+	/*
+
+
+
+*/
     if (glfwInit() != GL_TRUE) {
         std::cout<<"GLFW Initialization Failed.";
         return false;
     }
+
+
     mGridName.clear();
     // Create window
-    if (!glfwOpenWindow(width, height,  // Window size
-                       8, 8, 8, 8,      // # of R,G,B, & A bits
-                       32, 0,           // # of depth & stencil buffer bits
-                       GLFW_WINDOW))    // Window mode
+    mWin=NULL;
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    if ((mWin=glfwCreateWindow(width, height,"Enright",NULL,NULL))==NULL)    // Window mode
     {
         glfwTerminate();
         return false;
     }
-    glfwSetWindowTitle(mProgName.c_str());
-    glfwSwapBuffers();
+    GLint major,minor,rev;
 
-    BitmapFont13::initialize();
 
+    glfwSetWindowTitle(mWin,mProgName.c_str());
+    glfwMakeContextCurrent(mWin);
+    glfwSwapBuffers(mWin);
+   // printf("OpenGL version supported by this platform (%s): \n", glGetString(GL_VERSION));
+    //BitmapFont13::initialize();
     openvdb::BBoxd bbox=renderBBox;
     openvdb::Vec3d extents = bbox.extents();
     double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
-
     mCamera->setTarget(bbox.getCenter(), max_extent);
     mCamera->setNearFarPlanes(0.1f,500.0f);
     mCamera->lookAtTarget();
@@ -269,21 +272,29 @@ bool EnrightSpringls::init(int width,int height){
 
     //Image* img=Image::read("buddha.png");
     //Text* txt=new Text(100,100,300,100);
-    mSpringlsShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(height/2,0,width-height/2,height));
-    mSpringlsShader->setMesh(mCamera.get(),&springlGrid);
-    mSpringlsShader->updateGL();
+
+
+    try {
+		mSpringlsShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(height/2,0,width-height/2,height));
+		mSpringlsShader->setMesh(mCamera.get(),&springlGrid);
+		mSpringlsShader->updateGL();
+ 	 } catch(Exception& e){
+		   std::cerr<<"Shader "<<e.what()<<std::endl;
+	   }
+
     //img->setBounds(0,0,100,100);
     //mUI.Add(img);
     //mUI.Add(txt);
     mUI.init();
+
     //txt->setText("Hello World",14,true);
 
-    glfwSetKeyCallback(keyCB);
-    glfwSetMouseButtonCallback(mouseButtonCB);
-    glfwSetMousePosCallback(mousePosCB);
-    glfwSetMouseWheelCallback(mouseWheelCB);
-    glfwSetWindowSizeCallback(windowSizeCB);
-    glfwSetWindowRefreshCallback(windowRefreshCB);
+    glfwSetKeyCallback(mWin,keyCB);
+    glfwSetMouseButtonCallback(mWin,mouseButtonCB);
+    glfwSetCursorPosCallback(mWin,mousePosCB);
+    glfwSetScrollCallback(mWin,mouseWheelCB);
+    glfwSetWindowSizeCallback(mWin,windowSizeCB);
+    glfwSetWindowRefreshCallback(mWin,windowRefreshCB);
     glClearColor(0.0f,0.0f,0.0f,1.0f);
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_TEST);
@@ -293,29 +304,38 @@ bool EnrightSpringls::init(int width,int height){
 	const float diffuse[]={0.8f,0.8f,0.8f,1.0f};
 	const float specular[]={0.9f,0.9f,0.9f,1.0f};
 	const float position[]={0.3f,0.5f,1.0f,0.0f};
-	glEnable(GL_POLYGON_SMOOTH);
+
 	glEnable( GL_BLEND );
-	glEnable(GL_NORMALIZE);
+
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-	glShadeModel(GL_SMOOTH);
-	glEnable (GL_LINE_SMOOTH);
-	glEnable( GL_COLOR_MATERIAL );
+	glEnable(GL_POLYGON_SMOOTH);
+	glEnable(GL_LINE_SMOOTH);
+	//glShadeModel(GL_SMOOTH);
+	//glEnable( GL_COLOR_MATERIAL );
+
+	/*
+
 	glEnable(GL_LIGHT0);
 	glEnable(GL_LIGHTING);
+
 	glLightfv(GL_LIGHT0, GL_AMBIENT,(GLfloat*)&ambient);
 	glLightfv(GL_LIGHT0, GL_SPECULAR,(GLfloat*)&specular);
 	glLightfv(GL_LIGHT0, GL_DIFFUSE,(GLfloat*)&diffuse);
 	glLightfv(GL_LIGHT0, GL_POSITION,(GLfloat*)&position);
 	glMaterialf(GL_FRONT, GL_SHININESS, 5.0f);
+	*/
     size_t frame = 0;
     double time = glfwGetTime();
     glfwSwapInterval(1);
-
-    stash();
+    if (GL_NO_ERROR != glGetError())
+    			throw Exception("GL Error: AFTER UI INIT.");
+    //stash();
     do {
        if(meshDirty){
     	   meshLock.lock();
     	   try {
+    			if (GL_NO_ERROR != glGetError())
+    					throw Exception("GL Error: BEFORE ISO UPDATE.");
 				springlGrid.isoSurface.updateGL();
     	   } catch(Exception& e){
     		   std::cerr<<"Iso-Surface "<<e.what()<<std::endl;
@@ -331,7 +351,10 @@ bool EnrightSpringls::init(int width,int height){
 			meshLock.unlock();
 			render();
         } else {
-    		if(needsDisplay())render();
+
+    		if(needsDisplay()){
+    			render();
+    		}
     	}
         ++frame;
         double elapsed = glfwGetTime() - time;
@@ -341,10 +364,11 @@ bool EnrightSpringls::init(int width,int height){
             frame = 0;
         }
         // Swap front and back buffers
-        glfwSwapBuffers();
+        glfwSwapBuffers(mWin);
     // exit if the esc key is pressed or the window is closed.
+        glfwPollEvents();
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    } while (!glfwGetKey(GLFW_KEY_ESC) && glfwGetWindowParam(GLFW_OPENED));
+    } while (!glfwWindowShouldClose(mWin));
     glfwTerminate();
     return true;
 }
@@ -381,18 +405,19 @@ bool EnrightSpringls::openRecording(const std::string& dirName){
 void EnrightSpringls::setFrameIndex(int frameIdx){
 	simulationIteration=frameIdx;
 	simTime=simulationIteration*dt;
-	std::cout<<"Set Frame Index "<<frameIdx<<" time "<<simTime<<std::endl;
 	if(simulationIteration>=constellationFiles.size()){
 		simulationIteration=0;
 		simTime=0;
 	}
+	meshLock.lock();
 	Mesh c;
 	std::cout<<"Open Constellation "<<std::endl;
 	c.openMesh(constellationFiles[simulationIteration]);
 	springlGrid.constellation.create(&c);
 	std::cout<<"Open Iso Surface "<<std::endl;
 	springlGrid.isoSurface.openMesh(isoSurfaceFiles[simulationIteration]);
-	springlGrid.isoSurface.updateVertexNormals();
+
+	std::cout<<"Update Constellation Normals"<<std::endl;
 	springlGrid.constellation.updateVertexNormals();
 	std::cout<<"Open VDB "<<std::endl;
 	openvdb::io::File file(signedDistanceFiles[simulationIteration]);
@@ -407,7 +432,8 @@ void EnrightSpringls::setFrameIndex(int frameIdx){
 	springlGrid.signedLevelSet=signedLevelSet;
 	//WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/signed_init");
 	//WriteToRawFile(springlGrid.unsignedLevelSet,"/home/blake/unsigned_init");
-
+	meshLock.unlock();
+	std::cout<<"Update Surface"<<std::endl;
 	meshDirty=true;
 	setNeedsDisplay();
 }
@@ -483,7 +509,7 @@ EnrightSpringls::setWindowTitle(double fps)
 {
     std::ostringstream ss;
     ss  << "Enright - t="<<simTime<<" ["<<simulationIteration<<"]";
-    glfwSetWindowTitle(ss.str().c_str());
+    glfwSetWindowTitle(mWin,ss.str().c_str());
 }
 
 
@@ -514,24 +540,35 @@ EnrightSpringls::render()
     Pose.postTranslate(-minPt);
 	Pose.postScale(Vec3s(scale,scale,scale));
 	Pose.postTranslate(rminPt);
-
+	if (GL_NO_ERROR != glGetError())
+			throw Exception("GL Error: BEFORE RENDER.");
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     int width,height;
-    glfwGetWindowSize(&width, &height);
+    glfwGetWindowSize(mWin,&width, &height);
     springlGrid.constellation.setPose(Pose);
     springlGrid.isoSurface.setPose(Pose);
-
+    /*
+try {
 	mSpringlsShader->render();
-
-
+ } catch(Exception& e){
+	   std::cerr<<"Shader "<<e.what()<<std::endl;
+  }
+*/
+    mCamera->beginShader();
     mCamera->aim(0,0,height/2,height/2);
-    glColor3f(0.8f,0.3f,0.3f);
+    mCamera->setPose(springlGrid.isoSurface.getPose());
+	if (GL_NO_ERROR != glGetError())
+			throw Exception("GL Error: AFTER AIM 1.");
 	springlGrid.isoSurface.draw(false,false,false,false);
-
+	mCamera->endShader();
+	if (GL_NO_ERROR != glGetError())
+			throw Exception("GL Error: AFTER DRAW 1.");
     mCamera->aim(0,height/2,height/2,height/2);
-	glColor3f(0.8f,0.8f,0.8f);
+	if (GL_NO_ERROR != glGetError())
+			throw Exception("GL Error: AFTER AIM 2.");
 	springlGrid.draw(false,true,false,false);
-
+	if (GL_NO_ERROR != glGetError())
+			throw Exception("GL Error: AFTER RENDER UPDATE.");
     //
 
 
@@ -566,9 +603,7 @@ EnrightSpringls::render()
 void
 EnrightSpringls::updateCutPlanes(int wheelPos)
 {
-    double speed = std::abs(mWheelPos - wheelPos);
-    if (mWheelPos < wheelPos) mClipBox->update(speed);
-    else mClipBox->update(-speed);
+    mClipBox->update(wheelPos);
     setNeedsDisplay();
 }
 
@@ -577,13 +612,13 @@ EnrightSpringls::updateCutPlanes(int wheelPos)
 
 
 void
-EnrightSpringls::keyCallback(int key, int action)
+EnrightSpringls::keyCallback(GLFWwindow* win,int key, int action,int mod)
 {
-    OPENVDB_START_THREADSAFE_STATIC_WRITE
-    mCamera->keyCallback(key, action);
-    const bool keyPress = glfwGetKey(key) == GLFW_PRESS;
-    mShiftIsDown = glfwGetKey(GLFW_KEY_LSHIFT);
-    mCtrlIsDown = glfwGetKey(GLFW_KEY_LCTRL);
+    bool keyPress = (glfwGetKey(win,key) == GLFW_PRESS);
+    mCamera->keyCallback(win,key, action);
+    mShiftIsDown = glfwGetKey(win,GLFW_KEY_LEFT_SHIFT);
+    mCtrlIsDown = glfwGetKey(win,GLFW_KEY_LEFT_CONTROL);
+
     if(keyPress){
 		if(key==' '){
 			if(simulationRunning){
@@ -616,7 +651,6 @@ EnrightSpringls::keyCallback(int key, int action)
 
     setNeedsDisplay();
 
-    OPENVDB_FINISH_THREADSAFE_STATIC_WRITE
 }
 
 
@@ -639,16 +673,15 @@ EnrightSpringls::mousePosCallback(int x, int y)
 
 
 void
-EnrightSpringls::mouseWheelCallback(int pos)
+EnrightSpringls::mouseWheelCallback(double pos)
 {
+
     if (mClipBox->isActive()) {
         updateCutPlanes(pos);
     } else {
-        mCamera->mouseWheelCallback(pos, mWheelPos);
+        mCamera->mouseWheelCallback(pos);
         if (mCamera->needsDisplay()) setNeedsDisplay();
     }
-
-    mWheelPos = pos;
 }
 
 

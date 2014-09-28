@@ -7,9 +7,14 @@
 
 #ifndef GLSHADER_H_
 #define GLSHADER_H_
-#include <GL/gl.h>
 
 
+#define GLFW_INCLUDE_GLU
+#include <GL/glx.h>
+#include <GL/glxext.h>
+#include <GLFW/glfw3.h>
+#include <string>
+#include <list>
 namespace imagesci {
 
 // Shader helper structure.
@@ -21,12 +26,18 @@ public:
 	GLShader();
 
 	// Initialization function to compile the shader.
-	bool Initialize(const char pVertexShaderString[],
-			const char pFragmentShaderString[],
-			const char* const pAttributeLocations[]);
+	bool Initialize(const std::string& pVertexShaderString,
+			const std::string& pFragmentShaderString,
+			const std::string& pGeomShaderString,
+			std::list<std::string>& attributes);
 	// Uninitialization function.
 	void Uninitialize();
-
+	inline void begin(){
+		glUseProgram(GetProgramHandle());
+	}
+	inline void end(){
+		glUseProgram((GLuint)NULL);
+	}
 	// Returns the program handle.
 	inline GLuint GetProgramHandle() const;
 
@@ -35,6 +46,8 @@ private:
 	GLuint mVertexShaderHandle;
 	// Fragment shader handle.
 	GLuint mFragmentShaderHandle;
+	// Fragment shader handle.
+	GLuint mGeometryShaderHandle;
 	// Program handle.
 	GLuint mProgramHandle;
 

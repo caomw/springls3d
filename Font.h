@@ -40,7 +40,7 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 #endif
-
+#include <GLFW/glfw3.h>
 
 namespace openvdb_viewer {
 
@@ -51,7 +51,7 @@ public:
 
     static void initialize();
 
-    static void enableFontRendering();
+    static void enableFontRendering(GLFWwindow* win);
     static void disableFontRendering();
 
     static void print(GLint px, GLint py, const std::string&);

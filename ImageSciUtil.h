@@ -42,6 +42,7 @@ float DistanceToQuadSqr(const openvdb::Vec3s& p, const openvdb::Vec3s& v0,
 		const openvdb::Vec3s& v1, const openvdb::Vec3s& v2,
 		const openvdb::Vec3s& v3, const openvdb::Vec3s& normal,
 		openvdb::Vec3s* closestPoint);
+const std::string ReadTextFile(const std::string& str);
 float Angle(openvdb::Vec3s& v0, openvdb::Vec3s& v1, openvdb::Vec3s& v2);
 openvdb::math::Mat3<float> CreateAxisAngle(openvdb::Vec3s axis, float angle);
 }

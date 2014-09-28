@@ -118,7 +118,6 @@ void SpringLevelSet::draw(bool colorEnabled, bool wireframe, bool particles,
 	 particleNormals);
 	 }
 	 */
-	glColor3f(0.3f, 0.3f, 0.8f);
 	constellation.draw(colorEnabled, wireframe, particles, particleNormals);
 
 }

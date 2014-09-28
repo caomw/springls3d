@@ -49,7 +49,7 @@
 #include <GL/glu.h>
 
 #endif
-#include <GL/glfw.h>
+#include <GLFW/glfw3.h>
 
 
 namespace openvdb_viewer {

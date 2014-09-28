@@ -167,6 +167,20 @@ bool WriteToRawFile(openvdb::FloatGrid::Ptr grid, const std::string& fileName) {
 	std::cout << xmlFile.str() << std::endl;
 	return true;
 }
+const std::string ReadTextFile(const std::string& str){
+	std::ifstream myfile;
+	myfile.open(str);
+	if(myfile.is_open()){
+		std::stringstream buffer;
+		std::string line;
+		while(getline(myfile,line)){
+			buffer<<line<<std::endl;
+		}
+		return buffer.str();
+	} else {
+		return "";
+	}
+}
 bool WriteToRawFile(openvdb::VectorGrid::Ptr grid,
 		const std::string& fileName) {
 	std::ostringstream vstr;

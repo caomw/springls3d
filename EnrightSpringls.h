@@ -31,10 +31,11 @@
 #ifndef SPRINGLS_VIEWER_VIEWER_HAS_BEEN_INCLUDED
 #define SPRINGLS_VIEWER_VIEWER_HAS_BEEN_INCLUDED
 #undef OPENVDB_REQUIRE_VERSION_NAME
-#include <GL/glew.h>
-#include <GL/glfw.h>
-#include <GL/gl.h>
-#include <GL/glu.h>
+
+#define GLFW_INCLUDE_GLU
+#include <GL/glx.h>
+#include <GL/glxext.h>
+#include <GLFW/glfw3.h>
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/LevelSetUtil.h>
 #include <openvdb/tools/LevelSetSphere.h>
@@ -109,20 +110,20 @@ public:
 	void setFrameIndex(int frameIdx);
 	void updateCutPlanes(int wheelPos);
 	bool init(int width, int height);
-	void keyCallback(int key, int action);
+	void keyCallback(GLFWwindow* win,int key, int action,int mod);
 	void mouseButtonCallback(int button, int action);
 	void mousePosCallback(int x, int y);
-	void mouseWheelCallback(int pos);
+	void mouseWheelCallback(double pos);
 	void windowSizeCallback(int width, int height);
 	void windowRefreshCallback();
 	void start();
 	void stop();
 private:
+	GLFWwindow* mWin;
 	CameraPtr mCamera;
 	GLRenderUI mUI;
 	ClipBoxPtr mClipBox;
 	std::string mGridName, mProgName, mGridInfo, mTransformInfo, mTreeInfo;
-	int mWheelPos;
 	bool mShiftIsDown, mCtrlIsDown, mShowInfo;
 };
 }

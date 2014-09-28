@@ -35,8 +35,12 @@
 #define OPENVDB_VIEWER_CAMERA_HAS_BEEN_INCLUDED
 
 #include <openvdb/Types.h>
+#define GLFW_INCLUDE_GLU
 
-
+#include <GL/glx.h>
+#include <GL/glxext.h>
+#include <GLFW/glfw3.h>
+#include "GLShader.h"
 namespace imagesci{
 
 class Camera
@@ -45,9 +49,18 @@ public:
     Camera();
 
 
-    void aim();
+    void aim(GLFWwindow* win);
     void aim(int x,int y,int width,int height);
-
+    inline void beginShader(){
+    	mShader.begin();
+    }
+    inline void endShader(){
+    	mShader.end();
+    }
+    void setPose(const openvdb::Mat4s& m){
+    	M=m;
+    }
+    void init();
     void lookAt(const openvdb::Vec3d& p, double dist = 1.0);
     void lookAtTarget();
 
@@ -57,21 +70,22 @@ public:
     void setFieldOfView(double degrees) { mFov = degrees; }
     void setSpeed(double zoomSpeed, double strafeSpeed, double tumblingSpeed);
 
-    void keyCallback(int key, int action);
+    void keyCallback(GLFWwindow* win,int key, int action);
     void mouseButtonCallback(int button, int action);
     void mousePosCallback(int x, int y);
-    void mouseWheelCallback(int pos, int prevPos);
+    void mouseWheelCallback(double pos);
     float nearPlane(){return mNearPlane;}
     float farPlane(){return mFarPlane;}
     bool needsDisplay() const { return mNeedsDisplay; }
 
 protected:
+    GLShader mShader;
     // Camera parameters
     double mFov, mNearPlane, mFarPlane;
     openvdb::Vec3d mTarget, mLookAt, mUp, mForward, mRight, mEye;
     double mTumblingSpeed, mZoomSpeed, mStrafeSpeed;
     double mHead, mPitch, mTargetDistance, mDistance;
-
+    openvdb::Mat4s P,V,M;
     // Input states
     bool mMouseDown, mStartTumbling, mZoomMode, mChanged, mNeedsDisplay;
     double mMouseXPos, mMouseYPos;

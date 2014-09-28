@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
 			viewer->start();
 			viewer->init(1200, 800);
 		}
-	} catch (std::exception& e) {
+	} catch (imagesci::Exception& e) {
 		std::cout << e.what() << std::endl;
 		status = EXIT_FAILURE;
 	}

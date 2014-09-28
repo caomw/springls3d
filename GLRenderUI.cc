@@ -7,7 +7,7 @@
 
 #include "GLRenderUI.h"
 #include <GL/gl.h>
-#include <GL/glfw.h>
+#include <GLFW/glfw3.h>
 namespace imagesci {
 
 GLRenderUI::GLRenderUI():mScreenWidth(0),mScreenHeight(0),x(0),y(0) {
@@ -19,10 +19,10 @@ void GLRenderUI::init(){
 		comp->updateGL();
 	}
 }
-void GLRenderUI::aim(){
+void GLRenderUI::aim(GLFWwindow* win){
 	x=0;
 	y=0;
-    glfwGetWindowSize(&mScreenWidth, &mScreenHeight);
+    glfwGetWindowSize(win,&mScreenWidth, &mScreenHeight);
 }
 void GLRenderUI::aim(int _x,int _y,int width,int height){
 	mScreenWidth=width;

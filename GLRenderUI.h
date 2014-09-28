@@ -10,6 +10,7 @@
 #include "GLComponent.h"
 #include <memory>
 #include <vector>
+#include <GLFW/glfw3.h>
 namespace imagesci {
 
 class GLRenderUI {
@@ -28,7 +29,7 @@ public:
 	GLRenderUI();
 	void render();
 	void init();
-	void aim();
+	void aim(GLFWwindow* win);
 	void aim(int x,int y,int width,int height);
 	virtual ~GLRenderUI();
 };

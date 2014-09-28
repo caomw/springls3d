@@ -24,13 +24,13 @@ const char* const fragmentShaderDepthGPU =
 		"    float lValue = gl_FragCoord.z;\n"
 		"    gl_FragColor = vec4(N,lValue);\n"
 		"}\n";
-const char* const vertexMixerDepthGPU =
+const char* const vertexSpringlsGPU =
 		"void main( void )\n"
 		"{\n"
 		 "gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;\n"
 		 "gl_TexCoord[0].xy = gl_MultiTexCoord0.xy;\n"
 		"}\n";
-const char* const fragmentMixerDepthGPU =
+const char* const fragmentSpringlshGPU =
 		"uniform sampler2D isoTexture;\n"
 		"uniform sampler2D springlsTexture;\n"
 		"uniform sampler2D matcapTexture1;\n"
@@ -68,23 +68,27 @@ void GLShaderSpringLS::setMesh(Camera* camera, SpringLevelSet* mesh) {
 	mSpringLS = mesh;
 }
 void GLShaderSpringLS::updateGL() {
+	if (GL_NO_ERROR != glGetError())
+			throw Exception("Error: OpenGL error occurred updateGL failed.");
 	if (mFrameBufferId1 == 0) {
-		if (!mNormalsAndDepthProgram.Initialize(vertexShaderDepthGPU, fragmentShaderDepthGPU,
-				NormalAndDepthAttributes)) {
+		std::list<std::string> empty;
+		if(!mWireframeProgram.Initialize(ReadTextFile("wireframe.vert"),ReadTextFile("wireframe.frag"),ReadTextFile("wireframe.geom"),empty)){
+			std::cerr << "Wireframe shader compilation failed." << std::endl;
+		}
+
+		if (!mNormalsAndDepthProgram.Initialize(vertexShaderDepthGPU, fragmentShaderDepthGPU,"",
+				empty)) {
 			std::cerr << "Normal / Depth compilation failed." << std::endl;
 		}
-		if (!mMixerProgram.Initialize(vertexMixerDepthGPU, fragmentMixerDepthGPU,
-				MixerAttributes)) {
+		if (!mMixerProgram.Initialize(vertexSpringlsGPU, fragmentSpringlshGPU,NULL,
+				empty)) {
 			std::cerr << "Mixer shader compilation failed." << std::endl;
 		}
-
-
 		mData.resize(w * h);
-		glEnable(GL_TEXTURE_2D);
 
 		glGenTextures(1, &mIsoTextureId);
 		glBindTexture( GL_TEXTURE_2D, mIsoTextureId);
-		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA,GL_FLOAT, &mData[0]);
+		glTexImage2D( GL_TEXTURE_2D, 0,  GL_RGBA32F, w, h, 0, GL_RGBA,GL_FLOAT, &mData[0]);
 		glBindTexture( GL_TEXTURE_2D, 0);
 
 		glGenTextures(1, &mSpringlTextureId);
@@ -109,7 +113,7 @@ void GLShaderSpringLS::updateGL() {
 		}
 		tmp1.clear();
 
-		if(ReadImageFromFile("./matcap/Metal-1.png",tmp2,iW,iH)){
+		if(ReadImageFromFile("./matcap/JG_Gold.png",tmp2,iW,iH)){
 			glGenTextures(1, &mMatCapId2);
 			glBindTexture( GL_TEXTURE_2D, mMatCapId2);
 			glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, iW, iH, 0, GL_RGBA,GL_UNSIGNED_BYTE, &tmp2[0]);
@@ -142,57 +146,78 @@ void GLShaderSpringLS::updateGL() {
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-		glDisable(GL_TEXTURE_2D);
+		if (GL_NO_ERROR != glGetError())
+			throw Exception("Error: OpenGL error occurred at  step 3.");
 
 		glUseProgram((GLuint)NULL);
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 			throw Exception("Could not initialize frame buffer.");
 		}
+		if (GL_NO_ERROR != glGetError())
+			throw Exception("Error: OpenGL error occurred at end shader init.");
 	}
 }
 void GLShaderSpringLS::render() {
 
 	glViewport(0,0,w,h);
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at begin render iso.");
 	glBindFramebuffer(GL_FRAMEBUFFER, mFrameBufferId1);
-	glBindRenderbuffer(GL_RENDERBUFFER, mDepthBufferId1);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	glEnable(GL_DEPTH_TEST);
+
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glColor4f(0.0, 0.0f, 0.0f, 0.0f);
+
+	//glColor4f(0.0, 0.0f, 0.0f, 0.0f);
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at middle render iso 1.");
+
 	glUseProgram(mNormalsAndDepthProgram.GetProgramHandle());
-	glDisable(GL_LIGHTING);
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at middle render iso 2.");
+	//glDisable(GL_LIGHTING);
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at middle render iso 3.");
 	glDisable(GL_BLEND);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glColor4f(1.0f,0.0f,0.0f,0.0f);
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at middle render iso 4.");
+	//glColor4f(1.0f,0.0f,0.0f,0.0f);
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at middle render iso 5.");
 	mCamera->aim(0,0, w, h);
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at middle render iso 6.");
 	mSpringLS->isoSurface.draw(false, false, false, false,false);
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at middle render iso 7.");
 	glUseProgram((GLuint)NULL);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	glBindFramebuffer(GL_FRAMEBUFFER, mFrameBufferId2);
 	glBindRenderbuffer(GL_RENDERBUFFER, mDepthBufferId2);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glColor4f(0.0, 0.0f, 0.0f, 0.0f);
+	//glColor4f(0.0, 0.0f, 0.0f, 0.0f);
 
 	glUseProgram(mNormalsAndDepthProgram.GetProgramHandle());
-	glColor4f(1.0f,0.0f,0.0f,0.0f);
+	//glColor4f(1.0f,0.0f,0.0f,0.0f);
 	mCamera->aim(0,0, w, h);
 	mSpringLS->constellation.draw(false, false, false, false,false);
 	glEnable(GL_BLEND);
 	glUseProgram((GLuint)NULL);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
+	if (GL_NO_ERROR != glGetError())
+		throw Exception("Error: OpenGL error occurred at render iso.");
 
 	glViewport(x,y,w,h);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glColor4f(0.0, 0.0f, 0.0f, 1.0f);
+	//glColor4f(0.0, 0.0f, 0.0f, 1.0f);
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -201,7 +226,7 @@ void GLShaderSpringLS::render() {
 	glLoadIdentity();
 	glDisable(GL_LIGHTING);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glColor4f(1.0f,1.0f,1.0f,1.0f);
+	//glColor4f(1.0f,1.0f,1.0f,1.0f);
 
 	/*
 	glBindTexture(GL_TEXTURE_2D, mIsoTextureId);
@@ -273,7 +298,6 @@ void GLShaderSpringLS::render() {
 	glUseProgram((GLuint)NULL);
 	glEnable(GL_LIGHTING);
 	glEnable(GL_DEPTH_TEST);
-
 }
 GLShaderSpringLS::~GLShaderSpringLS() {
 	// TODO Auto-generated destructor stub

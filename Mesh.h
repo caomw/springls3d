@@ -15,7 +15,7 @@
 #include <mutex>
 #include <GL/gl.h>
 #include <GL/glu.h>
-#include <GL/glfw.h>
+#include <GLFW/glfw3.h>
 namespace imagesci {
 class Exception:public std::exception{
 protected:
@@ -34,6 +34,7 @@ class Mesh{
 		openvdb::math::BBox<openvdb::Vec3d> bbox;
 	public:
 		enum PrimitiveType {QUADS=4,TRIANGLES=3};
+		GLuint vao;
 		GLuint mVertexBuffer;
 		GLuint mParticleBuffer;
 		GLuint mNormalBuffer;
@@ -66,8 +67,11 @@ class Mesh{
 		openvdb::math::BBox<openvdb::Vec3d>& updateBBox();
 		void draw(bool colorEnabled=false,bool wireframe=true,bool particles=false,bool particleNormals=false,bool lighting=true);
 		void scale(float sc);
-		void setPose(openvdb::math::Mat4f& pose){
+		void setPose(openvdb::Mat4s& pose){
 			mPose=pose;
+		}
+		openvdb::Mat4s& getPose(){
+			return mPose;
 		}
 		void updateGL();
 		void updateVertexNormals();

@@ -31,7 +31,7 @@
 #include "ClipBox.h"
 #undef OPENVDB_REQUIRE_VERSION_NAME
 #include <deque>
-#include <GL/glfw.h>
+#include <GLFW/glfw3.h>
 
 
 namespace openvdb_viewer {

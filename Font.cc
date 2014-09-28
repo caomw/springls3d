@@ -31,7 +31,7 @@
 #include "Font.h"
 
 #include <openvdb/Types.h> // for OPENVDB_START_THREADSAFE_STATIC_WRITE
-#include <GL/glfw.h>
+#include <GLFW/glfw3.h>
 
 
 namespace openvdb_viewer {
@@ -156,11 +156,11 @@ BitmapFont13::initialize()
 
 
 void
-BitmapFont13::enableFontRendering()
+BitmapFont13::enableFontRendering(GLFWwindow* win)
 {
     glPushMatrix();
     int width, height;
-    glfwGetWindowSize(&width, &height);
+    glfwGetWindowSize(win,&width, &height);
     height = height < 1 ? 1 : height;
 
     glMatrixMode(GL_PROJECTION);

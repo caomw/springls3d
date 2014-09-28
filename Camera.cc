@@ -29,20 +29,10 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include "Camera.h"
-
+#include "ImageSciUtil.h"
 #include <cmath>
-
-#if defined(__APPLE__) || defined(MACOSX)
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-#else
-#include <GL/gl.h>
-#include <GL/glu.h>
-#endif
-
-#include <GL/glfw.h>
-
-
+#include <string>
+#include <list>
 namespace imagesci {
 
 const double Camera::sDeg2rad = M_PI / 180.0;
@@ -73,6 +63,9 @@ Camera::Camera()
     , mMouseXPos(0.0)
     , mMouseYPos(0.0)
     , mWheelPos(0)
+	, P(openvdb::Mat4s::identity())
+	, V(openvdb::Mat4s::identity())
+	, M(openvdb::Mat4s::identity())
 {
 }
 
@@ -111,15 +104,75 @@ Camera::setTarget(const openvdb::Vec3d& p, double dist)
     mTarget = p;
     mTargetDistance = dist;
 }
-void Camera::aim(){
+void Camera::aim(GLFWwindow* win){
     // Get the window size
     int width, height;
-    glfwGetWindowSize(&width, &height);
+    glfwGetWindowSize(win,&width, &height);
     height=std::max(1,height);
     width=std::max(1,width);
     aim(0,0,width,height);
 }
 
+
+openvdb::Mat4s perspectiveMatrix(const float &fovy, const float &aspect, const float &zNear, const float &zFar)
+{
+    float range = tanf(fovy / 2.0f) * zNear;
+    float sx = (2.0f * zNear) / (range * aspect + range * aspect);
+    float sy = zNear / range;
+    float sz = -(zFar + zNear) / (zFar - zNear);
+    float pz = -(2.0f * zFar * zNear) / (zFar - zNear);
+    openvdb::Mat4s Mat=openvdb::Mat4s::zero();
+    float* M=Mat.asPointer();
+    M[0] = sx;
+    M[5] = sy;
+    M[10] = sz;
+    M[14] = pz;
+    M[11] = -1.0f;
+
+    return M;
+}
+
+openvdb::Mat4s lookAtMatrix(openvdb::Vec3s eyePosition3D,openvdb::Vec3s center3D, openvdb::Vec3s upVector3D ){
+   openvdb::Vec3s forward, side, up;
+   openvdb::Mat4s matrix2Mat;
+   float* matrix2=matrix2Mat.asPointer();
+   openvdb::Mat4s resultMatrix;
+   //------------------
+   forward=center3D-eyePosition3D;
+   forward.normalize();
+   //------------------
+   //Side = forward x up
+   side=forward.cross(upVector3D);
+   side.normalize();
+   //------------------
+   up=side.cross(forward);
+   //------------------
+   matrix2[0] = side[0];
+   matrix2[4] = side[1];
+   matrix2[8] = side[2];
+   matrix2[12] = 0.0;
+   //------------------
+   matrix2[1] = up[0];
+   matrix2[5] = up[1];
+   matrix2[9] = up[2];
+   matrix2[13] = 0.0;
+   //------------------
+   matrix2[2] = -forward[0];
+   matrix2[6] = -forward[1];
+   matrix2[10] = -forward[2];
+   matrix2[14] = 0.0;
+   //------------------
+   matrix2[3] = matrix2[7] = matrix2[11] = 0.0;
+   matrix2[15] = 1.0;
+
+   resultMatrix=matrix2;
+
+   //------------------
+   resultMatrix(0,3)-=eyePosition3D[0];
+   resultMatrix(1,3)-=eyePosition3D[1];
+   resultMatrix(2,3)-=eyePosition3D[2];
+   return resultMatrix;
+}
 void Camera::aim(int x,int y,int width,int height){
 
 
@@ -127,14 +180,11 @@ void Camera::aim(int x,int y,int width,int height){
 
 
     // Set up the projection matrix
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-
+   // glMatrixMode(GL_PROJECTION);
     // Window aspect (assumes square pixels)
     double aspectRatio = (double)width / (double)height;
-
     // Set perspective view (fov is in degrees in the y direction.)
-    gluPerspective(mFov, aspectRatio, mNearPlane, mFarPlane);
+   // gluPerspective(mFov, aspectRatio, mNearPlane, mFarPlane);
 
     if (mChanged) {
 
@@ -150,28 +200,41 @@ void Camera::aim(int x,int y,int width,int height){
         mUp[1] = std::cos(mHead * sDeg2rad) > 0 ? 1.0 : -1.0;
         mRight = mForward.cross(mUp);
     }
+    P=perspectiveMatrix(mFov,aspectRatio,mNearPlane,mFarPlane);
+    V=lookAtMatrix(mEye,mLookAt,mUp);
+
+    glUniform1fv(glGetUniformLocation(mShader.GetProgramHandle(), "P"), 16, P.asPointer());
+    glUniform1fv(glGetUniformLocation(mShader.GetProgramHandle(), "V"), 16, V.asPointer());
+    glUniform1fv(glGetUniformLocation(mShader.GetProgramHandle(), "M"), 16, M.asPointer());
 
     // Set up modelview matrix
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
+    //glMatrixMode(GL_MODELVIEW);
+    /*
     gluLookAt(mEye[0], mEye[1], mEye[2],
               mLookAt[0], mLookAt[1], mLookAt[2],
               mUp[0], mUp[1], mUp[2]);
+              */
+
     mNeedsDisplay = false;
 }
 
+void Camera::init(){
+	std::list<std::string> attrib;
+	attrib.push_back("vp");
+	attrib.push_back("vn");
+	attrib.push_back("vc");
+	mShader.Initialize(ReadTextFile("phong_shader.vert"),ReadTextFile("phong_shader.frag"),"",attrib);
 
-void
-Camera::keyCallback(int key, int )
+}
+void Camera::keyCallback(GLFWwindow* win,int key, int )
 {
-    if (glfwGetKey(key) == GLFW_PRESS) {
+    if (glfwGetKey(win,key) == GLFW_PRESS) {
         switch(key) {
             case GLFW_KEY_SPACE:
                 mZoomMode = true;
                 break;
         }
-    } else if (glfwGetKey(key) == GLFW_RELEASE) {
+    } else if (glfwGetKey(win,key) == GLFW_RELEASE) {
         switch(key) {
             case GLFW_KEY_SPACE:
                 mZoomMode = false;
@@ -234,10 +297,13 @@ Camera::mousePosCallback(int x, int y)
 
 
 void
-Camera::mouseWheelCallback(int pos, int prevPos)
+Camera::mouseWheelCallback(double pos)
 {
-    double speed = std::abs(prevPos - pos);
-
+    mDistance += pos * mZoomSpeed;
+     setSpeed(mDistance * 0.1, mDistance * 0.002, mDistance * 0.02);
+/*
+	double speed = std::abs(prevPos - pos);
+    std::cout<<pos<<" "<<prevPos<<" "<<mDistance<<std::endl;
     if (prevPos < pos) {
         mDistance += speed * mZoomSpeed;
         setSpeed(mDistance * 0.1, mDistance * 0.002, mDistance * 0.02);
@@ -246,7 +312,7 @@ Camera::mouseWheelCallback(int pos, int prevPos)
         mDistance = std::max(0.0, temp);
         setSpeed(mDistance * 0.1, mDistance * 0.002, mDistance * 0.02);
     }
-
+*/
     mChanged = true;
     mNeedsDisplay = true;
 }

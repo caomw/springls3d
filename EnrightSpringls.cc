@@ -268,12 +268,12 @@ bool EnrightSpringls::init(int width,int height){
     mCamera->setNearFarPlanes(0.1f,500.0f);
     mCamera->lookAtTarget();
     mCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.02);
-
+    mCamera->init();
 
     //Image* img=Image::read("buddha.png");
     //Text* txt=new Text(100,100,300,100);
 
-
+/*
     try {
 		mSpringlsShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(height/2,0,width-height/2,height));
 		mSpringlsShader->setMesh(mCamera.get(),&springlGrid);
@@ -281,7 +281,7 @@ bool EnrightSpringls::init(int width,int height){
  	 } catch(Exception& e){
 		   std::cerr<<"Shader "<<e.what()<<std::endl;
 	   }
-
+*/
     //img->setBounds(0,0,100,100);
     //mUI.Add(img);
     //mUI.Add(txt);
@@ -295,7 +295,6 @@ bool EnrightSpringls::init(int width,int height){
     glfwSetScrollCallback(mWin,mouseWheelCB);
     glfwSetWindowSizeCallback(mWin,windowSizeCB);
     glfwSetWindowRefreshCallback(mWin,windowRefreshCB);
-    glClearColor(0.0f,0.0f,0.0f,1.0f);
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_TEST);
     glPointSize(4);
@@ -542,8 +541,10 @@ EnrightSpringls::render()
 	Pose.postTranslate(rminPt);
 	if (GL_NO_ERROR != glGetError())
 			throw Exception("GL Error: BEFORE RENDER.");
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     int width,height;
+
     glfwGetWindowSize(mWin,&width, &height);
     springlGrid.constellation.setPose(Pose);
     springlGrid.isoSurface.setPose(Pose);
@@ -554,19 +555,28 @@ try {
 	   std::cerr<<"Shader "<<e.what()<<std::endl;
   }
 */
-    mCamera->beginShader();
     mCamera->aim(0,0,height/2,height/2);
-    mCamera->setPose(springlGrid.isoSurface.getPose());
+    mCamera->setPose(Pose.transpose());
+    mCamera->beginShader();
+    /*
+    getchar();
+
+    for(openvdb::Vec3s vert:springlGrid.isoSurface.vertexes){
+    	std::cout<<"Transformed "<<vert<<" "<<mCamera->transform(vert)<<std::endl;
+    }
+*/
 	if (GL_NO_ERROR != glGetError())
 			throw Exception("GL Error: AFTER AIM 1.");
 	springlGrid.isoSurface.draw(false,false,false,false);
 	mCamera->endShader();
 	if (GL_NO_ERROR != glGetError())
 			throw Exception("GL Error: AFTER DRAW 1.");
+	 mCamera->beginShader();
     mCamera->aim(0,height/2,height/2,height/2);
 	if (GL_NO_ERROR != glGetError())
 			throw Exception("GL Error: AFTER AIM 2.");
 	springlGrid.draw(false,true,false,false);
+	 mCamera->endShader();
 	if (GL_NO_ERROR != glGetError())
 			throw Exception("GL Error: AFTER RENDER UPDATE.");
     //

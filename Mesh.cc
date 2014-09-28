@@ -545,36 +545,7 @@ void Mesh::mapOutOfBoundingBox(float voxelSize) {
 	}
 }
 void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showParticleNormals,bool lighting) {
-	/*
-    mShader.setVertShader(
-        "#version 120\n"
-        "varying vec3 normal;\n"
-        "void main() {\n"
-            "normal = normalize(gl_NormalMatrix * gl_Normal);\n"
-            "gl_Position =  ftransform();\n"
-            "gl_ClipVertex = gl_ModelViewMatrix * gl_Vertex;\n"
-        "}\n");
 
-    mShader.setFragShader(
-        "#version 120\n"
-        "varying vec3 normal;\n"
-        "const vec4 skyColor = vec4(0.9, 0.9, 1.0, 1.0);\n"
-        "const vec4 groundColor = vec4(0.3, 0.3, 0.2, 1.0);\n"
-        "void main() {\n"
-            "vec3 normalized_normal = normalize(normal);\n"
-            "float w = 0.5 * (1.0 + dot(normalized_normal, vec3(0.0, 1.0, 0.0)));\n"
-            "vec4 diffuseColor = w * skyColor + (1.0 - w) * groundColor;\n"
-            "gl_FragColor = diffuseColor;\n"
-        "}\n");
-
-
-de
-
-    mShader.build();
-    */
-	//glPushMatrix();
-
-	//glMultMatrixf(mPose.asPointer());
 	if (GL_NO_ERROR != glGetError())
 		throw Exception("Error: OpenGL error occurred at mesh render -1.");
 	std::cout<<"VAO "<<vao<<std::endl;
@@ -602,32 +573,24 @@ de
 	}
 	if (GL_NO_ERROR != glGetError())
 		throw Exception("Error: OpenGL error occurred at mesh render 3.");
-	/*
 	if (quadIndexCount > 0) {
+
+		std::cout<<"Quad count "<<quadIndexCount<<std::endl;
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
-		glDrawElements(GL_QUADS, quadIndexCount, GL_UNSIGNED_INT, NULL);
-	} else if(quadCount>0){
-		glDrawArrays(GL_QUADS, 0, quadCount);
+		glDrawElements(GL_TRIANGLES, quadIndexCount, GL_UNSIGNED_INT, NULL);
+	}  else if(quadCount>0){
+		glDrawArrays(GL_TRIANGLES, 0, quadCount);
 	}
 	if (triangleIndexCount > 0) {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mTriIndexBuffer);
 		glDrawElements(GL_TRIANGLES, triangleIndexCount, GL_UNSIGNED_INT, NULL);
 	} else if(triangleCount>0){
 		glDrawArrays(GL_TRIANGLES, 0, triangleCount);
-	}*/
+	}
+
 	if (GL_NO_ERROR != glGetError())
 		throw Exception("Error: OpenGL error occurred at mesh render 4.");
-	/*
-	if (mVertexBuffer > 0) {
-		glDisableVertexAttribArray(0);
-	}
-	if (mNormalBuffer > 0) {
-		glDisableVertexAttribArray(1);
-	}
-	if (mColorBuffer > 0) {
-		glDisableVertexAttribArray(2);
-	}
-	*/
+
 	glBindVertexArray (0);
 	glBindBuffer(GL_ARRAY_BUFFER,0);
 	if (GL_NO_ERROR != glGetError())
@@ -744,12 +707,25 @@ void Mesh::updateGL() {
 			throw Exception("Error: Unable to create index buffer");
 
 		// upload data
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * quadIndexes.size(),
-				&quadIndexes[0], GL_STATIC_DRAW); // upload data
+		int sz=quadIndexes.size();
+		std::vector<GLuint> tmp((6*quadIndexes.size())/4);
+		int offset=0;
+		for(unsigned int i=0;i<sz;i+=4){
+			tmp[offset++]=quadIndexes[i];
+			tmp[offset++]=quadIndexes[i+1];
+			tmp[offset++]=quadIndexes[i+2];
+
+			tmp[offset++]=quadIndexes[i+2];
+			tmp[offset++]=quadIndexes[i+3];
+			tmp[offset++]=quadIndexes[i];
+		}
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * tmp.size(),
+				&tmp[0], GL_STATIC_DRAW); // upload data
+
 		if (GL_NO_ERROR != glGetError())
 			throw Exception("Error: Unable to upload index buffer data");
 
-		quadIndexCount = quadIndexes.size();
+		quadIndexCount = tmp.size();
 		// release buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}

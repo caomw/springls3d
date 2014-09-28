@@ -18,7 +18,8 @@ GLShader::GLShader() :
 
 }
 
-bool GLShader::Initialize(const std::string& pVertexShaderString,
+bool GLShader::Initialize(
+		const std::string& pVertexShaderString,
 		const std::string& pFragmentShaderString,
 		const std::string& pGeometryShaderString,
 		std::list<std::string>& pAttributeLocations) {
@@ -48,41 +49,12 @@ bool GLShader::Initialize(const std::string& pVertexShaderString,
 		mGeometryShaderHandle = 0;
 		return false;
 	}
-	if (GL_NO_ERROR != glGetError())
-			throw Exception("Error: OpenGL error occurred vertex shader failed.");
-	if(pGeometryShaderString.length()>0){
 
-		// Compile Geometry shader.
-		mGeometryShaderHandle = glCreateShader(GL_GEOMETRY_SHADER);
-		if (GL_NO_ERROR != glGetError())
-				throw Exception("Error: OpenGL error occurred at geom shader compile.");
-		code= pVertexShaderString.c_str();
-		glShaderSource(mGeometryShaderHandle, 1,&code, 0);
-		glCompileShader(mGeometryShaderHandle);
-
-		// Verify that shader compiled correctly.
-		glGetShaderiv(mGeometryShaderHandle, GL_COMPILE_STATUS, &lStatus);
-		if (lStatus != GL_TRUE) {
-			std::cerr << "Unable to compile Geometry shader properly..."
-					<< std::endl;
-			glGetInfoLogARB(mGeometryShaderHandle,sizeof(message),NULL,message);
-			std::cerr<<message<<std::endl;
-
-			glDeleteShader(mVertexShaderHandle);
-			mVertexShaderHandle = 0;
-			glDeleteShader(mFragmentShaderHandle);
-			mGeometryShaderHandle = 0;
-			glDeleteShader(mGeometryShaderHandle);
-			mGeometryShaderHandle = 0;
-			return false;
-		}
-
-	}
 	if (GL_NO_ERROR != glGetError())
 		throw Exception("Error: OpenGL error occurred at vertex shader compile.");
 	// Compile fragment shader.
 	mFragmentShaderHandle = glCreateShader( GL_FRAGMENT_SHADER);
-	code= pVertexShaderString.c_str();
+	code= pFragmentShaderString.c_str();
 	glShaderSource(mFragmentShaderHandle, 1, &code, 0);
 	glCompileShader(mFragmentShaderHandle);
 
@@ -117,7 +89,36 @@ bool GLShader::Initialize(const std::string& pVertexShaderString,
 		glBindAttribLocation(mProgramHandle, lIndex,str.c_str());
 		++lIndex;
 	}
+	if (GL_NO_ERROR != glGetError())
+			throw Exception("Error: OpenGL error occurred vertex shader failed.");
+	if(pGeometryShaderString.length()>0){
 
+		// Compile Geometry shader.
+		mGeometryShaderHandle = glCreateShader(GL_GEOMETRY_SHADER);
+		if (GL_NO_ERROR != glGetError())
+				throw Exception("Error: OpenGL error occurred at geom shader compile.");
+		code= pGeometryShaderString.c_str();
+		glShaderSource(mGeometryShaderHandle, 1,&code, 0);
+		glCompileShader(mGeometryShaderHandle);
+
+		// Verify that shader compiled correctly.
+		glGetShaderiv(mGeometryShaderHandle, GL_COMPILE_STATUS, &lStatus);
+		if (lStatus != GL_TRUE) {
+			std::cerr << "Unable to compile Geometry shader properly..."
+					<< std::endl;
+			glGetInfoLogARB(mGeometryShaderHandle,sizeof(message),NULL,message);
+			std::cerr<<message<<std::endl;
+
+			glDeleteShader(mVertexShaderHandle);
+			mVertexShaderHandle = 0;
+			glDeleteShader(mFragmentShaderHandle);
+			mGeometryShaderHandle = 0;
+			glDeleteShader(mGeometryShaderHandle);
+			mGeometryShaderHandle = 0;
+			return false;
+		}
+
+	}
 	glLinkProgram(mProgramHandle);
 
 	// Verify that program linked correctly.

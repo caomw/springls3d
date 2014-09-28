@@ -51,9 +51,7 @@ public:
 
     void aim(GLFWwindow* win);
     void aim(int x,int y,int width,int height);
-    inline void beginShader(){
-    	mShader.begin();
-    }
+    void beginShader();
     inline void endShader(){
     	mShader.end();
     }
@@ -77,7 +75,11 @@ public:
     float nearPlane(){return mNearPlane;}
     float farPlane(){return mFarPlane;}
     bool needsDisplay() const { return mNeedsDisplay; }
-
+    openvdb::Vec3s transform(openvdb::Vec3s& pt){
+    	openvdb::Vec4s ptp(pt[0],pt[1],pt[2],1.0f);
+    	openvdb::Vec4s p=P*V*M*ptp;
+    	return openvdb::Vec3s(p[0]/p[3],p[1]/p[3],p[2]/p[3]);
+    }
 protected:
     GLShader mShader;
     // Camera parameters

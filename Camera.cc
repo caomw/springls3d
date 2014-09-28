@@ -116,9 +116,9 @@ void Camera::aim(GLFWwindow* win){
 
 openvdb::Mat4s perspectiveMatrix(const float &fovy, const float &aspect, const float &zNear, const float &zFar)
 {
-    float range = tanf(fovy / 2.0f) * zNear;
-    float sx = (2.0f * zNear) / (range * aspect + range * aspect);
-    float sy = zNear / range;
+    float f = 1.0f/tanf(M_PI*fovy / 360.0f);
+    float sx = f/aspect;
+    float sy = f;
     float sz = -(zFar + zNear) / (zFar - zNear);
     float pz = -(2.0f * zFar * zNear) / (zFar - zNear);
     openvdb::Mat4s Mat=openvdb::Mat4s::zero();
@@ -167,11 +167,25 @@ openvdb::Mat4s lookAtMatrix(openvdb::Vec3s eyePosition3D,openvdb::Vec3s center3D
 
    resultMatrix=matrix2;
 
+   openvdb::Mat4s T=openvdb::Mat4s::identity();
+
+
    //------------------
-   resultMatrix(0,3)-=eyePosition3D[0];
-   resultMatrix(1,3)-=eyePosition3D[1];
-   resultMatrix(2,3)-=eyePosition3D[2];
-   return resultMatrix;
+   T(0,3)=-eyePosition3D[0];
+   T(1,3)=-eyePosition3D[1];
+   T(2,3)=-eyePosition3D[2];
+
+
+   return resultMatrix.transpose()*T;
+}
+void Camera::beginShader(){
+	mShader.begin();
+	std::cout<<"P "<<P<<std::endl;
+	std::cout<<"V "<<V<<std::endl;
+	std::cout<<"M "<<M<<std::endl;
+    glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "P"), 1,GL_TRUE, P.asPointer());
+    glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "V"), 1,GL_TRUE, V.asPointer());
+    glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "M"), 1,GL_TRUE, M.asPointer());
 }
 void Camera::aim(int x,int y,int width,int height){
 
@@ -200,12 +214,8 @@ void Camera::aim(int x,int y,int width,int height){
         mUp[1] = std::cos(mHead * sDeg2rad) > 0 ? 1.0 : -1.0;
         mRight = mForward.cross(mUp);
     }
-    P=perspectiveMatrix(mFov,aspectRatio,mNearPlane,mFarPlane);
+    P=perspectiveMatrix(mFov,aspectRatio,mNearPlane,mFarPlane).transpose();
     V=lookAtMatrix(mEye,mLookAt,mUp);
-
-    glUniform1fv(glGetUniformLocation(mShader.GetProgramHandle(), "P"), 16, P.asPointer());
-    glUniform1fv(glGetUniformLocation(mShader.GetProgramHandle(), "V"), 16, V.asPointer());
-    glUniform1fv(glGetUniformLocation(mShader.GetProgramHandle(), "M"), 16, M.asPointer());
 
     // Set up modelview matrix
     //glMatrixMode(GL_MODELVIEW);

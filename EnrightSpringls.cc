@@ -273,7 +273,7 @@ bool EnrightSpringls::init(int width,int height){
     //Image* img=Image::read("buddha.png");
     //Text* txt=new Text(100,100,300,100);
 
-/*
+
     try {
 		mSpringlsShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(height/2,0,width-height/2,height));
 		mSpringlsShader->setMesh(mCamera.get(),&springlGrid);
@@ -281,7 +281,7 @@ bool EnrightSpringls::init(int width,int height){
  	 } catch(Exception& e){
 		   std::cerr<<"Shader "<<e.what()<<std::endl;
 	   }
-*/
+
     //img->setBounds(0,0,100,100);
     //mUI.Add(img);
     //mUI.Add(txt);
@@ -539,8 +539,6 @@ EnrightSpringls::render()
     Pose.postTranslate(-minPt);
 	Pose.postScale(Vec3s(scale,scale,scale));
 	Pose.postTranslate(rminPt);
-	if (GL_NO_ERROR != glGetError())
-			throw Exception("GL Error: BEFORE RENDER.");
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     int width,height;
@@ -548,37 +546,22 @@ EnrightSpringls::render()
     glfwGetWindowSize(mWin,&width, &height);
     springlGrid.constellation.setPose(Pose);
     springlGrid.isoSurface.setPose(Pose);
-    /*
-try {
-	mSpringlsShader->render();
- } catch(Exception& e){
-	   std::cerr<<"Shader "<<e.what()<<std::endl;
-  }
-*/
-    mCamera->aim(0,0,height/2,height/2);
     mCamera->setPose(Pose.transpose());
-    mCamera->beginShader();
-    /*
-    getchar();
+	mSpringlsShader->render();
 
-    for(openvdb::Vec3s vert:springlGrid.isoSurface.vertexes){
-    	std::cout<<"Transformed "<<vert<<" "<<mCamera->transform(vert)<<std::endl;
-    }
-*/
-	if (GL_NO_ERROR != glGetError())
-			throw Exception("GL Error: AFTER AIM 1.");
+	 mCamera->beginShader();
+
+
+	 mCamera->aim(0,0,height/2,height/2);
+
 	springlGrid.isoSurface.draw(false,false,false,false);
 	mCamera->endShader();
-	if (GL_NO_ERROR != glGetError())
-			throw Exception("GL Error: AFTER DRAW 1.");
+
 	 mCamera->beginShader();
     mCamera->aim(0,height/2,height/2,height/2);
-	if (GL_NO_ERROR != glGetError())
-			throw Exception("GL Error: AFTER AIM 2.");
+
 	springlGrid.draw(false,true,false,false);
 	 mCamera->endShader();
-	if (GL_NO_ERROR != glGetError())
-			throw Exception("GL Error: AFTER RENDER UPDATE.");
     //
 
 

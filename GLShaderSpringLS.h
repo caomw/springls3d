@@ -13,6 +13,7 @@
 #include "Mesh.h"
 #include "Camera.h"
 #include "SpringLevelSet.h"
+#include "Image.h"
 namespace imagesci {
 
 class GLShaderSpringLS: public GLComponent {
@@ -24,9 +25,11 @@ private:
 	unsigned int mFrameBufferId2;
 	unsigned int mDepthBufferId1;
 	unsigned int mDepthBufferId2;
-	unsigned int mIsoTextureId;
-	unsigned int mSpringlTextureId;
-	unsigned int mRenderTextureId;
+
+	std::unique_ptr<Image> springlImage;
+	std::unique_ptr<Image> isoImage;
+	std::unique_ptr<Image> renderImage;
+
 	unsigned int mMatCapId1;
 	unsigned int mMatCapId2;
 	Camera* mCamera;

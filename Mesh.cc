@@ -545,37 +545,23 @@ void Mesh::mapOutOfBoundingBox(float voxelSize) {
 	}
 }
 void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showParticleNormals,bool lighting) {
-
-	if (GL_NO_ERROR != glGetError())
-		throw Exception("Error: OpenGL error occurred at mesh render -1.");
-	std::cout<<"VAO "<<vao<<std::endl;
 	glBindVertexArray (vao);
-	if (GL_NO_ERROR != glGetError())
-		throw Exception("Error: OpenGL error occurred at mesh render 0.");
 	if (mVertexBuffer > 0) {
 		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	}
-	if (GL_NO_ERROR != glGetError())
-		throw Exception("Error: OpenGL error occurred at mesh render 1.");
 	if (mNormalBuffer > 0) {
 		glEnableVertexAttribArray(1);
 		glBindBuffer(GL_ARRAY_BUFFER, mNormalBuffer);
 		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	}
-	if (GL_NO_ERROR != glGetError())
-		throw Exception("Error: OpenGL error occurred at mesh render 2.");
 	if (mColorBuffer > 0) {
 		glEnableVertexAttribArray(2);
 		glBindBuffer(GL_ARRAY_BUFFER, mColorBuffer);
 		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	}
-	if (GL_NO_ERROR != glGetError())
-		throw Exception("Error: OpenGL error occurred at mesh render 3.");
 	if (quadIndexCount > 0) {
-
-		std::cout<<"Quad count "<<quadIndexCount<<std::endl;
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
 		glDrawElements(GL_TRIANGLES, quadIndexCount, GL_UNSIGNED_INT, NULL);
 	}  else if(quadCount>0){
@@ -588,14 +574,8 @@ void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showPar
 		glDrawArrays(GL_TRIANGLES, 0, triangleCount);
 	}
 
-	if (GL_NO_ERROR != glGetError())
-		throw Exception("Error: OpenGL error occurred at mesh render 4.");
-
 	glBindVertexArray (0);
 	glBindBuffer(GL_ARRAY_BUFFER,0);
-	if (GL_NO_ERROR != glGetError())
-		throw Exception("Error: OpenGL error occurred at mesh render 5.");
-	std::cout<<"SUCCESS!"<<std::endl;
 }
 
 void Mesh::updateGL() {
@@ -604,9 +584,6 @@ void Mesh::updateGL() {
 	triangleIndexCount=0;
 	quadIndexCount=0;
 	particleCount=0;
-	if (GL_NO_ERROR != glGetError())
-		throw Exception("Error: OpenGL error occurred at mesh init.");
-
 
 	if(vao==0)glGenVertexArrays (1, &vao);
 
@@ -619,8 +596,7 @@ void Mesh::updateGL() {
 			throw Exception("Error: Unable to create vertex buffer");
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * vertexes.size(),
 				&vertexes[0], GL_STATIC_DRAW);
-		if (GL_NO_ERROR != glGetError())
-			throw Exception("Error: Unable to upload vertex buffer data");
+
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 	if (particles.size() > 0) {
@@ -632,9 +608,7 @@ void Mesh::updateGL() {
 			throw Exception("Error: Unable to create particle buffer");
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * particles.size(),
 				&particles[0], GL_STATIC_DRAW);
-		if (GL_NO_ERROR != glGetError())
-			throw Exception("Error: Unable to upload particle buffer data");
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
 		particleCount=particles.size();
 	}
 	if (colors.size() > 0) {
@@ -648,8 +622,6 @@ void Mesh::updateGL() {
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * colors.size(),
 				&colors[0], GL_STATIC_DRAW);
-		if (GL_NO_ERROR != glGetError())
-			throw Exception("Error: Unable to upload color buffer data");
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
@@ -666,8 +638,6 @@ void Mesh::updateGL() {
 		// upload data
 		glBufferData(GL_ARRAY_BUFFER,  sizeof(GLfloat) * 3  * lines.size(),
 				&lines[0], GL_STATIC_DRAW); // upload data
-		if (GL_NO_ERROR != glGetError())
-			throw Exception("Error: Unable to upload index buffer data");
 		// release buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		std::cout<<"Disable Lines "<<std::endl;
@@ -687,9 +657,6 @@ void Mesh::updateGL() {
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * triIndexes.size(),
 				&triIndexes[0], GL_STATIC_DRAW); // upload data
 
-
-		if (GL_NO_ERROR != glGetError())
-			throw Exception("Error: Unable to upload index buffer data");
 
 		triangleIndexCount = triIndexes.size();
 		// release buffer
@@ -722,8 +689,6 @@ void Mesh::updateGL() {
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * tmp.size(),
 				&tmp[0], GL_STATIC_DRAW); // upload data
 
-		if (GL_NO_ERROR != glGetError())
-			throw Exception("Error: Unable to upload index buffer data");
 
 		quadIndexCount = tmp.size();
 		// release buffer
@@ -741,8 +706,6 @@ void Mesh::updateGL() {
 		glBufferData(GL_ARRAY_BUFFER,
 				sizeof(GLfloat) * 3 * particleNormals.size(),
 				&particleNormals[0], GL_STATIC_DRAW);
-		if (GL_NO_ERROR != glGetError())
-			throw Exception("Error: Unable to upload particle normal buffer data");
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
@@ -757,8 +720,6 @@ void Mesh::updateGL() {
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * vertexNormals.size(),
 				&vertexNormals[0], GL_STATIC_DRAW);
-		if (GL_NO_ERROR != glGetError())
-			throw Exception("Error: Unable to upload normal buffer data");
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}

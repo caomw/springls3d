@@ -28,7 +28,7 @@ void Text::updateGL() {
 	}
 }
 Text::Text(int x, int y, int width, int height, const char* fname) :
-		Image(x, y, width, height, width, height), fontName(fname), m_face(
+		Image(x, y, width, height, width, height,false), fontName(fname), m_face(
 				NULL), m_library(NULL) {
 	if (FT_Init_FreeType(&m_library))
 		std::cerr << ("FT_Init_FreeType failed") << std::endl;

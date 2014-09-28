@@ -180,9 +180,6 @@ openvdb::Mat4s lookAtMatrix(openvdb::Vec3s eyePosition3D,openvdb::Vec3s center3D
 }
 void Camera::beginShader(){
 	mShader.begin();
-	std::cout<<"P "<<P<<std::endl;
-	std::cout<<"V "<<V<<std::endl;
-	std::cout<<"M "<<M<<std::endl;
     glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "P"), 1,GL_TRUE, P.asPointer());
     glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "V"), 1,GL_TRUE, V.asPointer());
     glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "M"), 1,GL_TRUE, M.asPointer());
@@ -216,7 +213,9 @@ void Camera::aim(int x,int y,int width,int height){
     }
     P=perspectiveMatrix(mFov,aspectRatio,mNearPlane,mFarPlane).transpose();
     V=lookAtMatrix(mEye,mLookAt,mUp);
-
+    glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "P"), 1,GL_TRUE, P.asPointer());
+    glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "V"), 1,GL_TRUE, V.asPointer());
+    glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "M"), 1,GL_TRUE, M.asPointer());
     // Set up modelview matrix
     //glMatrixMode(GL_MODELVIEW);
     /*

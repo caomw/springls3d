@@ -10,6 +10,8 @@
 #include <openvdb/openvdb.h>
 
 #include <openvdb/util/Util.h>
+#include <vector>
+#include <list>
 #include "ply_io.h"
 namespace imagesci {
 
@@ -351,7 +353,6 @@ bool Mesh::openMesh(const std::string& file) {
 	} //for all elements of the PLY file
 	free(elist); //allocated by ply_open_for_reading
 	close_ply(ply);
-	this->updateVertexNormals();
 	if (this->vertexes.size() > 0) {
 		this->updateBBox();
 		return true;
@@ -435,10 +436,11 @@ void Mesh::create(FloatGrid::Ptr grid) {
 	updateVertexNormals();
 	updateBBox();
 }
-void Mesh::updateVertexNormals(){
-	vertexNormals.resize(vertexes.size(),Vec3s(0.0f));
+void Mesh::updateVertexNormals(int SMOOTH_ITERATIONS,float DOT_TOLERANCE){
+
 	Index32 sz=triIndexes.size();
 	Vec3s pt,norm;
+	vertexNormals.resize(vertexes.size(),Vec3f(0.0f));
 	for (Index32 i = 0; i < sz; i += 3) {
 		Vec3s v1 = vertexes[triIndexes[i]];
 		Vec3s v2 = vertexes[triIndexes[i + 1]];
@@ -465,6 +467,49 @@ void Mesh::updateVertexNormals(){
 	}
 	for (Vec3s& norm : vertexNormals) {
 		norm.normalize(1E-6f);
+	}
+
+	if(SMOOTH_ITERATIONS>0){
+		int vertCount=vertexes.size();
+
+		std::vector<Vec3f> tmp(vertCount);
+
+		std::vector<std::list<int>> vertNbrs(vertCount);
+		int indexCount = quadIndexes.size();
+		int v1, v2, v3,v4;
+		Vec3s nnorm;
+		for (int i = 0; i < indexCount; i += 4){
+			int v1 = quadIndexes[i];
+			int v2 = quadIndexes[i + 1];
+			int v3 = quadIndexes[i + 2];
+			int v4 = quadIndexes[i + 3];
+
+			vertNbrs[v1].push_back(v2);
+			vertNbrs[v2].push_back(v3);
+			vertNbrs[v3].push_back(v1);
+
+			vertNbrs[v3].push_back(v4);
+			vertNbrs[v4].push_back(v1);
+			vertNbrs[v1].push_back(v3);
+		}
+		Vec3f avg;
+		for(int iter=0;iter<SMOOTH_ITERATIONS;iter++){
+			for(int i=0;i<vertCount;i++){
+				norm=vertexNormals[i];
+				avg=Vec3f(0.0f);
+				for(int nbr:vertNbrs[i]){
+					nnorm=vertexNormals[nbr];;
+					if(norm.dot(nnorm)>DOT_TOLERANCE){
+						avg+=nnorm;
+					} else {
+						avg+=norm;
+					}
+				}
+				avg.normalize();
+				tmp[i]=avg;
+			}
+			vertexNormals=tmp;
+		}
 	}
 }
 float Mesh::EstimateVoxelSize(int stride) {

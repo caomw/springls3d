@@ -119,7 +119,7 @@ void EnrightSpringls::windowRefreshCallback(){
 }
 
 EnrightSpringls::EnrightSpringls()
-    : mCamera(new LuxCamera())
+    : mCamera(new Camera())
     , mClipBox(new openvdb_viewer::ClipBox)
     , mShiftIsDown(false)
     , mCtrlIsDown(false)
@@ -265,19 +265,24 @@ bool EnrightSpringls::init(int width,int height){
     openvdb::Vec3d extents = bbox.extents();
     double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
     mCamera->setTarget(bbox.getCenter(), max_extent);
-    mCamera->setNearFarPlanes(0.1f,500.0f);
+    mCamera->setNearFarPlanes(0.1f,1000.0f);
     mCamera->lookAtTarget();
     mCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.02);
-    mCamera->init();
+
+    std::list<std::string> attrib;
+	attrib.push_back("vp");
+	attrib.push_back("vn");
+	mIsoShader.Init("./matcap/JG_Gold.png");
+	mSpringlShader.Initialize(ReadTextFile("phong_shader.vert"),ReadTextFile("phong_shader.frag"),"",attrib);
 
     //Image* img=Image::read("buddha.png");
     //Text* txt=new Text(100,100,300,100);
 
 
     try {
-		mSpringlsShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(height/2,0,width-height/2,height));
-		mSpringlsShader->setMesh(mCamera.get(),&springlGrid);
-		mSpringlsShader->updateGL();
+		mPrettySpringlShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(height/2,0,width-height/2,height));
+		mPrettySpringlShader->setMesh(mCamera.get(),&springlGrid);
+		mPrettySpringlShader->updateGL();
  	 } catch(Exception& e){
 		   std::cerr<<"Shader "<<e.what()<<std::endl;
 	   }
@@ -326,15 +331,12 @@ bool EnrightSpringls::init(int width,int height){
     size_t frame = 0;
     double time = glfwGetTime();
     glfwSwapInterval(1);
-    if (GL_NO_ERROR != glGetError())
-    			throw Exception("GL Error: AFTER UI INIT.");
+
     //stash();
     do {
        if(meshDirty){
     	   meshLock.lock();
     	   try {
-    			if (GL_NO_ERROR != glGetError())
-    					throw Exception("GL Error: BEFORE ISO UPDATE.");
 				springlGrid.isoSurface.updateGL();
     	   } catch(Exception& e){
     		   std::cerr<<"Iso-Surface "<<e.what()<<std::endl;
@@ -415,7 +417,7 @@ void EnrightSpringls::setFrameIndex(int frameIdx){
 	springlGrid.constellation.create(&c);
 	std::cout<<"Open Iso Surface "<<std::endl;
 	springlGrid.isoSurface.openMesh(isoSurfaceFiles[simulationIteration]);
-
+	springlGrid.isoSurface.updateVertexNormals(16);
 	std::cout<<"Update Constellation Normals"<<std::endl;
 	springlGrid.constellation.updateVertexNormals();
 	std::cout<<"Open VDB "<<std::endl;
@@ -470,9 +472,9 @@ void EnrightSpringls::stash(){
 
 	std::ostringstream ostr1,ostr2,ostr3,ostr4,ostr5,ostr6,ostr7;
 	ostr4 << rootFile <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".lxs";
-	mCamera->setMaterialFile("/home/blake/materials/white_chess.lbm2");
+	//mCamera->setMaterialFile("/home/blake/materials/white_chess.lbm2");
 	if(playbackMode){
-		mCamera->setGeometryFile(isoSurfaceFiles[simulationIteration],Pose);
+		//mCamera->setGeometryFile(isoSurfaceFiles[simulationIteration],Pose);
 	} else {
 		ostr1 << rootFile<<"_sls" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
 		springlGrid.constellation.save(ostr1.str());
@@ -490,7 +492,7 @@ void EnrightSpringls::stash(){
 		//WriteToRawFile(springlGrid.gradient,ostr7.str());
 
 		ostr3 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << ".vdb";
-		mCamera->setGeometryFile(ostr2.str(),Pose);
+		//mCamera->setGeometryFile(ostr2.str(),Pose);
 		openvdb::io::File file(ostr3.str());
 		openvdb::GridPtrVec grids;
 		FloatGrid::Ptr signedLevelSet=boost::static_pointer_cast<FloatGrid>(springlGrid.signedLevelSet->copyGrid(CopyPolicy::CP_COPY));
@@ -547,21 +549,20 @@ EnrightSpringls::render()
     springlGrid.constellation.setPose(Pose);
     springlGrid.isoSurface.setPose(Pose);
     mCamera->setPose(Pose.transpose());
-	mSpringlsShader->render();
-
-	 mCamera->beginShader();
+	mPrettySpringlShader->render();
 
 
-	 mCamera->aim(0,0,height/2,height/2);
-
+	 mIsoShader.begin();
+	 mCamera->aim(0,0,height/2,height/2,mIsoShader);
 	springlGrid.isoSurface.draw(false,false,false,false);
-	mCamera->endShader();
+	mIsoShader.end();
 
-	 mCamera->beginShader();
-    mCamera->aim(0,height/2,height/2,height/2);
 
+	mSpringlShader.begin();
+
+	mCamera->aim(0,height/2,height/2,height/2,mSpringlShader);
 	springlGrid.draw(false,true,false,false);
-	 mCamera->endShader();
+	mSpringlShader.end();
     //
 
 

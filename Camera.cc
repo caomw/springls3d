@@ -29,6 +29,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include "Camera.h"
+
 #include "ImageSciUtil.h"
 #include <cmath>
 #include <string>
@@ -104,14 +105,6 @@ Camera::setTarget(const openvdb::Vec3d& p, double dist)
     mTarget = p;
     mTargetDistance = dist;
 }
-void Camera::aim(GLFWwindow* win){
-    // Get the window size
-    int width, height;
-    glfwGetWindowSize(win,&width, &height);
-    height=std::max(1,height);
-    width=std::max(1,width);
-    aim(0,0,width,height);
-}
 
 
 openvdb::Mat4s perspectiveMatrix(const float &fovy, const float &aspect, const float &zNear, const float &zFar)
@@ -178,13 +171,7 @@ openvdb::Mat4s lookAtMatrix(openvdb::Vec3s eyePosition3D,openvdb::Vec3s center3D
 
    return resultMatrix.transpose()*T;
 }
-void Camera::beginShader(){
-	mShader.begin();
-    glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "P"), 1,GL_TRUE, P.asPointer());
-    glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "V"), 1,GL_TRUE, V.asPointer());
-    glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "M"), 1,GL_TRUE, M.asPointer());
-}
-void Camera::aim(int x,int y,int width,int height){
+void Camera::aim(int x,int y,int width,int height,GLShader& shader){
 
 
     glViewport(x,y, width, height);
@@ -213,28 +200,18 @@ void Camera::aim(int x,int y,int width,int height){
     }
     P=perspectiveMatrix(mFov,aspectRatio,mNearPlane,mFarPlane).transpose();
     V=lookAtMatrix(mEye,mLookAt,mUp);
-    glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "P"), 1,GL_TRUE, P.asPointer());
-    glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "V"), 1,GL_TRUE, V.asPointer());
-    glUniformMatrix4fv(glGetUniformLocation(mShader.GetProgramHandle(), "M"), 1,GL_TRUE, M.asPointer());
-    // Set up modelview matrix
-    //glMatrixMode(GL_MODELVIEW);
-    /*
-    gluLookAt(mEye[0], mEye[1], mEye[2],
-              mLookAt[0], mLookAt[1], mLookAt[2],
-              mUp[0], mUp[1], mUp[2]);
-              */
-
+    glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "P"), 1,GL_TRUE, P.asPointer());
+    if (GL_NO_ERROR != glGetError())
+    			throw Exception("GL Error: AFTER SET P.");
+    glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "V"), 1,GL_TRUE, V.asPointer());
+    if (GL_NO_ERROR != glGetError())
+    			throw Exception("GL Error: AFTER SET V.");
+    glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "M"), 1,GL_TRUE, M.asPointer());
+    if (GL_NO_ERROR != glGetError())
+    			throw Exception("GL Error: AFTER SET M.");
     mNeedsDisplay = false;
 }
 
-void Camera::init(){
-	std::list<std::string> attrib;
-	attrib.push_back("vp");
-	attrib.push_back("vn");
-	attrib.push_back("vc");
-	mShader.Initialize(ReadTextFile("phong_shader.vert"),ReadTextFile("phong_shader.frag"),"",attrib);
-
-}
 void Camera::keyCallback(GLFWwindow* win,int key, int )
 {
     if (glfwGetKey(win,key) == GLFW_PRESS) {

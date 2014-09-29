@@ -6,7 +6,7 @@
  */
 
 #include "GLShader.h"
-#include "Mesh.h"
+#include "ImageSciUtil.h"
 #include <iostream>
 
 
@@ -17,7 +17,15 @@ GLShader::GLShader() :
 		mVertexShaderHandle(0), mFragmentShaderHandle(0), mGeometryShaderHandle(0),mProgramHandle(0) {
 
 }
-
+void GLShader::begin(){
+	glUseProgram(GetProgramHandle());
+}
+void GLShader::end(){
+	glUseProgram((GLuint)NULL);
+}
+GLShader::~GLShader(){
+	Uninitialize();
+}
 bool GLShader::Initialize(
 		const std::string& pVertexShaderString,
 		const std::string& pFragmentShaderString,
@@ -25,8 +33,6 @@ bool GLShader::Initialize(
 		std::list<std::string>& pAttributeLocations) {
 	GLint lStatus;
 	char message[4096]="";
-	if (GL_NO_ERROR != glGetError())
-			throw Exception("Error: OpenGL error occurred shader init failed.");
 	// Compile vertex shader.
 	mVertexShaderHandle = glCreateShader( GL_VERTEX_SHADER);
 	const char* code= pVertexShaderString.c_str();
@@ -50,8 +56,6 @@ bool GLShader::Initialize(
 		return false;
 	}
 
-	if (GL_NO_ERROR != glGetError())
-		throw Exception("Error: OpenGL error occurred at vertex shader compile.");
 	// Compile fragment shader.
 	mFragmentShaderHandle = glCreateShader( GL_FRAGMENT_SHADER);
 	code= pFragmentShaderString.c_str();
@@ -75,8 +79,6 @@ bool GLShader::Initialize(
 		mGeometryShaderHandle = 0;
 		return false;
 	}
-	if (GL_NO_ERROR != glGetError())
-		throw Exception("Error: OpenGL error occurred at frag shader compile.");
 
 	// Link shaders.
 	mProgramHandle = glCreateProgram();
@@ -89,14 +91,10 @@ bool GLShader::Initialize(
 		glBindAttribLocation(mProgramHandle, lIndex,str.c_str());
 		++lIndex;
 	}
-	if (GL_NO_ERROR != glGetError())
-			throw Exception("Error: OpenGL error occurred vertex shader failed.");
 	if(pGeometryShaderString.length()>0){
 
 		// Compile Geometry shader.
 		mGeometryShaderHandle = glCreateShader(GL_GEOMETRY_SHADER);
-		if (GL_NO_ERROR != glGetError())
-				throw Exception("Error: OpenGL error occurred at geom shader compile.");
 		code= pGeometryShaderString.c_str();
 		glShaderSource(mGeometryShaderHandle, 1,&code, 0);
 		glCompileShader(mGeometryShaderHandle);
@@ -132,8 +130,6 @@ bool GLShader::Initialize(
 		Uninitialize();
 		return false;
 	}
-	if (GL_NO_ERROR != glGetError())
-		throw Exception("Error: OpenGL error occurred at shader init.");
 	return true;
 }
 

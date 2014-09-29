@@ -48,17 +48,10 @@ class Camera
 public:
     Camera();
 
-
-    void aim(GLFWwindow* win);
-    void aim(int x,int y,int width,int height);
-    void beginShader();
-    inline void endShader(){
-    	mShader.end();
-    }
+    void aim(int x,int y,int width,int height,GLShader& shader);
     void setPose(const openvdb::Mat4s& m){
     	M=m;
     }
-    void init();
     void lookAt(const openvdb::Vec3d& p, double dist = 1.0);
     void lookAtTarget();
 
@@ -81,7 +74,6 @@ public:
     	return openvdb::Vec3s(p[0]/p[3],p[1]/p[3],p[2]/p[3]);
     }
 protected:
-    GLShader mShader;
     // Camera parameters
     double mFov, mNearPlane, mFarPlane;
     openvdb::Vec3d mTarget, mLookAt, mUp, mForward, mRight, mEye;

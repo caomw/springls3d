@@ -60,6 +60,7 @@
 #include "SpringLevelSetAdvection.h"
 #include "GLRenderUI.h"
 #include "GLShaderSpringLS.h"
+#include "GLEnvironmentalShader.h"
 namespace imagesci{
 
 typedef openvdb::tools::EnrightField<float> FieldT;
@@ -83,13 +84,13 @@ protected:
 	boost::shared_ptr<AdvectT> advect;
 	std::thread simThread;
 	std::string rootFile;
-	std::unique_ptr<GLShaderSpringLS> mSpringlsShader;
+	std::unique_ptr<GLShaderSpringLS> mPrettySpringlShader;
 	std::vector<std::string> isoSurfaceFiles;
 	std::vector<std::string> constellationFiles;
 	std::vector<std::string> signedDistanceFiles;
 	openvdb::Mat4s Pose;
 public:
-	typedef std::unique_ptr<LuxCamera> CameraPtr;
+	typedef std::unique_ptr<Camera> CameraPtr;
 
 	typedef std::unique_ptr<openvdb_viewer::ClipBox> ClipBoxPtr;
 
@@ -119,7 +120,11 @@ public:
 	void start();
 	void stop();
 private:
-	GLFWwindow* mWin;
+
+    GLEnvironmentalShader mIsoShader;
+    GLShader mSpringlShader;
+
+    GLFWwindow* mWin;
 	CameraPtr mCamera;
 	GLRenderUI mUI;
 	ClipBoxPtr mClipBox;

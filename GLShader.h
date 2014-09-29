@@ -24,7 +24,7 @@ class GLShader {
 public:
 	// Default constructor.
 	GLShader();
-
+	virtual ~GLShader();
 	// Initialization function to compile the shader.
 	bool Initialize(const std::string& pVertexShaderString,
 			const std::string& pFragmentShaderString,
@@ -32,12 +32,8 @@ public:
 			std::list<std::string>& attributes);
 	// Uninitialization function.
 	void Uninitialize();
-	inline void begin(){
-		glUseProgram(GetProgramHandle());
-	}
-	inline void end(){
-		glUseProgram((GLuint)NULL);
-	}
+	virtual void begin();
+	virtual void end();
 	// Returns the program handle.
 	inline GLuint GetProgramHandle() const;
 

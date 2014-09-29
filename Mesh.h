@@ -17,18 +17,7 @@
 #include <GL/glu.h>
 #include <GLFW/glfw3.h>
 namespace imagesci {
-class Exception:public std::exception{
-protected:
-	std::string message;
-public:
 
-	Exception(const char* str){
-		message=str;
-	}
-	const char* what(){
-		return message.c_str();
-	}
-};
 class Mesh{
 	private:
 		openvdb::math::BBox<openvdb::Vec3d> bbox;
@@ -74,7 +63,7 @@ class Mesh{
 			return mPose;
 		}
 		void updateGL();
-		void updateVertexNormals();
+		void updateVertexNormals(int SMOOTH_ITERATIONS=0,float DOT_TOLERANCE=0.75f);
 		void mapIntoBoundingBox(float voxelSize);
 		void mapOutOfBoundingBox(float voxelSize);
 		bool openMesh(const std::string& file);

@@ -19,6 +19,18 @@ typedef openvdb::math::Mat4f Matrix4f;
 template<typename T> T clamp(T val, T min, T max) {
 	return std::min(std::max(val, min), max);
 }
+class Exception:public std::exception{
+protected:
+	std::string message;
+public:
+
+	Exception(const char* str){
+		message=str;
+	}
+	const char* what(){
+		return message.c_str();
+	}
+};
 std::string GetFileWithoutExtension(const std::string& file);
 std::string GetFileNameWithoutExtension(const std::string& file);
 int GetDirectoryListing(const std::string& dirName,

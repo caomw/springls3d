@@ -36,20 +36,20 @@ void GLShaderSpringLS::setMesh(Camera* camera, SpringLevelSet* mesh) {
 }
 void GLShaderSpringLS::updateGL() {
 	if (mFrameBufferId1 == 0) {
-		std::list<std::string> empty;
-		empty.push_back("vp");
-		empty.push_back("vn");
-		if(!mWireframeProgram.Initialize(ReadTextFile("wireframe.vert"),ReadTextFile("wireframe.frag"),ReadTextFile("wireframe.geom"),empty)){
+		std::list<std::string> attrib;
+		attrib.push_back("vp");
+		attrib.push_back("vn");
+		if(!mWireframeProgram.Initialize(ReadTextFile("wireframe.vert"),ReadTextFile("wireframe.frag"),ReadTextFile("wireframe.geom"),attrib)){
 			std::cerr << "Wireframe shader compilation failed." << std::endl;
 		}
 
 
 		if (!mNormalsAndDepthProgram.Initialize(ReadTextFile("depth_shader.vert"),ReadTextFile("depth_shader.frag"),"",
-				empty)) {
+				attrib)) {
 			std::cerr << "Normal / Depth compilation failed." << std::endl;
 		}
 		if (!mMixerProgram.Initialize(ReadTextFile("springls.vert"),ReadTextFile("springls.frag"),"",
-				empty)) {
+				attrib)) {
 			std::cerr << "Mixer shader compilation failed." << std::endl;
 		}
 		mData.resize(w * h);
@@ -126,7 +126,7 @@ void GLShaderSpringLS::render() {
 	glUniform1f(glGetUniformLocation(mNormalsAndDepthProgram.GetProgramHandle(),"MAX_DEPTH"),mCamera->farPlane());
 	glUniform1f(glGetUniformLocation(mNormalsAndDepthProgram.GetProgramHandle(),"MIN_DEPTH"),mCamera->nearPlane());
 
-	mCamera->aim(0,0, w, h);
+	mCamera->aim(0,0, w, h,mNormalsAndDepthProgram);
 	mSpringLS->isoSurface.draw(false, false, false, false,false);
 	glUseProgram((GLuint)NULL);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -140,7 +140,7 @@ void GLShaderSpringLS::render() {
 	glUniform1f(glGetUniformLocation(mNormalsAndDepthProgram.GetProgramHandle(),"MAX_DEPTH"),mCamera->farPlane());
 	glUniform1f(glGetUniformLocation(mNormalsAndDepthProgram.GetProgramHandle(),"MIN_DEPTH"),mCamera->nearPlane());
 
-	mCamera->aim(0,0, w, h);
+	mCamera->aim(0,0, w, h,mNormalsAndDepthProgram);
 	mSpringLS->constellation.draw(false, false, false, false,false);
 
 	glUseProgram((GLuint)NULL);
@@ -164,7 +164,6 @@ void GLShaderSpringLS::render() {
 
 	glViewport(h/2,0,w,h);
 	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glUseProgram(mMixerProgram.GetProgramHandle());
@@ -214,7 +213,7 @@ void GLShaderSpringLS::render() {
 	renderImage->render();
 
 	glUseProgram((GLuint)NULL);
-
+	glEnable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);
 }
 GLShaderSpringLS::~GLShaderSpringLS() {

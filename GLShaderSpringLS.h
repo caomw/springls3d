@@ -20,7 +20,6 @@ class GLShaderSpringLS: public GLComponent {
 private:
 	GLShader mNormalsAndDepthProgram;
 	GLShader mMixerProgram;
-	GLShader mWireframeProgram;
 	unsigned int mFrameBufferId1;
 	unsigned int mFrameBufferId2;
 	unsigned int mDepthBufferId1;

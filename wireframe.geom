@@ -1,45 +1,36 @@
-/**
- *    Introduction to GPU Programming with GLSL
- *
- *  Geometry Shader -- Wireframe effect
- *
- *  Marroquim, Ricardo -- Apr, 2012
- *
- **/
-
-
-#extension GL_EXT_gpu_shader4 : enable
-#extension GL_EXT_geometry_shader4: enable
-
-//uniform vec2 viewport;
-varying vec3 v0, v1, v2;
-varying vec3 normal, vert;
-
+#version 330
+layout (triangles) in;
+layout (triangle_strip, max_vertices=3) out;
+out vec3 v0, v1, v2;
+out vec3 normal, vert;
+uniform mat4 P,V,M;
 void main() {
-/*
-  vec3 v01 = gl_PositionIn[1].xyz - gl_PositionIn[0].xyz;
-  vec3 v02 = gl_PositionIn[2].xyz - gl_PositionIn[0].xyz;
+
+  mat4 VM=V * M;
+  mat4 PVM=P*VM;
+
+  vec3 v01 = gl_in[1].gl_Position.xyz - gl_in[0].gl_Position.xyz;
+  vec3 v02 = gl_in[2].gl_Position.xyz - gl_in[0].gl_Position.xyz;
   vec3 fn =  normalize(-cross( v01, v02 ));
+  
+  v0 = (VM * gl_in[0].gl_Position).xyz;
+  v1 = (VM * gl_in[1].gl_Position).xyz;
+  v2 = (VM * gl_in[2].gl_Position).xyz;
 
+  vert = v0;
+  gl_Position=PVM*gl_in[0].gl_Position;  
+  normal = (VM*vec4(fn,0.0f)).xyz;
+  EmitVertex();
+  
+  vert = v1;
+  gl_Position=PVM*gl_in[1].gl_Position;  
 
-  vec4 proj[3];
-  vec3 vertex[3];
-  for (int i = 0; i < gl_VerticesIn; ++i) {
-    proj[i] = gl_ModelViewProjectionMatrix * gl_PositionIn[i];
-    vertex[i] = (gl_ModelViewMatrix * gl_PositionIn[i]).xyz;
-  }
-
-  for (int i = 0; i < gl_VerticesIn; ++i) {
-    v0 = vertex[0];
-    v1 = vertex[1];
-    v2 = vertex[2];
-    vert = vec3( gl_ModelViewMatrix * gl_PositionIn[i] );
-    normal = fn;
-    gl_Position = proj[i];
-    EmitVertex();
-  }
-
-
+  normal = (VM*vec4(fn,0.0f)).xyz;
+  EmitVertex();
+  
+  vert = v2; 
+  gl_Position=PVM*gl_in[2].gl_Position;  
+  normal = (VM*vec4(fn,0.0f)).xyz;
+  EmitVertex();
   EndPrimitive();
-  */
-}
+ }

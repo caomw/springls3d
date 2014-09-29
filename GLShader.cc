@@ -80,17 +80,7 @@ bool GLShader::Initialize(
 		return false;
 	}
 
-	// Link shaders.
-	mProgramHandle = glCreateProgram();
-	glAttachShader(mProgramHandle, mVertexShaderHandle);
-	glAttachShader(mProgramHandle, mFragmentShaderHandle);
-	if(mGeometryShaderHandle>0)glAttachShader(mProgramHandle, mGeometryShaderHandle);
-	// Bind the attribute location for all vertices.
-	int lIndex = 0;
-	for(std::string str:pAttributeLocations) {
-		glBindAttribLocation(mProgramHandle, lIndex,str.c_str());
-		++lIndex;
-	}
+
 	if(pGeometryShaderString.length()>0){
 
 		// Compile Geometry shader.
@@ -98,7 +88,6 @@ bool GLShader::Initialize(
 		code= pGeometryShaderString.c_str();
 		glShaderSource(mGeometryShaderHandle, 1,&code, 0);
 		glCompileShader(mGeometryShaderHandle);
-
 		// Verify that shader compiled correctly.
 		glGetShaderiv(mGeometryShaderHandle, GL_COMPILE_STATUS, &lStatus);
 		if (lStatus != GL_TRUE) {
@@ -117,6 +106,18 @@ bool GLShader::Initialize(
 		}
 
 	}
+	// Link shaders.
+	mProgramHandle = glCreateProgram();
+	glAttachShader(mProgramHandle, mVertexShaderHandle);
+	glAttachShader(mProgramHandle, mFragmentShaderHandle);
+	if(mGeometryShaderHandle>0)glAttachShader(mProgramHandle, mGeometryShaderHandle);
+
+	// Bind the attribute location for all vertices.
+	int lIndex = 0;
+	for(std::string str:pAttributeLocations) {
+		glBindAttribLocation(mProgramHandle, lIndex,str.c_str());
+		++lIndex;
+	}
 	glLinkProgram(mProgramHandle);
 
 	// Verify that program linked correctly.
@@ -125,7 +126,7 @@ bool GLShader::Initialize(
 
 		// FIXME: We could add code to check why the shader didn't link.
 		std::cerr << "Unable to link shaders properly..." << std::endl;
-		glGetInfoLogARB(mGeometryShaderHandle,sizeof(message),NULL,message);
+		glGetInfoLogARB(mProgramHandle,sizeof(message),NULL,message);
 		std::cerr<<message<<std::endl;
 		Uninitialize();
 		return false;

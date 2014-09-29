@@ -61,6 +61,7 @@
 #include "GLRenderUI.h"
 #include "GLShaderSpringLS.h"
 #include "GLEnvironmentalShader.h"
+#include "GLWireframeShader.h"
 namespace imagesci{
 
 typedef openvdb::tools::EnrightField<float> FieldT;
@@ -122,7 +123,7 @@ public:
 private:
 
     GLEnvironmentalShader mIsoShader;
-    GLShader mSpringlShader;
+    GLWireframeShader mSpringlShader;
 
     GLFWwindow* mWin;
 	CameraPtr mCamera;

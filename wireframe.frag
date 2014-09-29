@@ -1,18 +1,11 @@
-/**
- *    Introduction to GPU Programming with GLSL
- *
- *  Fragment Shader -- Wireframe shader
- *
- *  Marroquim, Ricardo -- Apr, 2012
- *
- **/
-
-//uniform vec2 viewport;
-//varying vec3 v0, v1, v2;
-//varying vec3 normal, vert;
+#version 330
+in vec3 v0, v1, v2;
+in vec3 normal, vert;
+const vec4 skyColorEdge = vec4(0.9, 0.9, 0.9, 1.0);
+const vec4 skyColorMiddle = vec4(0.2, 0.2, 0.2, 1.0);
+const vec4 groundColor = vec4(0.1, 0.1, 0.1, 1.0);
 
 void main(void) {
-/*
   vec3 line, vec, proj;
   float dist;
 
@@ -34,35 +27,20 @@ void main(void) {
   proj = dot(vec, line) * line;
   dist = min(dist, length (vec - proj));
 
-  // maximum perpendicular distance to edges inside the triangle is at the centroid
-  vec3 centroid = (v0 + v1 + v2) / 3.0;
-  vec = centroid - v1;
+  vec3 center = 0.33333f*(v0 + v1 + v2);
+  vec = center - v1;
   proj = dot(vec, line) * line;
   float max_dist = length(vec - proj);
   
   // normalize min distance
   dist /= max_dist;
-
-  // Gaussian falloff from edge
-  dist = exp(-2.0*dist*dist);
- 
+  float w = 0.5 * (1.0 + dot(normalize(normal), vec3(0.0, 1.0, 0.0)));
   // discard interior of triangle
-  if (dist < 0.5)
-   discard;
-
-  dist  = 1.0 - dist;
-  vec4 color = vec4(dist, dist, dist, 1.0);
-  color = vec4(0.0, 0.0, 0.0, 1.0);
-  //gl_FragColor = color;
-
-  // do some phong shading
-  vec3 light_dir = normalize( gl_LightSource[0].position.xyz - vert );
-  vec3 eye_dir = normalize( -vert.xyz );
-  vec3 ref = normalize( -reflect( light_dir, normal ) );
-
-  vec4 ld = color * abs( dot(normal, light_dir) );
-  vec4 ls = color * pow( abs( dot(ref, eye_dir) ), gl_FrontMaterial.shininess );
-
-  gl_FragColor = ld + ls;
-*/
+  if (dist <0.3f){
+    vec4 diffuseColor = w * skyColorMiddle + (1.0 - w) * groundColor;
+    gl_FragColor = diffuseColor;
+  } else {
+   vec4 diffuseColor = w * skyColorEdge + (1.0 - w) * groundColor;
+    gl_FragColor = diffuseColor;
+  }
 }

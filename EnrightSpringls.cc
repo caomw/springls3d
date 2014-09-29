@@ -273,7 +273,8 @@ bool EnrightSpringls::init(int width,int height){
 	attrib.push_back("vp");
 	attrib.push_back("vn");
 	mIsoShader.Init("./matcap/JG_Gold.png");
-	mSpringlShader.Initialize(ReadTextFile("phong_shader.vert"),ReadTextFile("phong_shader.frag"),"",attrib);
+
+	mSpringlShader.Init();
 
     //Image* img=Image::read("buddha.png");
     //Text* txt=new Text(100,100,300,100);
@@ -557,9 +558,7 @@ EnrightSpringls::render()
 	springlGrid.isoSurface.draw(false,false,false,false);
 	mIsoShader.end();
 
-
 	mSpringlShader.begin();
-
 	mCamera->aim(0,height/2,height/2,height/2,mSpringlShader);
 	springlGrid.draw(false,true,false,false);
 	mSpringlShader.end();

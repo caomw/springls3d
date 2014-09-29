@@ -236,6 +236,7 @@ bool EnrightSpringls::init(int width,int height){
 
 
 */
+
     if (glfwInit() != GL_TRUE) {
         std::cout<<"GLFW Initialization Failed.";
         return false;
@@ -248,6 +249,8 @@ bool EnrightSpringls::init(int width,int height){
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_SAMPLES,16);
+	glfwWindowHint(GLFW_DEPTH_BITS,32);
     if ((mWin=glfwCreateWindow(width, height,"Enright",NULL,NULL))==NULL)    // Window mode
     {
         glfwTerminate();
@@ -315,6 +318,7 @@ bool EnrightSpringls::init(int width,int height){
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_POLYGON_SMOOTH);
 	glEnable(GL_LINE_SMOOTH);
+	glEnable( GL_MULTISAMPLE );
 	//glShadeModel(GL_SMOOTH);
 	//glEnable( GL_COLOR_MATERIAL );
 
@@ -341,8 +345,6 @@ bool EnrightSpringls::init(int width,int height){
 				springlGrid.isoSurface.updateGL();
     	   } catch(Exception& e){
     		   std::cerr<<"Iso-Surface "<<e.what()<<std::endl;
-      		   std::cerr<<"VERTS "<<springlGrid.isoSurface.vertexes.size()<<" QUADS "<<springlGrid.isoSurface.quadIndexes.size()<<std::endl;
-
     	   }
     	   try {
     		   springlGrid.constellation.updateGL();
@@ -413,15 +415,11 @@ void EnrightSpringls::setFrameIndex(int frameIdx){
 	}
 	meshLock.lock();
 	Mesh c;
-	std::cout<<"Open Constellation "<<std::endl;
 	c.openMesh(constellationFiles[simulationIteration]);
 	springlGrid.constellation.create(&c);
-	std::cout<<"Open Iso Surface "<<std::endl;
 	springlGrid.isoSurface.openMesh(isoSurfaceFiles[simulationIteration]);
 	springlGrid.isoSurface.updateVertexNormals(16);
-	std::cout<<"Update Constellation Normals"<<std::endl;
 	springlGrid.constellation.updateVertexNormals();
-	std::cout<<"Open VDB "<<std::endl;
 	openvdb::io::File file(signedDistanceFiles[simulationIteration]);
 	file.open();
 	openvdb::GridPtrVecPtr grids =file.getGrids();
@@ -435,7 +433,6 @@ void EnrightSpringls::setFrameIndex(int frameIdx){
 	//WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/signed_init");
 	//WriteToRawFile(springlGrid.unsignedLevelSet,"/home/blake/unsigned_init");
 	meshLock.unlock();
-	std::cout<<"Update Surface"<<std::endl;
 	meshDirty=true;
 	setNeedsDisplay();
 }
@@ -547,6 +544,7 @@ EnrightSpringls::render()
 	    glfwGetWindowSize(mWin,&width, &height);
 	glViewport(0,0,width,height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 
     springlGrid.constellation.setPose(Pose);
     springlGrid.isoSurface.setPose(Pose);

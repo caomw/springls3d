@@ -27,7 +27,7 @@ void main(void) {
   
   //float w = 0.5 * (1.0 + dot(normalize(normal), vec3(0.0, 1.0, 0.0)));
   // discard interior of triangle
-  if (dist <0.1f&&normal.z<0.0f){
+  if (dist <0.1f&&normal.z>0.0f){
     //vec4 diffuseColor = mix(skyColorMiddle,groundColor,w);
     gl_FragColor = skyColorEdge;
   } else {

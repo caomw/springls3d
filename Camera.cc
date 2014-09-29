@@ -199,14 +199,8 @@ void Camera::aim(int x,int y,int width,int height,GLShader& shader){
     P=perspectiveMatrix(mFov,aspectRatio,mNearPlane,mFarPlane).transpose();
     V=lookAtMatrix(mEye,mLookAt,mUp);
     glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "P"), 1,GL_TRUE, P.asPointer());
-    if (GL_NO_ERROR != glGetError())
-    			throw Exception("GL Error: AFTER SET P.");
     glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "V"), 1,GL_TRUE, V.asPointer());
-    if (GL_NO_ERROR != glGetError())
-    			throw Exception("GL Error: AFTER SET V.");
     glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "M"), 1,GL_TRUE, M.asPointer());
-    if (GL_NO_ERROR != glGetError())
-    			throw Exception("GL Error: AFTER SET M.");
     mNeedsDisplay = false;
 }
 

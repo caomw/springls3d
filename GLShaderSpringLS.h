@@ -19,14 +19,18 @@ namespace imagesci {
 class GLShaderSpringLS: public GLComponent {
 private:
 	GLShader mNormalsAndDepthProgram;
+	GLShader mWireframeProgram;
 	GLShader mMixerProgram;
 	unsigned int mFrameBufferId1;
 	unsigned int mFrameBufferId2;
+	unsigned int mFrameBufferId3;
 	unsigned int mDepthBufferId1;
 	unsigned int mDepthBufferId2;
+	unsigned int mDepthBufferId3;
 
 	std::unique_ptr<Image> springlImage;
 	std::unique_ptr<Image> isoImage;
+	std::unique_ptr<Image> wireImage;
 	std::unique_ptr<Image> renderImage;
 
 	unsigned int mMatCapId1;

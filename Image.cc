@@ -26,8 +26,13 @@ void Image::render() {
 	glBindBuffer(GL_ARRAY_BUFFER, mUVBuffer);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
-	glBindTexture(GL_TEXTURE_2D, mTextureId);
-
+	/*
+	if(mFloatType){
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mTextureId);
+	} else {
+	*/
+		glBindTexture(GL_TEXTURE_2D, mTextureId);
+	//}
 	glDrawArrays(GL_TRIANGLES,0,6);
 	glBindVertexArray (0);
 
@@ -66,19 +71,34 @@ void Image::updateGL() {
 		glGenTextures( 1,&mTextureId);
 	}
 	glGenVertexArrays (1, &vao);
-	glBindTexture( GL_TEXTURE_2D, mTextureId);
+
 	if(mFloatType){
+		/*
+		glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, mTextureId);
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 8, GL_RGBA32F, mWidth, mHeight, GL_FALSE);
+		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		*/
+		glBindTexture( GL_TEXTURE_2D, mTextureId);
 		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F, mWidth, mHeight, 0, GL_RGBA,
-				GL_FLOAT, &mDataf[0]);
+			GL_FLOAT, &mDataf[0]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	} else {
+		glBindTexture( GL_TEXTURE_2D, mTextureId);
 		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, mWidth, mHeight, 0, GL_RGBA,
 			GL_UNSIGNED_BYTE, &mData[0]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	}
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
 
 	glBindTexture( GL_TEXTURE_2D, 0);
 	glGenBuffers(1, &mPositionBuffer);

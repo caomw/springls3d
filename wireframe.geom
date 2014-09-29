@@ -11,7 +11,7 @@ void main() {
 
   vec3 v01 = gl_in[1].gl_Position.xyz - gl_in[0].gl_Position.xyz;
   vec3 v02 = gl_in[2].gl_Position.xyz - gl_in[0].gl_Position.xyz;
-  vec3 fn =  normalize(-cross( v01, v02 ));
+  vec3 fn =  normalize(cross( v01, v02 ));
   
   v0 = (VM * gl_in[0].gl_Position).xyz;
   v1 = (VM * gl_in[1].gl_Position).xyz;

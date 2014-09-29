@@ -27,7 +27,15 @@ const char* const fragmentShaderDepthGPU =
 		"}\n";
 const char* const NormalAndDepthAttributes[] = { 0 };
 const char* const MixerAttributes[] = { 0};
-GLShaderSpringLS::GLShaderSpringLS(int x, int y, int w, int h) :GLComponent(x, y, w, h), mFrameBufferId1(0), mDepthBufferId1(0), mDepthBufferId2(0),mFrameBufferId2(0) {
+GLShaderSpringLS::GLShaderSpringLS(int x, int y, int w, int h) :
+		GLComponent(x, y, w, h),
+		mSpringLS(NULL),
+		mCamera(NULL),
+		mMatCapId1(0),
+		mMatCapId2(0),
+		mFrameBufferId1(0), mDepthBufferId1(0),
+		mDepthBufferId2(0),mFrameBufferId2(0),
+		mFrameBufferId3(0), mDepthBufferId3(0){
 
 }
 void GLShaderSpringLS::setMesh(Camera* camera, SpringLevelSet* mesh) {
@@ -40,24 +48,29 @@ void GLShaderSpringLS::updateGL() {
 		attrib.push_back("vp");
 		attrib.push_back("vn");
 
-
+		if (!mWireframeProgram.Initialize(ReadTextFile("wireframe_depth_shader.vert"),ReadTextFile("wireframe_depth_shader.frag"),ReadTextFile("wireframe_depth_shader.geom"),
+				attrib)) {
+			throw Exception("Wireframe depth shader compilation failed.");
+		}
 		if (!mNormalsAndDepthProgram.Initialize(ReadTextFile("depth_shader.vert"),ReadTextFile("depth_shader.frag"),"",
 				attrib)) {
-			std::cerr << "Normal / Depth compilation failed." << std::endl;
+			throw Exception("depth shader compilation failed.");
 		}
 		if (!mMixerProgram.Initialize(ReadTextFile("springls.vert"),ReadTextFile("springls.frag"),"",
 				attrib)) {
-			std::cerr << "Mixer shader compilation failed." << std::endl;
+			throw("Mixer shader compilation failed.");
 		}
 		mData.resize(w * h);
 
 		isoImage=std::unique_ptr<Image>(new Image(0,0,w,h,w,h,true));
+		wireImage=std::unique_ptr<Image>(new Image(0,0,w,h,w,h,true));
 		springlImage=std::unique_ptr<Image>(new Image(0,0,w,h,w,h,true));
-		renderImage=std::unique_ptr<Image>(new Image(0,0,w,h,w,h,true));
+		renderImage=std::unique_ptr<Image>(new Image(0,0,w,h,w,h,false));
 
 		isoImage->updateGL();
 		springlImage->updateGL();
 		renderImage->updateGL();
+		wireImage->updateGL();
 
 		std::vector<RGBA> tmp1,tmp2;
 		int iW,iH;
@@ -103,6 +116,18 @@ void GLShaderSpringLS::updateGL() {
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
+		glGenRenderbuffers(1, &mDepthBufferId3);
+		glBindRenderbuffer(GL_RENDERBUFFER, mDepthBufferId3);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, w, h);
+
+		glGenFramebuffers(1, &mFrameBufferId3);
+		glBindFramebuffer(GL_FRAMEBUFFER, mFrameBufferId3);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,GL_RENDERBUFFER, mDepthBufferId3);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D, wireImage->textureId(), 0);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
 		glGenRenderbuffers(1, &mDepthBufferId2);
 		glBindRenderbuffer(GL_RENDERBUFFER, mDepthBufferId2);
 		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, w, h);
@@ -122,7 +147,7 @@ void GLShaderSpringLS::updateGL() {
 	}
 }
 void GLShaderSpringLS::render() {
-
+	 glViewport(0,0,w,h);
 	glBindFramebuffer(GL_FRAMEBUFFER, mFrameBufferId1);
 	glBindRenderbuffer(GL_RENDERBUFFER, mDepthBufferId1);
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
@@ -154,19 +179,42 @@ void GLShaderSpringLS::render() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
+	glBindFramebuffer(GL_FRAMEBUFFER, mFrameBufferId3);
+	glBindRenderbuffer(GL_RENDERBUFFER, mDepthBufferId3);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glUseProgram(mWireframeProgram.GetProgramHandle());
+	glUniform1f(glGetUniformLocation(mWireframeProgram.GetProgramHandle(),"MAX_DEPTH"),mCamera->farPlane());
+	glUniform1f(glGetUniformLocation(mWireframeProgram.GetProgramHandle(),"MIN_DEPTH"),mCamera->nearPlane());
+
+	mCamera->aim(0,0, w, h,mWireframeProgram);
+	mSpringLS->constellation.draw(false, false, false, false,false);
+
+	glUseProgram((GLuint)NULL);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+/*
+	std::cout<<"Write To FIle "<<std::endl;
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, isoImage->textureId());
+	glGetTexImage(GL_TEXTURE_2D_MULTISAMPLE,0,GL_RGBA,GL_FLOAT,&mData[0]);
+	WriteImageToFile("iso.png",mData,w,h);
+
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, springlImage->textureId());
+	glGetTexImage(GL_TEXTURE_2D_MULTISAMPLE,0,GL_RGBA,GL_FLOAT,&mData[0]);
+	WriteImageToFile("springls.png",mData,w,h);
+	std::cout<<"Done Write! "<<std::endl;
+
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, wireImage->textureId());
+	glGetTexImage(GL_TEXTURE_2D_MULTISAMPLE,0,GL_RGBA,GL_FLOAT,&mData[0]);
+	WriteImageToFile("wire.png",mData,w,h);
+	std::cout<<"Done Write! "<<std::endl;
+*/
 /*
 	glDisable(GL_DEPTH_TEST);
 
 
-	std::cout<<"Write To FIle "<<std::endl;
-	glBindTexture(GL_TEXTURE_2D, isoImage->textureId());
-	glGetTexImage(GL_TEXTURE_2D,0,GL_RGBA,GL_FLOAT,&mData[0]);
-	WriteImageToFile("iso.png",mData,w,h);
 
-	glBindTexture(GL_TEXTURE_2D, springlImage->textureId());
-	glGetTexImage(GL_TEXTURE_2D,0,GL_RGBA,GL_FLOAT,&mData[0]);
-	WriteImageToFile("springls.png",mData,w,h);
-	std::cout<<"Done Write! "<<std::endl;
 */
 
 	glViewport(h/2,0,w,h);
@@ -178,8 +226,9 @@ void GLShaderSpringLS::render() {
 	glUniform4f(glGetUniformLocation(mMixerProgram.GetProgramHandle(), "rect"), renderImage->x,renderImage->y,renderImage->w,renderImage->h);
 	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"isoTexture"),0);
 	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"springlsTexture"),1);
-	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"matcapTexture1"),2);
-	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"matcapTexture2"),3);
+	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"wireTexture"),2);
+	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"matcapTexture1"),3);
+	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"matcapTexture2"),4);
 
 	glUniform1f(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"MAX_DEPTH"),mCamera->farPlane());
 	glUniform1f(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"MIN_DEPTH"),mCamera->nearPlane());
@@ -191,13 +240,16 @@ void GLShaderSpringLS::render() {
 	glBindTexture(GL_TEXTURE_2D, springlImage->textureId());
 
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, mMatCapId1);
+	glBindTexture(GL_TEXTURE_2D, wireImage->textureId());
 
 	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, mMatCapId1);
+
+	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, mMatCapId2);
 
 	//For some reason, I need this. Otherwise the last texture isn't found by the shader.
-	glActiveTexture(GL_TEXTURE4);
+	glActiveTexture(GL_TEXTURE5);
 
 
 	renderImage->render();

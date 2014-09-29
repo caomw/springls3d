@@ -720,16 +720,27 @@ void Mesh::updateGL() {
 
 		// upload data
 		int sz=quadIndexes.size();
-		std::vector<GLuint> tmp((6*quadIndexes.size())/4);
+		std::vector<GLuint> tmp(12*(quadIndexes.size()/4));
 		int offset=0;
 		for(unsigned int i=0;i<sz;i+=4){
-			tmp[offset++]=quadIndexes[i];
 			tmp[offset++]=quadIndexes[i+1];
 			tmp[offset++]=quadIndexes[i+2];
+			tmp[offset++]=quadIndexes[i+0];
+
 
 			tmp[offset++]=quadIndexes[i+2];
 			tmp[offset++]=quadIndexes[i+3];
+			tmp[offset++]=quadIndexes[i+1];
+
+			tmp[offset++]=quadIndexes[i+0];
+			tmp[offset++]=quadIndexes[i+1];
+			tmp[offset++]=quadIndexes[i+3];
+
+
+			tmp[offset++]=quadIndexes[i+3];
 			tmp[offset++]=quadIndexes[i];
+			tmp[offset++]=quadIndexes[i+2];
+
 		}
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * tmp.size(),
 				&tmp[0], GL_STATIC_DRAW); // upload data

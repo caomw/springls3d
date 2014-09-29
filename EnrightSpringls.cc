@@ -274,8 +274,8 @@ bool EnrightSpringls::init(int width,int height){
 	attrib.push_back("vn");
 	mIsoShader.Init("./matcap/JG_Gold.png");
 
-	mSpringlShader.Init();
-
+	mSpringlShader.Init("./matcap/JG_Red.png");
+	mWireframeShader.Init();
     //Image* img=Image::read("buddha.png");
     //Text* txt=new Text(100,100,300,100);
 
@@ -542,26 +542,36 @@ EnrightSpringls::render()
     Pose.postTranslate(-minPt);
 	Pose.postScale(Vec3s(scale,scale,scale));
 	Pose.postTranslate(rminPt);
+	   int width,height;
 
+	    glfwGetWindowSize(mWin,&width, &height);
+	glViewport(0,0,width,height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    int width,height;
 
-    glfwGetWindowSize(mWin,&width, &height);
     springlGrid.constellation.setPose(Pose);
     springlGrid.isoSurface.setPose(Pose);
     mCamera->setPose(Pose.transpose());
 	mPrettySpringlShader->render();
 
-
-	 mIsoShader.begin();
-	 mCamera->aim(0,0,height/2,height/2,mIsoShader);
+	glViewport(0,0,height/2,height/2);
+	mIsoShader.begin();
+	mCamera->aim(0,0,height/2,height/2,mIsoShader);
 	springlGrid.isoSurface.draw(false,false,false,false);
 	mIsoShader.end();
 
+
+
+    glViewport(0,height/2,height/2,height/2);
+    glDisable(GL_BLEND);
 	mSpringlShader.begin();
 	mCamera->aim(0,height/2,height/2,height/2,mSpringlShader);
 	springlGrid.draw(false,true,false,false);
 	mSpringlShader.end();
+
+	mWireframeShader.begin();
+	mCamera->aim(0,height/2,height/2,height/2,mWireframeShader);
+	springlGrid.draw(false,true,false,false);
+	mWireframeShader.end();
     //
 
 

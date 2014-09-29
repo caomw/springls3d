@@ -123,8 +123,8 @@ public:
 private:
 
     GLEnvironmentalShader mIsoShader;
-    GLWireframeShader mSpringlShader;
-
+    GLEnvironmentalShader mSpringlShader;
+    GLWireframeShader mWireframeShader;
     GLFWwindow* mWin;
 	CameraPtr mCamera;
 	GLRenderUI mUI;

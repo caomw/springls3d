@@ -20,17 +20,19 @@ void main() {
   
   vert = v0;
   gl_Position=PVM*gl_in[0].gl_Position;  
+  gl_Position.z-=1E-4f;
   normal = (VM*vec4(fn,0.0f)).xyz;
   EmitVertex();
   
   vert = v1;
   gl_Position=PVM*gl_in[1].gl_Position;  
-
+gl_Position.z-=1E-4f;
   normal = (VM*vec4(fn,0.0f)).xyz;
   EmitVertex();
   
   vert = v2; 
   gl_Position=PVM*gl_in[2].gl_Position;  
+  gl_Position.z-=1E-4f;
   normal = (VM*vec4(fn,0.0f)).xyz;
   EmitVertex();
   

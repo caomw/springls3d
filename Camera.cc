@@ -174,8 +174,6 @@ openvdb::Mat4s lookAtMatrix(openvdb::Vec3s eyePosition3D,openvdb::Vec3s center3D
 void Camera::aim(int x,int y,int width,int height,GLShader& shader){
 
 
-    glViewport(x,y, width, height);
-
 
     // Set up the projection matrix
    // glMatrixMode(GL_PROJECTION);

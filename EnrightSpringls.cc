@@ -249,7 +249,7 @@ bool EnrightSpringls::init(int width,int height){
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_SAMPLES,16);
+	glfwWindowHint(GLFW_SAMPLES,8);
 	glfwWindowHint(GLFW_DEPTH_BITS,32);
     if ((mWin=glfwCreateWindow(width, height,"Enright",NULL,NULL))==NULL)    // Window mode
     {
@@ -275,9 +275,9 @@ bool EnrightSpringls::init(int width,int height){
     std::list<std::string> attrib;
 	attrib.push_back("vp");
 	attrib.push_back("vn");
-	mIsoShader.Init("./matcap/JG_Gold.png");
+	mIsoShader.Init("./matcap/JG_Red.png");
 
-	mSpringlShader.Init("./matcap/JG_Red.png");
+	mSpringlShader.Init("./matcap/JG_Gold.png");
 	mWireframeShader.Init();
     //Image* img=Image::read("buddha.png");
     //Text* txt=new Text(100,100,300,100);
@@ -383,7 +383,6 @@ bool EnrightSpringls::openRecording(const std::string& dirName){
 	int n1=GetDirectoryListing(dirName,isoSurfaceFiles,"_iso",".ply");
 	int n2=GetDirectoryListing(dirName,constellationFiles,"_sls",".ply");
 	int n3=GetDirectoryListing(dirName,signedDistanceFiles,"",".vdb");
-	std::cout<<"Files "<<n1<<" "<<n2<<" "<<n3<<std::endl;
 	if(!(n1==n2&&n2==n3)||n1==0)return false;
 	playbackMode=true;
 	/*
@@ -566,10 +565,12 @@ EnrightSpringls::render()
 	springlGrid.draw(false,true,false,false);
 	mSpringlShader.end();
 
+	/*
 	mWireframeShader.begin();
 	mCamera->aim(0,height/2,height/2,height/2,mWireframeShader);
 	springlGrid.draw(false,true,false,false);
 	mWireframeShader.end();
+	*/
     //
 
 

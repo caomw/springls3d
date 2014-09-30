@@ -38,11 +38,14 @@ private:
 	Camera* mCamera;
 	SpringLevelSet* mSpringLS;
 	std::vector<openvdb::Vec4f> mData;
+	std::string mSpringlMatcap;
+	std::string mIsoMatcap;
 public:
 	GLShaderSpringLS(int x,int y,int w,int h);
-	void setMesh(Camera* camera,SpringLevelSet* mesh);
+	void setMesh(Camera* camera,SpringLevelSet* mesh,const std::string& springlMatcap,const std::string& isoMatcap);
 	void updateGL();
 	void render();
+	bool save(const std::string& file);
 	virtual ~GLShaderSpringLS();
 };
 

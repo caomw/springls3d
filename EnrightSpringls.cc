@@ -269,7 +269,10 @@ bool EnrightSpringls::init(int width,int height){
     double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
     mCamera->setTarget(bbox.getCenter(), max_extent);
     mCamera->setNearFarPlanes(0.1f,1000.0f);
+    mCamera->setRotation(-45.0f,-90.0f);
+
     mCamera->lookAtTarget();
+    mCamera->setDistance(200.0f);
     mCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.02);
 
     std::list<std::string> attrib;
@@ -277,19 +280,14 @@ bool EnrightSpringls::init(int width,int height){
 	attrib.push_back("vn");
 	mIsoShader.Init("./matcap/JG_Red.png");
 
-	mSpringlShader.Init("./matcap/JG_Gold.png");
+	mSpringlShader.Init("./matcap/JG_Silver.png");
 	mWireframeShader.Init();
     //Image* img=Image::read("buddha.png");
     //Text* txt=new Text(100,100,300,100);
 
-
-    try {
-		mPrettySpringlShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(height/2,0,width-height/2,height));
-		mPrettySpringlShader->setMesh(mCamera.get(),&springlGrid);
-		mPrettySpringlShader->updateGL();
- 	 } catch(Exception& e){
-		   std::cerr<<"Shader "<<e.what()<<std::endl;
-	   }
+	mPrettySpringlShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(height/2,0,width-height/2,height));
+	mPrettySpringlShader->setMesh(mCamera.get(),&springlGrid,"./matcap/JG_Red.png","./matcap/JG_Silver.png");
+	mPrettySpringlShader->updateGL();
 
     //img->setBounds(0,0,100,100);
     //mUI.Add(img);
@@ -419,6 +417,7 @@ void EnrightSpringls::setFrameIndex(int frameIdx){
 	springlGrid.isoSurface.openMesh(isoSurfaceFiles[simulationIteration]);
 	springlGrid.isoSurface.updateVertexNormals(16);
 	springlGrid.constellation.updateVertexNormals();
+
 	openvdb::io::File file(signedDistanceFiles[simulationIteration]);
 	file.open();
 	openvdb::GridPtrVecPtr grids =file.getGrids();
@@ -429,8 +428,7 @@ void EnrightSpringls::setFrameIndex(int frameIdx){
 	springlGrid.transform()=signedLevelSet->transform();
 	signedLevelSet->setTransform(openvdb::math::Transform::createLinearTransform(1.0));
 	springlGrid.signedLevelSet=signedLevelSet;
-	//WriteToRawFile(springlGrid.signedLevelSet,"/home/blake/signed_init");
-	//WriteToRawFile(springlGrid.unsignedLevelSet,"/home/blake/unsigned_init");
+
 	meshLock.unlock();
 	meshDirty=true;
 	setNeedsDisplay();
@@ -442,7 +440,23 @@ bool EnrightSpringls::update(){
 	}
 	std::cout<<"---------------------- Simulation Iteration ["<<simulationIteration<<"] ----------------------"<<std::endl;
 	if(playbackMode){
-		setFrameIndex(simulationIteration);
+		simTime=simulationIteration*dt;
+		if(simulationIteration>=constellationFiles.size()){
+			simulationIteration=0;
+			simTime=0;
+		}
+		meshLock.lock();
+		Mesh c;
+		c.openMesh(constellationFiles[simulationIteration]);
+		springlGrid.constellation.create(&c);
+		springlGrid.isoSurface.openMesh(isoSurfaceFiles[simulationIteration]);
+		springlGrid.isoSurface.updateVertexNormals(16);
+		springlGrid.constellation.updateVertexNormals();
+		meshLock.unlock();
+		meshDirty=true;
+		setNeedsDisplay();
+		//setFrameIndex(simulationIteration);
+		/*
 		std::ostringstream ostr1;
 		int SZ=springlGrid.constellation.quadIndexes.size();
 		springlGrid.constellation.uvMap.resize(SZ);
@@ -455,6 +469,7 @@ bool EnrightSpringls::update(){
 		}
 		ostr1 << rootFile<<"_tex" <<std::setw(4)<<std::setfill('0')<< simulationIteration << ".ply";
 		springlGrid.constellation.save(ostr1.str());
+		*/
 	} else {
 		advect->advect(simTime,simTime+dt);
 		stash();
@@ -542,6 +557,7 @@ EnrightSpringls::render()
 
 	    glfwGetWindowSize(mWin,&width, &height);
 	glViewport(0,0,width,height);
+	glClearColor(0.0,0.0,0.0,0.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
@@ -549,6 +565,8 @@ EnrightSpringls::render()
     springlGrid.isoSurface.setPose(Pose);
     mCamera->setPose(Pose.transpose());
 	mPrettySpringlShader->render();
+
+
 
 	glViewport(0,0,height/2,height/2);
 	mIsoShader.begin();
@@ -565,6 +583,22 @@ EnrightSpringls::render()
 	springlGrid.draw(false,true,false,false);
 	mSpringlShader.end();
 
+	std::stringstream ostr1,ostr2,ostr3;
+	ostr1 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_composite.png";
+	std::vector<RGBA> tmp1((width-height/2)*height);
+	glReadPixels(height/2, 0, (width-height/2), height, GL_RGBA, GL_UNSIGNED_BYTE, &tmp1[0]);
+	WriteImageToFile(ostr1.str(),tmp1,(width-height/2),height);
+
+	ostr2 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_springls.png";
+	std::vector<RGBA> tmp2((height/2)*(height/2));
+	glReadPixels(0, 0, (height/2), (height/2), GL_RGBA, GL_UNSIGNED_BYTE, &tmp2[0]);
+	WriteImageToFile(ostr2.str(),tmp2,(height/2),(height/2));
+
+
+	ostr3 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_iso.png";
+	std::vector<RGBA> tmp3((height/2)*(height/2));
+	glReadPixels(0,(height/2), (height/2), (height/2), GL_RGBA, GL_UNSIGNED_BYTE, &tmp3[0]);
+	WriteImageToFile(ostr3.str(),tmp3,(height/2),(height/2));
 	/*
 	mWireframeShader.begin();
 	mCamera->aim(0,height/2,height/2,height/2,mWireframeShader);
@@ -577,22 +611,8 @@ EnrightSpringls::render()
 	//mUI.aim(height/2,0,width-height/2,height);
     //mUI.render();
 
-	//
-    // Render text
-    /*
-        BitmapFont13::enableFontRendering();
 
-        glColor3f (0.2, 0.2, 0.2);
 
-        int width, height;
-        glfwGetWindowSize(&width, &height);
-
-        BitmapFont13::print(10, height - 13 - 10, mGridInfo);
-        BitmapFont13::print(10, height - 13 - 30, mTransformInfo);
-        BitmapFont13::print(10, height - 13 - 50, mTreeInfo);
-
-        BitmapFont13::disableFontRendering();
-        */
 }
 
 

@@ -50,6 +50,7 @@ public:
 	Image(const std::vector<RGBAf>& data,int width,int height);
 	static Image* read(const std::string& file);
 	bool write(const std::string& file);
+	bool writeTexture(const std::string& file);
 	virtual void updateGL();
 	virtual void render();
 	virtual ~Image();

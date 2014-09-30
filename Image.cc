@@ -60,6 +60,18 @@ Image* Image::read(const std::string& file){
 bool Image::write(const std::string& file){
 	return WriteImageToFile(file,mData,mWidth,mHeight);
 }
+bool Image::writeTexture(const std::string& file){
+	std::cout<<"Write "<<file<<" "<<mFloatType<<" "<<w<<" "<<h<<std::endl;
+	glBindTexture(GL_TEXTURE_2D, textureId());
+	if(mFloatType){
+		glGetTexImage(GL_TEXTURE_2D,0,GL_RGBA32F,GL_FLOAT,&mDataf[0]);
+		WriteImageToFile(file,mDataf,w,h);
+	} else {
+		glGetTexImage(GL_TEXTURE_2D,0,GL_RGBA,GL_UNSIGNED_BYTE,&mData[0]);
+		WriteImageToFile(file,mData,w,h);
+	}
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
 Image::~Image(){
 	if(mTextureId!=0){
 		glDeleteTextures(1,&mTextureId);
@@ -73,14 +85,6 @@ void Image::updateGL() {
 	glGenVertexArrays (1, &vao);
 
 	if(mFloatType){
-		/*
-		glBindTexture( GL_TEXTURE_2D_MULTISAMPLE, mTextureId);
-		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 8, GL_RGBA32F, mWidth, mHeight, GL_FALSE);
-		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		*/
 		glBindTexture( GL_TEXTURE_2D, mTextureId);
 		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F, mWidth, mHeight, 0, GL_RGBA,
 			GL_FLOAT, &mDataf[0]);

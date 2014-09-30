@@ -263,13 +263,16 @@ Camera::mousePosCallback(int x, int y)
         mNeedsDisplay = true;
         mHead += dy * mTumblingSpeed;
         mPitch += dx * mTumblingSpeed;
+        std::cout<<"Rotation "<<mHead<<" "<<mPitch<<std::endl;
     } else if (mMouseDown && mZoomMode) {
         mNeedsDisplay = true;
         mLookAt += (dy * mUp - dx * mRight) * mStrafeSpeed;
+        std::cout<<"Look At "<<mLookAt<<std::endl;
     }
 
     mMouseXPos = x;
     mMouseYPos = y;
+
     mChanged = true;
 }
 
@@ -279,18 +282,8 @@ Camera::mouseWheelCallback(double pos)
 {
     mDistance += pos * mZoomSpeed;
      setSpeed(mDistance * 0.1, mDistance * 0.002, mDistance * 0.02);
-/*
-	double speed = std::abs(prevPos - pos);
-    std::cout<<pos<<" "<<prevPos<<" "<<mDistance<<std::endl;
-    if (prevPos < pos) {
-        mDistance += speed * mZoomSpeed;
-        setSpeed(mDistance * 0.1, mDistance * 0.002, mDistance * 0.02);
-    } else {
-        double temp = mDistance - speed * mZoomSpeed;
-        mDistance = std::max(0.0, temp);
-        setSpeed(mDistance * 0.1, mDistance * 0.002, mDistance * 0.02);
-    }
-*/
+     std::cout<<"Distance "<<mDistance<<std::endl;
+
     mChanged = true;
     mNeedsDisplay = true;
 }

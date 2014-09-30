@@ -38,9 +38,11 @@ GLShaderSpringLS::GLShaderSpringLS(int x, int y, int w, int h) :
 		mFrameBufferId3(0), mDepthBufferId3(0){
 
 }
-void GLShaderSpringLS::setMesh(Camera* camera, SpringLevelSet* mesh) {
+void GLShaderSpringLS::setMesh(Camera* camera, SpringLevelSet* mesh,const std::string& springlMatcap,const std::string& isoMatcap) {
 	mCamera = camera;
 	mSpringLS = mesh;
+	mIsoMatcap=isoMatcap;
+	mSpringlMatcap=springlMatcap;
 }
 void GLShaderSpringLS::updateGL() {
 	if (mFrameBufferId1 == 0) {
@@ -74,7 +76,7 @@ void GLShaderSpringLS::updateGL() {
 
 		std::vector<RGBA> tmp1,tmp2;
 		int iW,iH;
-		if(ReadImageFromFile("./matcap/JG_Red.png",tmp1,iW,iH)){
+		if(ReadImageFromFile(mSpringlMatcap,tmp1,iW,iH)){
 			glGenTextures(1, &mMatCapId1);
 			glBindTexture( GL_TEXTURE_2D, mMatCapId1);
 			glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, iW, iH, 0, GL_RGBA,GL_UNSIGNED_BYTE, &tmp1[0]);
@@ -89,7 +91,7 @@ void GLShaderSpringLS::updateGL() {
 		}
 		tmp1.clear();
 
-		if(ReadImageFromFile("./matcap/JG_Gold.png",tmp2,iW,iH)){
+		if(ReadImageFromFile(mIsoMatcap,tmp2,iW,iH)){
 			glGenTextures(1, &mMatCapId2);
 			glBindTexture( GL_TEXTURE_2D, mMatCapId2);
 			glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, iW, iH, 0, GL_RGBA,GL_UNSIGNED_BYTE, &tmp2[0]);
@@ -145,6 +147,10 @@ void GLShaderSpringLS::updateGL() {
 			throw Exception("Could not initialize frame buffer.");
 		}
 	}
+}
+
+bool GLShaderSpringLS::save(const std::string& file){
+	return renderImage->write(file);
 }
 void GLShaderSpringLS::render() {
 	 glViewport(0,0,w,h);
@@ -232,7 +238,8 @@ void GLShaderSpringLS::render() {
 
 	glUniform1f(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"MAX_DEPTH"),mCamera->farPlane());
 	glUniform1f(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"MIN_DEPTH"),mCamera->nearPlane());
-
+	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"WIDTH"),w);
+	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"HEIGHT"),h);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D,isoImage->textureId());
 

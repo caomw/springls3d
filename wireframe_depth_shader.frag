@@ -36,7 +36,8 @@ void main(void) {
     if (dist <DISTANCE_TOL&&normal.z>0.0){
       gl_FragColor = vec4(outNorm,(-vert.z-MIN_DEPTH)/(MAX_DEPTH-MIN_DEPTH));
     } else {
-      gl_FragColor = vec4(0.0,0.0,0.0,(-vert.z-MIN_DEPTH)/(MAX_DEPTH-MIN_DEPTH));
-      //discard;
+      if(normal.z>0.0){
+        gl_FragColor = vec4(0.0,0.0,0.0,(-vert.z-MIN_DEPTH)/(MAX_DEPTH-MIN_DEPTH));
+      } else discard;
     }
 }

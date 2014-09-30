@@ -8,7 +8,8 @@ uniform sampler2D matcapTexture2;
 in vec2 texture_coordinates;
 uniform float MIN_DEPTH;
 uniform float MAX_DEPTH;
-
+uniform int WIDTH;
+uniform int HEIGHT;
 const float DISTANCE_TOL=0.3f;
 void main(void ){
 	vec2 uv=texture_coordinates;
@@ -18,14 +19,15 @@ void main(void ){
 	vec2 shift;
 	float wsum=0;
 	float w=0;
-	isocolor=texture2D(isoTexture,uv);
+	
 	
 	for(int i=-2;i<=2;i++){
 		for(int j=-2;j<=2;j++){
 			
-			shift.x=i*0.5f/800.0f;
-			shift.y=j*0.5f/800.0f;
+			shift.x=i*0.5f/WIDTH;
+			shift.y=j*0.5f/HEIGHT;
 			w=exp(-dot(shift,shift)/0.5f);
+			isocolor=texture2D(isoTexture,uv+shift);
 			spgcolor=texture2D(springlsTexture,uv+shift);
 			wirecolor=texture2D(wireTexture,uv+shift);
 			

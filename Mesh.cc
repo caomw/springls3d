@@ -394,7 +394,7 @@ void Mesh::create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr g
 			triIndexes.push_back(quad[0]);
 		}
 	}
-	updateVertexNormals();
+	updateVertexNormals(16);
 	updateBBox();
 }
 void Mesh::create(FloatGrid::Ptr grid) {
@@ -433,7 +433,7 @@ void Mesh::create(FloatGrid::Ptr grid) {
 			triIndexes.push_back(quad[0]);
 		}
 	}
-	updateVertexNormals();
+	updateVertexNormals(16);
 	updateBBox();
 }
 void Mesh::updateVertexNormals(int SMOOTH_ITERATIONS,float DOT_TOLERANCE){

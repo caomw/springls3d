@@ -32,7 +32,5 @@ void main(void) {
     gl_FragColor = skyColorEdge;
   } else {
     discard;
-    //vec4 diffuseColor = mix(skyColorEdge,groundColor,w);
-    //gl_FragColor = diffuseColor;
   }
 }

@@ -65,6 +65,21 @@ public:
     void mouseButtonCallback(int button, int action);
     void mousePosCallback(int x, int y);
     void mouseWheelCallback(double pos);
+    void setRotation(double head,double pitch){
+    	mHead=head;
+    	mPitch=pitch;
+    	mChanged = true;
+    }
+    void setDistance(double distance){
+    	mDistance=distance;
+    	mChanged = true;
+    }
+    void setLookAt(double x,double y, double z){
+        	mLookAt[0]=x;
+        	mLookAt[1]=y;
+        	mLookAt[2]=z;
+        	mChanged = true;
+        }
     float nearPlane(){return mNearPlane;}
     float farPlane(){return mFarPlane;}
     bool needsDisplay() const { return mNeedsDisplay; }

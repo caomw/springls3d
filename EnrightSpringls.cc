@@ -137,6 +137,7 @@ EnrightSpringls::EnrightSpringls()
 void EnrightSpringls::start(){
 	advect=boost::shared_ptr<AdvectT>(new AdvectT(springlGrid,field));
 	advect->setTemporalScheme(SpringlTemporalIntegrationScheme::RK4b);
+
 	simulationRunning=true;
 	simThread=std::thread(UpdateView,this);
 }
@@ -145,6 +146,7 @@ void EnrightSpringls::resume(){
 		advect=boost::shared_ptr<AdvectT>(new AdvectT(springlGrid,field));
 		advect->setTemporalScheme(SpringlTemporalIntegrationScheme::RK4b);
 	}
+	mMiniCamera->loadPose();
 	simulationRunning=true;
 	render();
 	simThread=std::thread(UpdateView,this);
@@ -153,6 +155,7 @@ EnrightSpringls::~EnrightSpringls(){
 	stop();
 }
 void EnrightSpringls::stop(){
+	if(!simulationRunning)return;
 	simulationRunning=false;
 	if(simThread.joinable()){
 		simThread.join();
@@ -439,6 +442,7 @@ void EnrightSpringls::setFrameIndex(int frameIdx){
 	setNeedsDisplay();
 }
 bool EnrightSpringls::update(){
+	if(!simulationRunning)return false;
 	if(meshDirty){
 		std::this_thread::sleep_for(std::chrono::milliseconds());
 		return true;
@@ -450,14 +454,14 @@ bool EnrightSpringls::update(){
 			simulationIteration=0;
 			simTime=0;
 		}
-		meshLock.lock();
+		//meshLock.lock();
 		Mesh c;
 		c.openMesh(constellationFiles[simulationIteration]);
 		springlGrid.constellation.create(&c);
 		springlGrid.isoSurface.openMesh(isoSurfaceFiles[simulationIteration]);
 		springlGrid.isoSurface.updateVertexNormals(16);
 		springlGrid.constellation.updateVertexNormals();
-		meshLock.unlock();
+		//meshLock.unlock();
 		meshDirty=true;
 		setNeedsDisplay();
 		//setFrameIndex(simulationIteration);
@@ -596,9 +600,9 @@ EnrightSpringls::render()
 	if(simulationRunning){
 		std::stringstream ostr1,ostr2,ostr3;
 		ostr1 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_composite.png";
-		std::vector<RGBA> tmp1((width-height/2)*height);
-		glReadPixels(height/2, 0, (width-height/2), height, GL_RGBA, GL_UNSIGNED_BYTE, &tmp1[0]);
-		WriteImageToFile(ostr1.str(),tmp1,(width-height/2),height);
+		std::vector<RGBA> tmp1(width*height);
+		glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &tmp1[0]);
+		WriteImageToFile(ostr1.str(),tmp1,width,height);
 
 		ostr2 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_springls.png";
 		std::vector<RGBA> tmp2((height/2)*(height/2));
@@ -662,9 +666,15 @@ EnrightSpringls::keyCallback(GLFWwindow* win,int key, int action,int mod)
 				resume();
 			}
 		} else if(key==GLFW_KEY_HOME){
-			if(playbackMode)setFrameIndex(0);
+			if(playbackMode){
+				mMiniCamera->loadPose();
+				setFrameIndex(0);
+			}
 		}  else if(key==GLFW_KEY_END){
-			if(playbackMode)setFrameIndex(constellationFiles.size()-1);
+			if(playbackMode){
+				mMiniCamera->loadPose();
+				setFrameIndex(constellationFiles.size()-1);
+			}
 		}
 
     }

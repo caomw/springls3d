@@ -98,7 +98,7 @@ bool LuxCamera::write(const std::string& file,int w,int h){
 	sstr<<"	\"float xwidth\" [2.000000000000000]"<<std::endl;
 	sstr<<"	\"float ywidth\" [2.000000000000000]"<<std::endl;
 	sstr<<""<<std::endl;
-	sstr<<"LookAt "<<std::setprecision(6)<<mEye[0]<<" "<<mEye[1]<<" "<<mEye[2]<<" "<<mLookAt[0]<<" "<<mLookAt[1]<<" "<<mLookAt[2]<<" "<<mUp[0]<<" "<<mUp[1]<<" "<<mUp[2]<<std::endl;
+//	sstr<<"LookAt "<<std::setprecision(6)<<mEye[0]<<" "<<mEye[1]<<" "<<mEye[2]<<" "<<mLookAt[0]<<" "<<mLookAt[1]<<" "<<mLookAt[2]<<" "<<mUp[0]<<" "<<mUp[1]<<" "<<mUp[2]<<std::endl;
 	sstr<<""<<std::endl;
 	sstr<<"Camera \"perspective\""<<std::endl;
 	sstr<<"	\"float fov\" ["<<mFov<<"]"<<std::endl;

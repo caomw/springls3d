@@ -10,7 +10,8 @@ uniform float MIN_DEPTH;
 uniform float MAX_DEPTH;
 uniform int WIDTH;
 uniform int HEIGHT;
-const float DISTANCE_TOL=0.3f;
+uniform float SCALE;
+float DISTANCE_TOL=0.75f*SCALE;
 void main(void ){
 	vec2 uv=texture_coordinates;
 	vec4 spgcolor,wirecolor,isocolor;
@@ -39,13 +40,17 @@ void main(void ){
 				isoz = -(MAX_DEPTH-MIN_DEPTH)*isoz-MIN_DEPTH;
 				spgz = -(MAX_DEPTH-MIN_DEPTH)*spgz-MIN_DEPTH;
 				wirz = -(MAX_DEPTH-MIN_DEPTH)*wirz-MIN_DEPTH;
+				
 				if(spgcolor.w>0.0f&&abs(isoz-spgz)<DISTANCE_TOL){
+					//accumColor+=w*texture2D(matcapTexture2,0.5f*isocolor.xy+0.5f);
 					if(dot(wirecolor.xyz,wirecolor.xyz)>0.0&&wirecolor.w>0.0f&&abs(isoz-wirz)<DISTANCE_TOL){
 						accumColor+=w*texture2D(matcapTexture2,0.5f*wirecolor.xy+0.5f);	
 					} else {
 						accumColor+=w*texture2D(matcapTexture2,0.5f*isocolor.xy+0.5f);
 					}
+					
 				} else {
+					
 					accumColor+=w*texture2D(matcapTexture1,0.5f*isocolor.xy+0.5f);
 				}
 			}  else {

@@ -34,6 +34,8 @@
 #include <cmath>
 #include <string>
 #include <list>
+#include <fstream>
+
 namespace imagesci {
 
 const double Camera::sDeg2rad = M_PI / 180.0;
@@ -41,21 +43,16 @@ const double Camera::sDeg2rad = M_PI / 180.0;
 
 Camera::Camera()
     : mFov(65.0)
+	,mRw(openvdb::Mat4s::identity())
+	,mRm(openvdb::Mat4s::identity())
+	,mCameraTrans(0,0,0)
     , mNearPlane(0.1)
     , mFarPlane(10000.0)
-    , mTarget(openvdb::Vec3d(0.0))
-    , mLookAt(mTarget)
-    , mUp(openvdb::Vec3d(0.0, 1.0, 0.0))
-    , mForward(openvdb::Vec3d(0.0, 0.0, 1.0))
-    , mRight(openvdb::Vec3d(1.0, 0.0, 0.0))
     , mEye(openvdb::Vec3d(0.0, 0.0, -1.0))
     , mTumblingSpeed(0.5)
     , mZoomSpeed(0.2)
     , mStrafeSpeed(0.05)
-    , mHead(30.0)
-    , mPitch(45.0)
-    , mTargetDistance(25.0)
-    , mDistance(mTargetDistance)
+    , mDistance(1.0)
     , mMouseDown(false)
     , mStartTumbling(false)
     , mZoomMode(false)
@@ -76,17 +73,10 @@ Camera::lookAt(const openvdb::Vec3d& p, double dist)
 {
     mLookAt = p;
     mDistance = dist;
+    mChanged=true;
     mNeedsDisplay = true;
 }
 
-
-void
-Camera::lookAtTarget()
-{
-    mLookAt = mTarget;
-    mDistance = mTargetDistance;
-    mNeedsDisplay = true;
-}
 
 
 void
@@ -94,17 +84,9 @@ Camera::setSpeed(double zoomSpeed, double strafeSpeed, double tumblingSpeed)
 {
     mZoomSpeed = std::max(0.0001, zoomSpeed);
     mStrafeSpeed = std::max(0.0001, strafeSpeed);
-    mTumblingSpeed = std::max(0.2, tumblingSpeed);
-    mTumblingSpeed = std::min(1.0, tumblingSpeed);
+    mTumblingSpeed = std::max(0.01, tumblingSpeed);
 }
 
-
-void
-Camera::setTarget(const openvdb::Vec3d& p, double dist)
-{
-    mTarget = p;
-    mTargetDistance = dist;
-}
 
 
 openvdb::Mat4s perspectiveMatrix(const float &fovy, const float &aspect, const float &zNear, const float &zFar)
@@ -183,43 +165,94 @@ void Camera::aim(int x,int y,int width,int height,GLShader& shader){
    // gluPerspective(mFov, aspectRatio, mNearPlane, mFarPlane);
 
     if (mChanged) {
-
         mChanged = false;
+        openvdb::Mat4s Tinv=openvdb::math::Mat4s::identity();
+        openvdb::Mat4s Teye=openvdb::math::Mat4s::identity();
+        openvdb::Mat4s S=openvdb::math::Mat4s::identity();
+        Tinv(0,3)=-mLookAt[0];
+        Tinv(1,3)=-mLookAt[1];
+        Tinv(2,3)=-mLookAt[2];
 
-        mEye[0] = mLookAt[0] + mDistance * std::cos(mHead * sDeg2rad) * std::cos(mPitch * sDeg2rad);
-        mEye[1] = mLookAt[1] + mDistance * std::sin(mHead * sDeg2rad);
-        mEye[2] = mLookAt[2] + mDistance * std::cos(mHead * sDeg2rad) * std::sin(mPitch * sDeg2rad);
+        openvdb::Mat4s T=openvdb::math::Mat4s::identity();
+        T(0,3)=mLookAt[0];
+        T(1,3)=mLookAt[1];
+        T(2,3)=mLookAt[2];
+        Teye(0,3)=mEye[0];
+        Teye(1,3)=mEye[1];
+        Teye(2,3)=mEye[2];
 
-        mForward = mLookAt - mEye;
-        mForward.normalize();
+        S(0,0)=mDistance;
+        S(1,1)=mDistance;
+        S(2,2)=mDistance;
 
-        mUp[1] = std::cos(mHead * sDeg2rad) > 0 ? 1.0 : -1.0;
-        mRight = mForward.cross(mUp);
+
+
+        openvdb::Mat4s Tcamera=openvdb::math::Mat4s::identity();
+        Tcamera(0,3)=mCameraTrans[0];
+        Tcamera(1,3)=mCameraTrans[1];
+        Tcamera(2,3)=mCameraTrans[2];
+
+        P=Tcamera*perspectiveMatrix(mFov,aspectRatio,mNearPlane,mFarPlane).transpose();
+        V=Teye*S*mRw*T*mRm;
     }
-    P=perspectiveMatrix(mFov,aspectRatio,mNearPlane,mFarPlane).transpose();
-    V=lookAtMatrix(mEye,mLookAt,mUp);
+    /*
+    std::cout<<"P=\n"<<P<<std::endl;
+    std::cout<<"V=\n"<<V<<std::endl;
+    std::cout<<"M=\n"<<M<<std::endl;
+    */
     glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "P"), 1,GL_TRUE, P.asPointer());
     glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "V"), 1,GL_TRUE, V.asPointer());
     glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "M"), 1,GL_TRUE, M.asPointer());
     mNeedsDisplay = false;
 }
 
-void Camera::keyCallback(GLFWwindow* win,int key, int )
+void Camera::keyCallback(GLFWwindow* win,int key, int action)
 {
-    if (glfwGetKey(win,key) == GLFW_PRESS) {
-        switch(key) {
-            case GLFW_KEY_SPACE:
-                mZoomMode = true;
-                break;
-        }
-    } else if (glfwGetKey(win,key) == GLFW_RELEASE) {
-        switch(key) {
-            case GLFW_KEY_SPACE:
-                mZoomMode = false;
-                break;
-        }
-    }
-
+	if((char)key=='A'){
+		mRm=openvdb::math::rotation<openvdb::Mat4s>(openvdb::math::Axis::Y_AXIS,2*sDeg2rad)*mRm;
+		mChanged=true;
+	} else if((char)key=='D'){
+		mRm=openvdb::math::rotation<openvdb::Mat4s>(openvdb::math::Axis::Y_AXIS,-2*sDeg2rad)*mRm;
+		mChanged=true;
+	} else if((char)key=='S'){
+		mRm=openvdb::math::rotation<openvdb::Mat4s>(openvdb::math::Axis::X_AXIS,-2*sDeg2rad)*mRm;
+		mChanged=true;
+	} else if((char)key=='W'){
+		mRm=openvdb::math::rotation<openvdb::Mat4s>(openvdb::math::Axis::X_AXIS,2*sDeg2rad)*mRm;
+		mChanged=true;
+	} else if(key==GLFW_KEY_UP){
+		mCameraTrans[1]+=0.025;
+		mChanged=true;
+	} else if(key==GLFW_KEY_DOWN){
+		mCameraTrans[1]-=0.025;
+		mChanged=true;
+	} else if(key==GLFW_KEY_LEFT){
+		mCameraTrans[0]-=0.025;
+		mChanged=true;
+	} else if(key==GLFW_KEY_RIGHT){
+		mCameraTrans[0]+=0.025;
+		mChanged=true;
+	} else if(key==GLFW_KEY_PAGE_UP){
+		mDistance =(1+mZoomSpeed)*mDistance;
+		mChanged=true;
+	} else if(key==GLFW_KEY_PAGE_DOWN){
+		mDistance =(1-mZoomSpeed)*mDistance;
+		mChanged=true;
+	} else{
+		if (glfwGetKey(win,key) == GLFW_PRESS) {
+			switch(key) {
+				case GLFW_KEY_SPACE:
+					mZoomMode = true;
+					break;
+			}
+		} else if (glfwGetKey(win,key) == GLFW_RELEASE) {
+			switch(key) {
+				case GLFW_KEY_SPACE:
+					mZoomMode = false;
+					break;
+			}
+		}
+	}
     mChanged = true;
 }
 
@@ -261,29 +294,57 @@ Camera::mousePosCallback(int x, int y)
 
     if (mMouseDown && !mZoomMode) {
         mNeedsDisplay = true;
-        mHead += dy * mTumblingSpeed;
-        mPitch += dx * mTumblingSpeed;
-        std::cout<<"Rotation "<<mHead<<" "<<mPitch<<std::endl;
+		mRw=
+				openvdb::math::rotation<openvdb::Mat4s>(openvdb::math::Axis::Y_AXIS,-dx*mTumblingSpeed*sDeg2rad)*
+				openvdb::math::rotation<openvdb::Mat4s>(openvdb::math::Axis::X_AXIS,-dy*mTumblingSpeed*sDeg2rad)*mRw;
     } else if (mMouseDown && mZoomMode) {
         mNeedsDisplay = true;
-        mLookAt += (dy * mUp - dx * mRight) * mStrafeSpeed;
-        std::cout<<"Look At "<<mLookAt<<std::endl;
-    }
+        openvdb::Vec3d mUp=mRw.row(1).getVec3();
+        openvdb::Vec3d mRight=mRw.row(0).getVec3();
+        mLookAt +=(mRight*dx-dy*mUp) * mStrafeSpeed;
 
+    }
     mMouseXPos = x;
     mMouseYPos = y;
 
     mChanged = true;
 }
 
-
+bool Camera::savePose(const std::string& file){
+	if(!mChanged&&!mNeedsDisplay)return false;
+	FILE* f = fopen(file.c_str(), "wb");
+	if(f!=NULL){
+		CameraPose p;
+		p.mRModel=mRm;
+		p.mRWorld=mRw;
+		p.mTModel=mCameraTrans;
+		p.mTWorld=mLookAt;
+		p.mDistance=mDistance;
+		fwrite(&p, sizeof(CameraPose), 1, f);
+		fclose(f);
+	return true;
+	} else return false;
+}
+bool Camera::loadPose(const std::string& file){
+	FILE* f = fopen(file.c_str(), "rb");
+	if(f!=NULL){
+		CameraPose p;
+		fread(&p,sizeof(CameraPose),1,f);
+		mRm=p.mRModel;
+		mRw=p.mRWorld;
+		mCameraTrans=p.mTModel;
+		mLookAt=p.mTWorld;
+		mDistance=p.mDistance;
+		fclose(f);
+		mChanged=true;
+		mNeedsDisplay=true;
+	return true;
+	} else return false;
+}
 void
 Camera::mouseWheelCallback(double pos)
 {
-    mDistance += pos * mZoomSpeed;
-     setSpeed(mDistance * 0.1, mDistance * 0.002, mDistance * 0.02);
-     std::cout<<"Distance "<<mDistance<<std::endl;
-
+    mDistance =(1-pos*mZoomSpeed)*mDistance;
     mChanged = true;
     mNeedsDisplay = true;
 }

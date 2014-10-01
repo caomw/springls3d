@@ -5,35 +5,33 @@ out vec3 v0, v1, v2;
 out vec3 normal, vert;
 uniform mat4 P,V,M;
 void main() {
-
-  mat4 VM=V * M;
-  mat4 PVM=P*VM;
-
+  mat4 PVM=P*V*M;
+  mat4 VM=V*M;
+  
   vec3 v01 = gl_in[1].gl_Position.xyz - gl_in[0].gl_Position.xyz;
   vec3 v02 = gl_in[2].gl_Position.xyz - gl_in[0].gl_Position.xyz;
   vec3 fn =  normalize(cross( v01, v02 ));
   
-  v0 = (VM * gl_in[0].gl_Position).xyz;
-  v1 = (VM * gl_in[1].gl_Position).xyz;
-  v2 = (VM * gl_in[2].gl_Position).xyz;
-  //v3 = (VM * gl_in[3].gl_Position).xyz;
+  v0 = (VM*gl_in[0].gl_Position).xyz;
+  v1 = (VM*gl_in[1].gl_Position).xyz;
+  v2 = (VM*gl_in[2].gl_Position).xyz;
   
-  vert = v0;
+  
   gl_Position=PVM*gl_in[0].gl_Position;  
- 
-  normal = (VM*vec4(fn,0.0f)).xyz;
+  vert = v0;
+  normal = (VM*vec4(fn,0.0)).xyz;
   EmitVertex();
   
-  vert = v1;
+  
   gl_Position=PVM*gl_in[1].gl_Position;  
-
-  normal = (VM*vec4(fn,0.0f)).xyz;
+  vert = v1;
+  normal = (VM*vec4(fn,0.0)).xyz;
   EmitVertex();
   
-  vert = v2; 
+   
   gl_Position=PVM*gl_in[2].gl_Position;  
-
-  normal = (VM*vec4(fn,0.0f)).xyz;
+  vert = v2;
+  normal = (VM*vec4(fn,0.0)).xyz;
   EmitVertex();
   
   EndPrimitive();

@@ -3,7 +3,9 @@ in vec3 v0, v1, v2;
 in vec3 normal, vert;
 uniform float MIN_DEPTH;
 uniform float MAX_DEPTH;
-float DISTANCE_TOL=0.1f;
+uniform mat4 P,V,M;
+uniform float SCALE;
+float DISTANCE_TOL=0.1f*SCALE;
 void main(void) {
   vec3 line, vec, proj;
   float dist1,dist2,dist;

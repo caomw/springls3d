@@ -16,8 +16,7 @@ void main() {
   v0 = (VM * gl_in[0].gl_Position).xyz;
   v1 = (VM * gl_in[1].gl_Position).xyz;
   v2 = (VM * gl_in[2].gl_Position).xyz;
-  //v3 = (VM * gl_in[3].gl_Position).xyz;
-  
+
   vert = v0;
   gl_Position=PVM*gl_in[0].gl_Position;  
   gl_Position.z-=1E-4f;

@@ -190,38 +190,19 @@ void GLShaderSpringLS::render() {
 	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUseProgram(mWireframeProgram.GetProgramHandle());
+	mCamera->aim(0,0, w, h,mWireframeProgram);
+	float scale=mCamera->GetScale();
+	glUniform1f(glGetUniformLocation(mWireframeProgram.GetProgramHandle(),"SCALE"),scale);
 	glUniform1f(glGetUniformLocation(mWireframeProgram.GetProgramHandle(),"MAX_DEPTH"),mCamera->farPlane());
 	glUniform1f(glGetUniformLocation(mWireframeProgram.GetProgramHandle(),"MIN_DEPTH"),mCamera->nearPlane());
 
-	mCamera->aim(0,0, w, h,mWireframeProgram);
+
 	mSpringLS->constellation.draw(false, false, false, false,false);
 
 	glUseProgram((GLuint)NULL);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
-/*
-	std::cout<<"Write To FIle "<<std::endl;
-	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, isoImage->textureId());
-	glGetTexImage(GL_TEXTURE_2D_MULTISAMPLE,0,GL_RGBA,GL_FLOAT,&mData[0]);
-	WriteImageToFile("iso.png",mData,w,h);
-
-	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, springlImage->textureId());
-	glGetTexImage(GL_TEXTURE_2D_MULTISAMPLE,0,GL_RGBA,GL_FLOAT,&mData[0]);
-	WriteImageToFile("springls.png",mData,w,h);
-	std::cout<<"Done Write! "<<std::endl;
-
-	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, wireImage->textureId());
-	glGetTexImage(GL_TEXTURE_2D_MULTISAMPLE,0,GL_RGBA,GL_FLOAT,&mData[0]);
-	WriteImageToFile("wire.png",mData,w,h);
-	std::cout<<"Done Write! "<<std::endl;
-*/
-/*
-	glDisable(GL_DEPTH_TEST);
-
-
-
-*/
 
 	glViewport(h/2,0,w,h);
 	glDisable(GL_DEPTH_TEST);
@@ -235,7 +216,7 @@ void GLShaderSpringLS::render() {
 	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"wireTexture"),2);
 	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"matcapTexture1"),3);
 	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"matcapTexture2"),4);
-
+	glUniform1f(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"SCALE"),scale);
 	glUniform1f(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"MAX_DEPTH"),mCamera->farPlane());
 	glUniform1f(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"MIN_DEPTH"),mCamera->nearPlane());
 	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"WIDTH"),w);

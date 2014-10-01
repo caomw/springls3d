@@ -64,8 +64,7 @@ EnrightSpringls* EnrightSpringls::GetInstance(){
 }
 void UpdateView(EnrightSpringls* v){
 	while(v->update()){
-		std::this_thread::yield();
-		//std::this_thread::sleep_for(std::chrono::milliseconds());
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	}
 }
 
@@ -120,6 +119,7 @@ void EnrightSpringls::windowRefreshCallback(){
 
 EnrightSpringls::EnrightSpringls()
     : mCamera(new Camera())
+	, mMiniCamera(new Camera())
     , mClipBox(new openvdb_viewer::ClipBox)
     , mShiftIsDown(false)
     , mCtrlIsDown(false)
@@ -131,7 +131,7 @@ EnrightSpringls::EnrightSpringls()
 	,playbackMode(false)
 	, simulationRunning(false)
 {
-	renderBBox=BBoxd(Vec3s(-50,-50,-50),Vec3s(50,50,50));
+	renderBBox=BBoxd(Vec3s(-0.5,-0.5,-0.5),Vec3s(0.5,0.5,0.5));
 	Pose.setIdentity();
 }
 void EnrightSpringls::start(){
@@ -146,6 +146,7 @@ void EnrightSpringls::resume(){
 		advect->setTemporalScheme(SpringlTemporalIntegrationScheme::RK4b);
 	}
 	simulationRunning=true;
+	render();
 	simThread=std::thread(UpdateView,this);
 }
 EnrightSpringls::~EnrightSpringls(){
@@ -267,13 +268,16 @@ bool EnrightSpringls::init(int width,int height){
     openvdb::BBoxd bbox=renderBBox;
     openvdb::Vec3d extents = bbox.extents();
     double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
-    mCamera->setTarget(bbox.getCenter(), max_extent);
-    mCamera->setNearFarPlanes(0.1f,1000.0f);
-    mCamera->setRotation(-45.0f,-90.0f);
 
-    mCamera->lookAtTarget();
-    mCamera->setDistance(200.0f);
-    mCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.02);
+    mCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.2);
+    mCamera->setNearFarPlanes(0.01f,1000.0f);
+    mCamera->lookAt(Vec3d(0,0,0),0.5);
+    mMiniCamera->setNearFarPlanes(0.1f,1000.0f);
+    mMiniCamera->lookAt(Vec3d(0,0,0),0.5);
+    mMiniCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.2);
+
+    mMiniCamera->loadPose();
+    mCamera->loadPose();
 
     std::list<std::string> attrib;
 	attrib.push_back("vp");
@@ -285,7 +289,7 @@ bool EnrightSpringls::init(int width,int height){
     //Image* img=Image::read("buddha.png");
     //Text* txt=new Text(100,100,300,100);
 
-	mPrettySpringlShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(height/2,0,width-height/2,height));
+	mPrettySpringlShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(0,0,width-height/2,height));
 	mPrettySpringlShader->setMesh(mCamera.get(),&springlGrid,"./matcap/JG_Red.png","./matcap/JG_Silver.png");
 	mPrettySpringlShader->updateGL();
 
@@ -371,6 +375,7 @@ bool EnrightSpringls::init(int width,int height){
         glfwPollEvents();
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
     } while (!glfwWindowShouldClose(mWin));
+    mCamera->savePose();
     glfwTerminate();
     return true;
 }
@@ -564,13 +569,18 @@ EnrightSpringls::render()
     springlGrid.constellation.setPose(Pose);
     springlGrid.isoSurface.setPose(Pose);
     mCamera->setPose(Pose.transpose());
+    mMiniCamera->setPose(Pose.transpose());
+
+    glViewport(height/2,0,width-height/2,height);
+
+    mCamera->savePose();
 	mPrettySpringlShader->render();
 
 
 
 	glViewport(0,0,height/2,height/2);
 	mIsoShader.begin();
-	mCamera->aim(0,0,height/2,height/2,mIsoShader);
+	mMiniCamera->aim(0,0,height/2,height/2,mIsoShader);
 	springlGrid.isoSurface.draw(false,false,false,false);
 	mIsoShader.end();
 
@@ -579,26 +589,27 @@ EnrightSpringls::render()
     glViewport(0,height/2,height/2,height/2);
     glDisable(GL_BLEND);
 	mSpringlShader.begin();
-	mCamera->aim(0,height/2,height/2,height/2,mSpringlShader);
+	mMiniCamera->aim(0,height/2,height/2,height/2,mSpringlShader);
 	springlGrid.draw(false,true,false,false);
 	mSpringlShader.end();
 
-	std::stringstream ostr1,ostr2,ostr3;
-	ostr1 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_composite.png";
-	std::vector<RGBA> tmp1((width-height/2)*height);
-	glReadPixels(height/2, 0, (width-height/2), height, GL_RGBA, GL_UNSIGNED_BYTE, &tmp1[0]);
-	WriteImageToFile(ostr1.str(),tmp1,(width-height/2),height);
+	if(simulationRunning){
+		std::stringstream ostr1,ostr2,ostr3;
+		ostr1 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_composite.png";
+		std::vector<RGBA> tmp1((width-height/2)*height);
+		glReadPixels(height/2, 0, (width-height/2), height, GL_RGBA, GL_UNSIGNED_BYTE, &tmp1[0]);
+		WriteImageToFile(ostr1.str(),tmp1,(width-height/2),height);
 
-	ostr2 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_springls.png";
-	std::vector<RGBA> tmp2((height/2)*(height/2));
-	glReadPixels(0, 0, (height/2), (height/2), GL_RGBA, GL_UNSIGNED_BYTE, &tmp2[0]);
-	WriteImageToFile(ostr2.str(),tmp2,(height/2),(height/2));
+		ostr2 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_springls.png";
+		std::vector<RGBA> tmp2((height/2)*(height/2));
+		glReadPixels(0, 0, (height/2), (height/2), GL_RGBA, GL_UNSIGNED_BYTE, &tmp2[0]);
+		WriteImageToFile(ostr2.str(),tmp2,(height/2),(height/2));
 
-
-	ostr3 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_iso.png";
-	std::vector<RGBA> tmp3((height/2)*(height/2));
-	glReadPixels(0,(height/2), (height/2), (height/2), GL_RGBA, GL_UNSIGNED_BYTE, &tmp3[0]);
-	WriteImageToFile(ostr3.str(),tmp3,(height/2),(height/2));
+		ostr3 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_iso.png";
+		std::vector<RGBA> tmp3((height/2)*(height/2));
+		glReadPixels(0,(height/2), (height/2), (height/2), GL_RGBA, GL_UNSIGNED_BYTE, &tmp3[0]);
+		WriteImageToFile(ostr3.str(),tmp3,(height/2),(height/2));
+	}
 	/*
 	mWireframeShader.begin();
 	mCamera->aim(0,height/2,height/2,height/2,mWireframeShader);
@@ -650,11 +661,12 @@ EnrightSpringls::keyCallback(GLFWwindow* win,int key, int action,int mod)
 				std::cout<<"############# START #############"<<std::endl;
 				resume();
 			}
-		} else if(key==GLFW_KEY_LEFT){
-			setFrameIndex((simulationIteration-1+constellationFiles.size())%constellationFiles.size());
-		}  else if(key==GLFW_KEY_RIGHT){
-			setFrameIndex((simulationIteration+1)%constellationFiles.size());
+		} else if(key==GLFW_KEY_HOME){
+			if(playbackMode)setFrameIndex(0);
+		}  else if(key==GLFW_KEY_END){
+			if(playbackMode)setFrameIndex(constellationFiles.size()-1);
 		}
+
     }
     switch (key) {
     case 'x': case 'X':

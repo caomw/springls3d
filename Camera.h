@@ -42,7 +42,17 @@
 #include <GLFW/glfw3.h>
 #include "GLShader.h"
 namespace imagesci{
+struct CameraPose{
+public:
+	openvdb::Mat4s mRWorld;
+	openvdb::Vec3s mTWorld;
 
+	openvdb::Mat4s mRModel;
+	openvdb::Vec3s mTModel;
+
+	double mDistance;
+
+};
 class Camera
 {
 public:
@@ -52,10 +62,15 @@ public:
     void setPose(const openvdb::Mat4s& m){
     	M=m;
     }
+    openvdb::Mat4s& GetPose(){
+    	return M;
+    }
+    double GetScale(){
+    	return M(0,0)*mDistance;
+    }
+    bool savePose(const std::string& file=".pose_desc");
+    bool loadPose(const std::string& file=".pose_desc");
     void lookAt(const openvdb::Vec3d& p, double dist = 1.0);
-    void lookAtTarget();
-
-    void setTarget(const openvdb::Vec3d& p, double dist = 1.0);
 
     void setNearFarPlanes(double n, double f) { mNearPlane = n; mFarPlane = f; }
     void setFieldOfView(double degrees) { mFov = degrees; }
@@ -65,20 +80,17 @@ public:
     void mouseButtonCallback(int button, int action);
     void mousePosCallback(int x, int y);
     void mouseWheelCallback(double pos);
-    void setRotation(double head,double pitch){
-    	mHead=head;
-    	mPitch=pitch;
-    	mChanged = true;
-    }
     void setDistance(double distance){
     	mDistance=distance;
     	mChanged = true;
+    	mNeedsDisplay=true;
     }
     void setLookAt(double x,double y, double z){
         	mLookAt[0]=x;
         	mLookAt[1]=y;
         	mLookAt[2]=z;
         	mChanged = true;
+        	mNeedsDisplay=true;
         }
     float nearPlane(){return mNearPlane;}
     float farPlane(){return mFarPlane;}
@@ -90,10 +102,12 @@ public:
     }
 protected:
     // Camera parameters
+    openvdb::math::Mat4s mRw,mRm;
+    openvdb::Vec3d mCameraTrans;
     double mFov, mNearPlane, mFarPlane;
-    openvdb::Vec3d mTarget, mLookAt, mUp, mForward, mRight, mEye;
+    openvdb::Vec3d mLookAt, mEye;
     double mTumblingSpeed, mZoomSpeed, mStrafeSpeed;
-    double mHead, mPitch, mTargetDistance, mDistance;
+    double mDistance;
     openvdb::Mat4s P,V,M;
     // Input states
     bool mMouseDown, mStartTumbling, mZoomMode, mChanged, mNeedsDisplay;

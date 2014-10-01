@@ -127,6 +127,7 @@ private:
     GLWireframeShader mWireframeShader;
     GLFWwindow* mWin;
 	CameraPtr mCamera;
+	CameraPtr mMiniCamera;
 	GLRenderUI mUI;
 	ClipBoxPtr mClipBox;
 	std::string mGridName, mProgName, mGridInfo, mTransformInfo, mTreeInfo;

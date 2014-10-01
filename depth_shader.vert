@@ -9,8 +9,10 @@ uniform float MAX_DEPTH;
 
 void main () {
   vec4 pos = V * M * vec4 (vp, 1.0);
+  normal = vec3 (V * M * vec4 (vn, 0.0));
+  gl_Position = P * pos; 
+  pos=pos/pos.w; 
   pos.z=(-pos.z-MIN_DEPTH)/(MAX_DEPTH-MIN_DEPTH);
   pos_eye = pos.xyz;
-  normal = vec3 (V * M * vec4 (vn, 0.0));
-  gl_Position = P * V * M * vec4 (vp, 1.0);
+
 }

@@ -10,6 +10,7 @@
 #include <vector>
 #include <list>
 #include <memory>
+#include <GLFW/glfw3.h>
 namespace imagesci {
 //
 class GLComponent {
@@ -24,7 +25,7 @@ public:
 	virtual ~GLComponent();
 	GLComponent() : x(0), y(0), w(0), h(0) {}
 	GLComponent(int _x,int _y,int _w,int _h) : x(_x), y(_y), w(_w), h(_h) {}
-	virtual void render()=0;
+	virtual void render(GLFWwindow* win)=0;
 	virtual void updateGL()=0;
 };
 
@@ -36,9 +37,9 @@ public:
 			GLComponent() {
 
 	}
-	void render() {
+	void render(GLFWwindow* win) {
 		for (std::unique_ptr<GLComponent>& comp : components) {
-			comp->render();
+			comp->render(win);
 		}
 	}
 	void updateGL() {

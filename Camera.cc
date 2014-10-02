@@ -215,16 +215,23 @@ void Camera::keyCallback(GLFWwindow* win,int key, int action)
 		mRm=openvdb::math::rotation<openvdb::Mat4s>(openvdb::math::Axis::Y_AXIS,-2*sDeg2rad)*mRm;
 		mChanged=true;
 	} else if((char)key=='S'){
-		mRm=openvdb::math::rotation<openvdb::Mat4s>(openvdb::math::Axis::X_AXIS,-2*sDeg2rad)*mRm;
-		mChanged=true;
-	} else if((char)key=='W'){
 		mRm=openvdb::math::rotation<openvdb::Mat4s>(openvdb::math::Axis::X_AXIS,2*sDeg2rad)*mRm;
 		mChanged=true;
+	} else if((char)key=='W'){
+		mRm=openvdb::math::rotation<openvdb::Mat4s>(openvdb::math::Axis::X_AXIS,-2*sDeg2rad)*mRm;
+		mChanged=true;
+	} else if((char)key=='R'){
+		mRm.setIdentity();
+		mRw.setIdentity();
+		mDistance=1.0;
+		mLookAt=openvdb::Vec3d(0);
+		mCameraTrans=openvdb::Vec3d(0);
+		mChanged=true;
 	} else if(key==GLFW_KEY_UP){
-		mCameraTrans[1]+=0.025;
+		mCameraTrans[1]-=0.025;
 		mChanged=true;
 	} else if(key==GLFW_KEY_DOWN){
-		mCameraTrans[1]-=0.025;
+		mCameraTrans[1]+=0.025;
 		mChanged=true;
 	} else if(key==GLFW_KEY_LEFT){
 		mCameraTrans[0]-=0.025;
@@ -296,12 +303,12 @@ Camera::mousePosCallback(int x, int y)
         mNeedsDisplay = true;
 		mRw=
 				openvdb::math::rotation<openvdb::Mat4s>(openvdb::math::Axis::Y_AXIS,-dx*mTumblingSpeed*sDeg2rad)*
-				openvdb::math::rotation<openvdb::Mat4s>(openvdb::math::Axis::X_AXIS,-dy*mTumblingSpeed*sDeg2rad)*mRw;
+				openvdb::math::rotation<openvdb::Mat4s>(openvdb::math::Axis::X_AXIS,dy*mTumblingSpeed*sDeg2rad)*mRw;
     } else if (mMouseDown && mZoomMode) {
         mNeedsDisplay = true;
         openvdb::Vec3d mUp=mRw.row(1).getVec3();
         openvdb::Vec3d mRight=mRw.row(0).getVec3();
-        mLookAt +=(mRight*dx-dy*mUp) * mStrafeSpeed;
+        mLookAt +=(mRight*dx+dy*mUp) * mStrafeSpeed;
 
     }
     mMouseXPos = x;
@@ -309,7 +316,15 @@ Camera::mousePosCallback(int x, int y)
 
     mChanged = true;
 }
-
+CameraPose Camera::getPose(){
+	CameraPose p;
+	p.mRModel=mRm;
+	p.mRWorld=mRw;
+	p.mTModel=mCameraTrans;
+	p.mTWorld=mLookAt;
+	p.mDistance=mDistance;
+	return p;
+}
 bool Camera::savePose(const std::string& file){
 	if(!mChanged&&!mNeedsDisplay)return false;
 	FILE* f = fopen(file.c_str(), "wb");
@@ -340,6 +355,15 @@ bool Camera::loadPose(const std::string& file){
 		mNeedsDisplay=true;
 	return true;
 	} else return false;
+}
+void Camera::setPose(const CameraPose& p){
+	mRm=p.mRModel;
+	mRw=p.mRWorld;
+	mCameraTrans=p.mTModel;
+	mLookAt=p.mTWorld;
+	mDistance=p.mDistance;
+	mChanged=true;
+	mNeedsDisplay=true;
 }
 void
 Camera::mouseWheelCallback(double pos)

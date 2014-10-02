@@ -233,14 +233,6 @@ bool EnrightSpringls::openGrid(const std::string& fileName){
 	return true;
 }
 bool EnrightSpringls::init(int width,int height){
-
-
-	/*
-
-
-
-*/
-
     if (glfwInit() != GL_TRUE) {
         std::cout<<"GLFW Initialization Failed.";
         return false;
@@ -274,9 +266,9 @@ bool EnrightSpringls::init(int width,int height){
 
     mCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.2);
     mCamera->setNearFarPlanes(0.01f,1000.0f);
-    mCamera->lookAt(Vec3d(0,0,0),0.5);
+    mCamera->lookAt(Vec3d(0,0,0),1.0);
     mMiniCamera->setNearFarPlanes(0.1f,1000.0f);
-    mMiniCamera->lookAt(Vec3d(0,0,0),0.5);
+    mMiniCamera->lookAt(Vec3d(0,0,0),1.0);
     mMiniCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.2);
 
     mMiniCamera->loadPose();
@@ -289,14 +281,29 @@ bool EnrightSpringls::init(int width,int height){
 
 	mSpringlShader.Init("./matcap/JG_Silver.png");
 	mWireframeShader.Init();
+
     //Image* img=Image::read("buddha.png");
     //Text* txt=new Text(100,100,300,100);
 
-	mPrettySpringlShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(0,0,width-height/2,height));
+	int mainW=1200;
+	mPrettySpringlShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(0,0,mainW,height));
 	mPrettySpringlShader->setMesh(mCamera.get(),&springlGrid,"./matcap/JG_Red.png","./matcap/JG_Silver.png");
 	mPrettySpringlShader->updateGL();
 
-    //img->setBounds(0,0,100,100);
+	int miniW=width-mainW;
+	int miniH=450;
+	mIsoTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(width-miniW,height-miniH,miniW,miniH,miniW,miniH));
+	mSpringlTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(width-miniW,height-2*miniH,miniW,miniH,miniW,miniH));
+
+	std::vector<RGBA> imgBuffer;
+	int imgW,imgH;
+	bgImage=std::unique_ptr<Image>(Image::read("bg.png"));
+	bgImage->w=width;
+	bgImage->h=height;
+	bgImage->updateGL();
+	mIsoTexture->updateGL();
+	mSpringlTexture->updateGL();
+	//img->setBounds(0,0,100,100);
     //mUI.Add(img);
     //mUI.Add(txt);
     mUI.init();
@@ -324,20 +331,7 @@ bool EnrightSpringls::init(int width,int height){
 	glEnable(GL_POLYGON_SMOOTH);
 	glEnable(GL_LINE_SMOOTH);
 	glEnable( GL_MULTISAMPLE );
-	//glShadeModel(GL_SMOOTH);
-	//glEnable( GL_COLOR_MATERIAL );
 
-	/*
-
-	glEnable(GL_LIGHT0);
-	glEnable(GL_LIGHTING);
-
-	glLightfv(GL_LIGHT0, GL_AMBIENT,(GLfloat*)&ambient);
-	glLightfv(GL_LIGHT0, GL_SPECULAR,(GLfloat*)&specular);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE,(GLfloat*)&diffuse);
-	glLightfv(GL_LIGHT0, GL_POSITION,(GLfloat*)&position);
-	glMaterialf(GL_FRONT, GL_SHININESS, 5.0f);
-	*/
     size_t frame = 0;
     double time = glfwGetTime();
     glfwSwapInterval(1);
@@ -436,7 +430,7 @@ void EnrightSpringls::setFrameIndex(int frameIdx){
 	springlGrid.transform()=signedLevelSet->transform();
 	signedLevelSet->setTransform(openvdb::math::Transform::createLinearTransform(1.0));
 	springlGrid.signedLevelSet=signedLevelSet;
-
+	springlGrid.constellation.updateBBox();
 	meshLock.unlock();
 	meshDirty=true;
 	setNeedsDisplay();
@@ -483,6 +477,7 @@ bool EnrightSpringls::update(){
 		advect->advect(simTime,simTime+dt);
 		stash();
 	}
+	springlGrid.constellation.updateBBox();
 	simTime+=dt;
 	meshDirty=true;
 	setNeedsDisplay();
@@ -547,55 +542,67 @@ EnrightSpringls::render()
     openvdb::BBoxd bbox=mClipBox->GetBBox();
     openvdb::Vec3d extents = bbox.extents();
     openvdb::Vec3d rextents=renderBBox.extents();
-
-    /*
     double scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));
     Vec3s minPt=bbox.getCenter();
     Vec3s rminPt=renderBBox.getCenter();
-*/
-
-    double scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));
-    Vec3s minPt=bbox.getCenter();
-    Vec3s rminPt=renderBBox.getCenter();
-
     Pose.setIdentity();
     Pose.postTranslate(-minPt);
 	Pose.postScale(Vec3s(scale,scale,scale));
 	Pose.postTranslate(rminPt);
+
+    bbox=springlGrid.constellation.GetBBox();
+    extents = bbox.extents();
+    scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));
+    minPt=bbox.getCenter();
+    openvdb::Mat4s miniPose;
+    miniPose.setIdentity();
+    miniPose.postTranslate(-minPt);
+	miniPose.postScale(Vec3s(scale,scale,scale));
+	miniPose.postTranslate(rminPt);
+
 	   int width,height;
 
-	    glfwGetWindowSize(mWin,&width, &height);
+	glfwGetWindowSize(mWin,&width, &height);
 	glViewport(0,0,width,height);
 	glClearColor(0.0,0.0,0.0,0.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
     springlGrid.constellation.setPose(Pose);
     springlGrid.isoSurface.setPose(Pose);
-    mCamera->setPose(Pose.transpose());
-    mMiniCamera->setPose(Pose.transpose());
 
-    glViewport(height/2,0,width-height/2,height);
+    mCamera->setPose(Pose.transpose());
+    CameraPose p=mCamera->getPose();
+    p.mDistance=0.8f;
+    p.mTModel=Vec3d(0);
+    p.mTWorld=Vec3d(0);
+
+    mMiniCamera->setPose(p);
+    mMiniCamera->setPose(miniPose.transpose());
 
     mCamera->savePose();
-	mPrettySpringlShader->render();
-
-
-
-	glViewport(0,0,height/2,height/2);
+    glEnable(GL_DEPTH_TEST);
+	mIsoTexture->begin();
 	mIsoShader.begin();
-	mMiniCamera->aim(0,0,height/2,height/2,mIsoShader);
+	mMiniCamera->aim(0,0,mIsoTexture->w,mIsoTexture->h,mIsoShader);
 	springlGrid.isoSurface.draw(false,false,false,false);
 	mIsoShader.end();
+	mIsoTexture->end();
 
-
-
-    glViewport(0,height/2,height/2,height/2);
-    glDisable(GL_BLEND);
-	mSpringlShader.begin();
-	mMiniCamera->aim(0,height/2,height/2,height/2,mSpringlShader);
+	mSpringlTexture->begin();
+    mSpringlShader.begin();
+	mMiniCamera->aim(0,0,mIsoTexture->w,mIsoTexture->h,mSpringlShader);
 	springlGrid.draw(false,true,false,false);
 	mSpringlShader.end();
+	mSpringlTexture->end();
+	mPrettySpringlShader->compute(mWin);
+	glViewport(0,0,width,height);
+
+	glEnable(GL_BLEND);
+	glDisable(GL_DEPTH_TEST);
+	bgImage->render(mWin);
+	mPrettySpringlShader->render(mWin);
+	mSpringlTexture->render(mWin);
+	mIsoTexture->render(mWin);
 
 	if(simulationRunning){
 		std::stringstream ostr1,ostr2,ostr3;

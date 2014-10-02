@@ -30,7 +30,7 @@ bool GLShader::Initialize(
 		const std::string& pVertexShaderString,
 		const std::string& pFragmentShaderString,
 		const std::string& pGeometryShaderString,
-		std::list<std::string>& pAttributeLocations) {
+		std::vector<std::string>& pAttributeLocations) {
 	GLint lStatus;
 	char message[4096]="";
 	// Compile vertex shader.

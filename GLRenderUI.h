@@ -27,7 +27,7 @@ public:
 		return GLRenderComponents;
 	}
 	GLRenderUI();
-	void render();
+	void render(GLFWwindow* win);
 	void init();
 	void aim(GLFWwindow* win);
 	void aim(int x,int y,int width,int height);

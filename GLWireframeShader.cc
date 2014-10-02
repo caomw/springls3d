@@ -20,9 +20,7 @@ void GLWireframeShader::end(){
 	glUseProgram((GLuint)NULL);
 }
 bool GLWireframeShader::Init(){
-	std::list<std::string> attrib;
-	attrib.push_back("vp");
-	attrib.push_back("vn");
+	std::vector<std::string> attrib={"vp","vn"};
 	return Initialize(ReadTextFile("wireframe.vert"),ReadTextFile("wireframe.frag"),ReadTextFile("wireframe.geom"),attrib);
 }
 GLWireframeShader::~GLWireframeShader() {

@@ -14,7 +14,7 @@
 #include <GL/glxext.h>
 #include <GLFW/glfw3.h>
 #include <string>
-#include <list>
+#include <vector>
 namespace imagesci {
 
 // Shader helper structure.
@@ -29,7 +29,14 @@ public:
 	bool Initialize(const std::string& pVertexShaderString,
 			const std::string& pFragmentShaderString,
 			const std::string& pGeomShaderString,
-			std::list<std::string>& attributes);
+			std::vector<std::string>& attributes);
+
+	GLShader(const std::string& pVertexShaderString,
+			const std::string& pFragmentShaderString,
+			const std::string& pGeomShaderString,
+			std::vector<std::string>& attributes):GLShader(){
+		Initialize(pVertexShaderString,pFragmentShaderString,pGeomShaderString,attributes);
+	}
 	// Uninitialization function.
 	void Uninitialize();
 	virtual void begin();

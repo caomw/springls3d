@@ -8,8 +8,8 @@ uniform sampler2D matcapTexture2;
 in vec2 texture_coordinates;
 uniform float MIN_DEPTH;
 uniform float MAX_DEPTH;
-uniform int WIDTH;
-uniform int HEIGHT;
+uniform vec2 SCREEN_DIMS;
+uniform vec2 IMG_DIMS;
 uniform float SCALE;
 float DISTANCE_TOL=0.75f*SCALE;
 void main(void ){
@@ -24,9 +24,8 @@ void main(void ){
 	
 	for(int i=-2;i<=2;i++){
 		for(int j=-2;j<=2;j++){
-			
-			shift.x=i*0.5f/WIDTH;
-			shift.y=j*0.5f/HEIGHT;
+			shift.x=i*0.5f/IMG_DIMS.x;
+			shift.y=j*0.5f/IMG_DIMS.y;
 			w=exp(-dot(shift,shift)/0.5f);
 			isocolor=texture2D(isoTexture,uv+shift);
 			spgcolor=texture2D(springlsTexture,uv+shift);
@@ -53,13 +52,10 @@ void main(void ){
 					
 					accumColor+=w*texture2D(matcapTexture1,0.5f*isocolor.xy+0.5f);
 				}
-			}  else {
-				accumColor+=w*vec4(0.65f,0.65f,0.7f,1.0f);
 			}
 			wsum+=w;
 		}
 	}
 	accumColor=(1.0f/wsum)*accumColor;
-	accumColor.w=1.0f;
 	gl_FragColor=accumColor;
 }

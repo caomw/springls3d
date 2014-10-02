@@ -37,7 +37,7 @@ bool GLEnvironmentalShader::Init(const std::string& matcapFile){
 		return false;
 
 	}
-	std::list<std::string> attrib;
+	std::vector<std::string> attrib;
 	attrib.push_back("vp");
 	attrib.push_back("vn");
 	return Initialize(ReadTextFile("env_shader.vert"),ReadTextFile("env_shader.frag"),"",attrib);
@@ -48,7 +48,7 @@ void GLEnvironmentalShader::begin(){
 	glBindTexture( GL_TEXTURE_2D, mTextureId);
 
 	glUniform1i(glGetUniformLocation(GetProgramHandle(),"matcapTexture"),0);
-	glDisable(GL_BLEND);
+
 }
 void GLEnvironmentalShader::end(){
 	glBindTexture(GL_TEXTURE_2D,0);

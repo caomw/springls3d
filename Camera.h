@@ -68,6 +68,9 @@ public:
     double GetScale(){
     	return M(0,0)*mDistance;
     }
+
+    CameraPose getPose();
+    void setPose(const CameraPose& pose);
     bool savePose(const std::string& file=".pose_desc");
     bool loadPose(const std::string& file=".pose_desc");
     void lookAt(const openvdb::Vec3d& p, double dist = 1.0);
@@ -100,6 +103,10 @@ public:
     	openvdb::Vec4s p=P*V*M*ptp;
     	return openvdb::Vec3s(p[0]/p[3],p[1]/p[3],p[2]/p[3]);
     }
+    void resetTranslation(){
+    	mCameraTrans=openvdb::Vec3d(0,0,0);
+    	mLookAt=openvdb::Vec3d(0,0,0);
+    }
 protected:
     // Camera parameters
     openvdb::math::Mat4s mRw,mRm;
@@ -114,6 +121,9 @@ protected:
     double mMouseXPos, mMouseYPos;
     int mWheelPos;
 
+    void setZoom(double z){
+    	mDistance=z;
+    }
     static const double sDeg2rad;
 }; // class Camera
 

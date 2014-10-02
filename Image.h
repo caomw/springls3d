@@ -14,6 +14,7 @@
 #include <GL/glxext.h>
 #include <GLFW/glfw3.h>
 #include <openvdb/openvdb.h>
+#include "GLShader.h"
 namespace imagesci {
 class Image:public GLComponent {
 protected:
@@ -21,22 +22,34 @@ protected:
 	std::vector<RGBAf> mDataf;
 	int mWidth;
 	int mHeight;
-	GLuint vao;
-	GLuint mPositionBuffer;
-	GLuint mUVBuffer;
+	bool mShadeEnabled;
+	static GLuint vao;
+	static GLuint mPositionBuffer;
+	static GLuint mUVBuffer;
 	unsigned int mTextureId;
 	bool mFloatType;
+	static GLShader* GetShader(){
+		if(imageShader.get()==nullptr){
+			std::vector<std::string> attrib={"vp","uv"};
+			imageShader=std::unique_ptr<GLShader>(new GLShader(ReadTextFile("image_shader.vert"),ReadTextFile("image_shader.frag"),"",attrib));
+		}
+		return imageShader.get();
+	}
 public:
+	static std::unique_ptr<GLShader> imageShader;
 	static const UV TextureCoords[6];
 	static const openvdb::Vec3s PositionCoords[6];
 	std::vector<RGBA>& data(){
 		return mData;
 	}
+	inline void setShadeEnabled(bool shade){
+		mShadeEnabled=shade;
+	}
 	inline int width(){return mWidth;}
 	inline int height(){return mHeight;}
 	unsigned int textureId(){return mTextureId;}
 	RGBA& At(int i,int j){return mData[clamp(j,0,mHeight-1)*mWidth+clamp(i,0,mWidth-1)];}
-	Image():GLComponent(),mWidth(0),mHeight(0),mData(0),mTextureId(0),mUVBuffer(0),mPositionBuffer(0),vao(0),mFloatType(false){
+	Image():GLComponent(),mWidth(0),mHeight(0),mData(0),mTextureId(0),mFloatType(false),mShadeEnabled(true){
 
 	}
 	void setBounds(int _x,int _y,int _w,int _h){
@@ -52,7 +65,7 @@ public:
 	bool write(const std::string& file);
 	bool writeTexture(const std::string& file);
 	virtual void updateGL();
-	virtual void render();
+	virtual void render(GLFWwindow* win);
 	virtual ~Image();
 };
 

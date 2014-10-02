@@ -33,7 +33,7 @@ void GLRenderUI::aim(int _x,int _y,int width,int height){
 GLRenderUI::~GLRenderUI() {
 	// TODO Auto-generated destructor stub
 }
-void GLRenderUI::render(){
+void GLRenderUI::render(GLFWwindow* win){
 	glViewport(x,y,mScreenWidth,mScreenHeight);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -44,7 +44,7 @@ void GLRenderUI::render(){
 	glDisable(GL_DEPTH_TEST);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	for(std::unique_ptr<GLComponent>& comp:GLRenderComponents){
-		comp->render();
+		comp->render(win);
 	}
 	glEnable(GL_LIGHTING);
 	glEnable(GL_DEPTH_TEST);

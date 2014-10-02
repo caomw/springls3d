@@ -62,6 +62,7 @@
 #include "GLShaderSpringLS.h"
 #include "GLEnvironmentalShader.h"
 #include "GLWireframeShader.h"
+#include "GLFrameBuffer.h"
 namespace imagesci{
 
 typedef openvdb::tools::EnrightField<float> FieldT;
@@ -85,6 +86,7 @@ protected:
 	boost::shared_ptr<AdvectT> advect;
 	std::thread simThread;
 	std::string rootFile;
+	std::unique_ptr<Image> bgImage;
 	std::unique_ptr<GLShaderSpringLS> mPrettySpringlShader;
 	std::vector<std::string> isoSurfaceFiles;
 	std::vector<std::string> constellationFiles;
@@ -124,6 +126,8 @@ private:
 
     GLEnvironmentalShader mIsoShader;
     GLEnvironmentalShader mSpringlShader;
+    std::unique_ptr<GLFrameBuffer> mIsoTexture;
+    std::unique_ptr<GLFrameBuffer> mSpringlTexture;
     GLWireframeShader mWireframeShader;
     GLFWwindow* mWin;
 	CameraPtr mCamera;

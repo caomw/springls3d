@@ -557,7 +557,10 @@ openvdb::math::BBox<openvdb::Vec3d>& Mesh::updateBBox() {
 	Vec3s maxPt(std::numeric_limits<float>::min(),
 			std::numeric_limits<float>::min(),
 			std::numeric_limits<float>::min());
-	for (Vec3s pt : vertexes) {
+	const int SAMPLE_STRIDE=8;
+	Index32 SZ=vertexes.size();
+	for (Index32 idx=0;idx<SZ;idx+=SAMPLE_STRIDE) {
+		Vec3s& pt=vertexes[idx];
 		minPt[0] = std::min(minPt[0], pt[0]);
 		minPt[1] = std::min(minPt[1], pt[1]);
 		minPt[2] = std::min(minPt[2], pt[2]);

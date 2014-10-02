@@ -474,15 +474,21 @@ bool EnrightSpringls::update(){
 		springlGrid.constellation.save(ostr1.str());
 		*/
 	} else {
-		advect->advect(simTime,simTime+dt);
 		stash();
+		advect->advect(simTime,simTime+dt);
+
 	}
 	springlGrid.constellation.updateBBox();
 	simTime+=dt;
 	meshDirty=true;
 	setNeedsDisplay();
 	simulationIteration++;
-	return (simTime<=3.0f&&simulationRunning);
+	if(simTime<=3.0f&&simulationRunning){
+		return true;
+	} else {
+		stash();
+		return false;
+	}
 }
 void EnrightSpringls::stash(){
 
@@ -571,6 +577,12 @@ EnrightSpringls::render()
     springlGrid.isoSurface.setPose(Pose);
 
     mCamera->setPose(Pose.transpose());
+    float t=simTime/3.0f;
+    const float specular=3;
+    const float minZoom=0.8;
+    const float maxZoom=3.0;
+    float w=pow(cos(2*(t-0.5f)/M_PI),specular);
+    mCamera->setDistance(w*(maxZoom-minZoom)+minZoom);
     CameraPose p=mCamera->getPose();
     p.mDistance=0.8f;
     p.mTModel=Vec3d(0);
@@ -579,7 +591,6 @@ EnrightSpringls::render()
     mMiniCamera->setPose(p);
     mMiniCamera->setPose(miniPose.transpose());
 
-    mCamera->savePose();
     glEnable(GL_DEPTH_TEST);
 	mIsoTexture->begin();
 	mIsoShader.begin();
@@ -611,8 +622,16 @@ EnrightSpringls::render()
 		std::stringstream ostr1,ostr2,ostr3;
 		ostr1 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_composite.png";
 		std::vector<RGBA> tmp1(width*height);
+		std::vector<RGBA> tmp2(width*height);
 		glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &tmp1[0]);
-		WriteImageToFile(ostr1.str(),tmp1,width,height);
+		for(int j=0;j<height;j++){
+			for(int i=0;i<width;i++){
+				RGBA c=tmp1[(height-1-j)*width+i];
+				c[3]=255;
+				tmp2[j*width+i]=c;
+			}
+		}
+		WriteImageToFile(ostr1.str(),tmp2,width,height);
 	}
 	/*
 	mWireframeShader.begin();

@@ -286,14 +286,14 @@ bool EnrightSpringls::init(int width,int height){
     //Text* txt=new Text(100,100,300,100);
 
 	int mainW=1200;
-	mPrettySpringlShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(0,0,mainW,height));
+	mPrettySpringlShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(0,0,width,height));
 	mPrettySpringlShader->setMesh(mCamera.get(),&springlGrid,"./matcap/JG_Red.png","./matcap/JG_Silver.png");
 	mPrettySpringlShader->updateGL();
 
-	int miniW=width-mainW;
-	int miniH=450;
-	mIsoTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(width-miniW,height-miniH,miniW,miniH,miniW,miniH));
-	mSpringlTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(width-miniW,height-2*miniH,miniW,miniH,miniW,miniH));
+	int miniW=256;
+	int miniH=256;
+	mIsoTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(width-miniW,0,miniW,miniH,miniW,miniH));
+	//mSpringlTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(0,0,miniW,miniH,miniW,miniH));
 
 	std::vector<RGBA> imgBuffer;
 	int imgW,imgH;
@@ -302,7 +302,7 @@ bool EnrightSpringls::init(int width,int height){
 	bgImage->h=height;
 	bgImage->updateGL();
 	mIsoTexture->updateGL();
-	mSpringlTexture->updateGL();
+	//mSpringlTexture->updateGL();
 	//img->setBounds(0,0,100,100);
     //mUI.Add(img);
     //mUI.Add(txt);
@@ -588,20 +588,23 @@ EnrightSpringls::render()
 	mIsoShader.end();
 	mIsoTexture->end();
 
+	/*
 	mSpringlTexture->begin();
     mSpringlShader.begin();
 	mMiniCamera->aim(0,0,mIsoTexture->w,mIsoTexture->h,mSpringlShader);
 	springlGrid.draw(false,true,false,false);
 	mSpringlShader.end();
 	mSpringlTexture->end();
+		*/
 	mPrettySpringlShader->compute(mWin);
+
 	glViewport(0,0,width,height);
 
 	glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
 	bgImage->render(mWin);
 	mPrettySpringlShader->render(mWin);
-	mSpringlTexture->render(mWin);
+	//mSpringlTexture->render(mWin);
 	mIsoTexture->render(mWin);
 
 	if(simulationRunning){
@@ -610,16 +613,6 @@ EnrightSpringls::render()
 		std::vector<RGBA> tmp1(width*height);
 		glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &tmp1[0]);
 		WriteImageToFile(ostr1.str(),tmp1,width,height);
-
-		ostr2 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_springls.png";
-		std::vector<RGBA> tmp2((height/2)*(height/2));
-		glReadPixels(0, 0, (height/2), (height/2), GL_RGBA, GL_UNSIGNED_BYTE, &tmp2[0]);
-		WriteImageToFile(ostr2.str(),tmp2,(height/2),(height/2));
-
-		ostr3 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_iso.png";
-		std::vector<RGBA> tmp3((height/2)*(height/2));
-		glReadPixels(0,(height/2), (height/2), (height/2), GL_RGBA, GL_UNSIGNED_BYTE, &tmp3[0]);
-		WriteImageToFile(ostr3.str(),tmp3,(height/2),(height/2));
 	}
 	/*
 	mWireframeShader.begin();

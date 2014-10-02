@@ -447,6 +447,7 @@ bool EnrightSpringls::update(){
 		if(simulationIteration>=constellationFiles.size()){
 			simulationIteration=0;
 			simTime=0;
+			simulationRunning=false;
 		}
 		//meshLock.lock();
 		Mesh c;
@@ -474,12 +475,12 @@ bool EnrightSpringls::update(){
 		springlGrid.constellation.save(ostr1.str());
 		*/
 	} else {
-		stash();
+		if(!playbackMode)stash();
 		advect->advect(simTime,simTime+dt);
 
 	}
 	springlGrid.constellation.updateBBox();
-	simTime+=dt;
+	simTime=dt*simulationIteration;
 	meshDirty=true;
 	setNeedsDisplay();
 	simulationIteration++;
@@ -578,11 +579,12 @@ EnrightSpringls::render()
 
     mCamera->setPose(Pose.transpose());
     float t=simTime/3.0f;
-    const float specular=3;
-    const float minZoom=0.8;
-    const float maxZoom=3.0;
-    float w=pow(cos(2*(t-0.5f)/M_PI),specular);
-    mCamera->setDistance(w*(maxZoom-minZoom)+minZoom);
+    const float specular=1;
+    const float minZoom=0.5;
+    const float maxZoom=2.5;
+    float w=pow(cos(2*(t-0.5f)*M_PI)*0.5f+0.5f,specular);
+    float zoom=w*(maxZoom-minZoom)+minZoom;
+    if(simulationRunning)mCamera->setDistance(zoom);
     CameraPose p=mCamera->getPose();
     p.mDistance=0.8f;
     p.mTModel=Vec3d(0);

@@ -820,7 +820,7 @@ int SpringLevelSet::clean() {
 		bias += levelSetValue;
 		minls = std::min(minls, v);
 		maxls = std::max(maxls, v);
-		if (fabs(levelSetValue) <= CLEAN_DISTANCE) {
+		if (v <= CLEAN_DISTANCE) {
 			minEdgeLength = 1E30;
 			maxEdgeLength = -1E30;
 			area = 0.0f;

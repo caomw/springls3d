@@ -1,6 +1,6 @@
 /Debug/
 /Release/
-/buddha.vdb
+/*.vdb
+/.pose_desc
 /matcap/
-/wireframe.vert~
-/wireframe.geom~
+/*~

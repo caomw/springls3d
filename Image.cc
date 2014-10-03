@@ -33,9 +33,9 @@ GLShader* Image::getShader(){
 }
 void Image::render(GLFWwindow* win) {
 	glBindVertexArray (vao);
-	GLShader* shader=getShader();
-	std::cout<<"SHADER "<<shader<<std::endl;
+	GLShader* shader=NULL;
 	if(mShadeEnabled){
+		shader=getShader();
 		int winw,winh;
 		glfwGetWindowSize(win,&winw,&winh);
 

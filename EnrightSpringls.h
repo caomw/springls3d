@@ -87,6 +87,7 @@ protected:
 	std::thread simThread;
 	std::string rootFile;
 	std::unique_ptr<Image> bgImage;
+	std::unique_ptr<GLShader> isoShader;
 	std::unique_ptr<GLShaderSpringLS> mPrettySpringlShader;
 	std::vector<std::string> isoSurfaceFiles;
 	std::vector<std::string> constellationFiles;

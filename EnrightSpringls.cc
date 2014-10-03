@@ -293,20 +293,18 @@ bool EnrightSpringls::init(int width,int height){
 	int miniW=256;
 	int miniH=256;
 	mIsoTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(width-miniW,0,miniW,miniH,miniW,miniH));
-	//mSpringlTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(0,0,miniW,miniH,miniW,miniH));
-
+	std::vector<std::string> args;
+	args.push_back("vp");
+	args.push_back("uv");
+	isoShader=std::unique_ptr<GLShader>(new GLShader());
+	isoShader->Initialize(ReadTextFile("silhouette_shader.vert"),ReadTextFile("silhouette_shader.frag"),"",args);
+	mIsoTexture->setShader(isoShader.get());
+	std::cout<<"Update GL"<<std::endl;
+	mIsoTexture->updateGL();
 	std::vector<RGBA> imgBuffer;
 	int imgW,imgH;
-	bgImage=std::unique_ptr<Image>(Image::read("bg.png"));
-	bgImage->w=width;
-	bgImage->h=height;
-	bgImage->updateGL();
-	mIsoTexture->updateGL();
-	//mSpringlTexture->updateGL();
-	//img->setBounds(0,0,100,100);
-    //mUI.Add(img);
-    //mUI.Add(txt);
-    mUI.init();
+
+	//mUI.init();
 
     //txt->setText("Hello World",14,true);
 
@@ -350,9 +348,10 @@ bool EnrightSpringls::init(int width,int height){
     	   } catch(Exception& e){
     		   std::cerr<<"Constellation "<<e.what()<<std::endl;
     	   }
-			meshDirty=false;
 			meshLock.unlock();
 			render();
+
+			meshDirty=false;
         } else {
 
     		if(needsDisplay()){
@@ -456,9 +455,13 @@ bool EnrightSpringls::update(){
 		springlGrid.isoSurface.openMesh(isoSurfaceFiles[simulationIteration]);
 		springlGrid.isoSurface.updateVertexNormals(16);
 		springlGrid.constellation.updateVertexNormals();
-		//meshLock.unlock();
 		meshDirty=true;
-		setNeedsDisplay();
+		while(meshDirty){
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+		}
+
+		//meshLock.unlock();
+
 		//setFrameIndex(simulationIteration);
 		/*
 		std::ostringstream ostr1;
@@ -579,9 +582,9 @@ EnrightSpringls::render()
 
     mCamera->setPose(Pose.transpose());
     float t=simTime/3.0f;
-    const float specular=1;
-    const float minZoom=0.5;
-    const float maxZoom=2.5;
+    const float specular=3;
+    const float minZoom=0.25;
+    const float maxZoom=2.0;
     float w=pow(cos(2*(t-0.5f)*M_PI)*0.5f+0.5f,specular);
     float zoom=w*(maxZoom-minZoom)+minZoom;
     if(simulationRunning)mCamera->setDistance(zoom);
@@ -615,14 +618,14 @@ EnrightSpringls::render()
 
 	glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
-	bgImage->render(mWin);
+	//bgImage->render(mWin);
 	mPrettySpringlShader->render(mWin);
 	//mSpringlTexture->render(mWin);
 	mIsoTexture->render(mWin);
 
 	if(simulationRunning){
 		std::stringstream ostr1,ostr2,ostr3;
-		ostr1 <<  rootFile<<std::setw(4)<<std::setfill('0')<< simulationIteration << "_composite.png";
+		ostr1 <<  rootFile<<std::setw(4)<<std::setfill('0')<< (simulationIteration+1) << "_composite.png";
 		std::vector<RGBA> tmp1(width*height);
 		std::vector<RGBA> tmp2(width*height);
 		glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &tmp1[0]);

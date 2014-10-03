@@ -28,15 +28,10 @@ protected:
 	static GLuint mUVBuffer;
 	unsigned int mTextureId;
 	bool mFloatType;
-	static GLShader* GetShader(){
-		if(imageShader.get()==nullptr){
-			std::vector<std::string> attrib={"vp","uv"};
-			imageShader=std::unique_ptr<GLShader>(new GLShader(ReadTextFile("image_shader.vert"),ReadTextFile("image_shader.frag"),"",attrib));
-		}
-		return imageShader.get();
-	}
+	GLShader* getShader();
 public:
-	static std::unique_ptr<GLShader> imageShader;
+	static std::unique_ptr<GLShader> defaultShader;
+	GLShader* imageShader;
 	static const UV TextureCoords[6];
 	static const openvdb::Vec3s PositionCoords[6];
 	std::vector<RGBA>& data(){
@@ -45,11 +40,14 @@ public:
 	inline void setShadeEnabled(bool shade){
 		mShadeEnabled=shade;
 	}
+	void setShader(GLShader* shader){
+		this->imageShader=shader;
+	}
 	inline int width(){return mWidth;}
 	inline int height(){return mHeight;}
 	unsigned int textureId(){return mTextureId;}
 	RGBA& At(int i,int j){return mData[clamp(j,0,mHeight-1)*mWidth+clamp(i,0,mWidth-1)];}
-	Image():GLComponent(),mWidth(0),mHeight(0),mData(0),mTextureId(0),mFloatType(false),mShadeEnabled(true){
+	Image():GLComponent(),imageShader(NULL),mWidth(0),mHeight(0),mData(0),mTextureId(0),mFloatType(false),mShadeEnabled(true){
 
 	}
 	void setBounds(int _x,int _y,int _w,int _h){

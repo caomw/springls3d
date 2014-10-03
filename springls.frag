@@ -52,6 +52,8 @@ void main(void ){
 					
 					accumColor+=w*texture2D(matcapTexture1,0.5f*isocolor.xy+0.5f);
 				}
+			} else {
+				accumColor+=(w/255.0)*mix(vec4(125,144,164,255),vec4(26,28,30,255),uv.y+shift.y);
 			}
 			wsum+=w;
 		}

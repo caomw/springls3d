@@ -114,20 +114,20 @@ void SpringLevelSet::draw() {
 	mConstellation.draw();
 }
 
-openvdb::Vec3s& SpringLevelSet::GetParticle(const openvdb::Index32 id) {
+openvdb::Vec3s& SpringLevelSet::getParticle(const openvdb::Index32 id) {
 	return (mConstellation.springls[id].particle());
 }
-openvdb::Vec3s& SpringLevelSet::GetParticleNormal(const openvdb::Index32 id) {
+openvdb::Vec3s& SpringLevelSet::getParticleNormal(const openvdb::Index32 id) {
 	return (mConstellation.springls[id].normal());
 }
-openvdb::Vec3s& SpringLevelSet::GetSpringlVertex(const openvdb::Index32 id,
+openvdb::Vec3s& SpringLevelSet::getSpringlVertex(const openvdb::Index32 id,
 		const int i) {
 	return mConstellation.springls[id][i];
 }
-openvdb::Vec3s& SpringLevelSet::GetSpringlVertex(const openvdb::Index32 id) {
+openvdb::Vec3s& SpringLevelSet::getSpringlVertex(const openvdb::Index32 id) {
 	return mConstellation.mVertexes[id];
 }
-Springl& SpringLevelSet::GetSpringl(const openvdb::Index32 id) {
+Springl& SpringLevelSet::getSpringl(const openvdb::Index32 id) {
 	return mConstellation.springls[id];
 }
 
@@ -159,7 +159,7 @@ void RelaxOperation::compute(Springl& springl, SpringLevelSet& mGrid,
 	float dotProd;
 	Vec3s pt2;
 	for (int k = 0; k < K; k++) {
-		std::list<SpringlNeighbor>& map = mGrid.GetNearestNeighbors(springl.id,
+		std::list<SpringlNeighbor>& map = mGrid.getNearestNeighbors(springl.id,
 				k);
 		start = springl[k];
 		// edge from pivot to magnet
@@ -175,7 +175,7 @@ void RelaxOperation::compute(Springl& springl, SpringLevelSet& mGrid,
 		for (SpringlNeighbor ci : map) {
 			//Closest point should be recomputed each time and does not need to be stored
 
-			Springl& nbr = mGrid.GetSpringl(ci.springlId);
+			Springl& nbr = mGrid.getSpringl(ci.springlId);
 			DistanceToEdgeSqr(start, nbr[ci.edgeId],
 					nbr[(ci.edgeId + 1) % nbr.size()], &pt2);
 			dir = (pt2 - start);
@@ -251,7 +251,7 @@ void NearestNeighborOperation::compute(Springl& springl, SpringLevelSet& mGrid,
 		openvdb::Index32 id = stencil.getValue(i);
 		if (id >= N)
 			continue;
-		openvdb::Vec3s nbr = mGrid.GetParticle(id);
+		openvdb::Vec3s nbr = mGrid.getParticle(id);
 		float d = (refPoint - nbr).lengthSqr();
 		if (id != springl.id) {
 			stencilCopy.push_back(id);
@@ -266,7 +266,7 @@ void NearestNeighborOperation::compute(Springl& springl, SpringLevelSet& mGrid,
 	SpringlNeighbor bestNbr;
 	std::vector<SpringlNeighbor> tmpRange;
 	for (int k = 0; k < springl.size(); k++) {
-		std::list<SpringlNeighbor>& mapList = mGrid.GetNearestNeighbors(
+		std::list<SpringlNeighbor>& mapList = mGrid.getNearestNeighbors(
 				springl.id, k);
 		refPoint = springl[k];
 		//
@@ -277,7 +277,7 @@ void NearestNeighborOperation::compute(Springl& springl, SpringLevelSet& mGrid,
 			openvdb::Index32 nbrId = stencilCopy[i];
 			if (nbrId == last)
 				continue;
-			Springl& snbr = mGrid.GetSpringl(nbrId);
+			Springl& snbr = mGrid.getSpringl(nbrId);
 			bestNbr = SpringlNeighbor(nbrId, -1, D2);
 			for (int8_t n = 0; n < snbr.size(); n++) {
 				float d = snbr.distanceEdgeSqr(refPoint, n);
@@ -317,7 +317,7 @@ void SpringLevelSet::updateLines() {
 
 		for (int k = 0; k < springl.size(); k++) {
 			//std::cout <<i << "={"<<k<<":: ";
-			for (SpringlNeighbor nbr : GetNearestNeighbors(i, k)) {
+			for (SpringlNeighbor nbr : getNearestNeighbors(i, k)) {
 				pt = springl[k];
 				lines.push_back(pt);
 				qt = mConstellation.closestPointOnEdge(pt, nbr);
@@ -409,7 +409,7 @@ void SpringLevelSet::updateGradient() {
 	mGradient = advectionForce(*mUnsignedLevelSet);
 
 }
-std::list<SpringlNeighbor>& SpringLevelSet::GetNearestNeighbors(
+std::list<SpringlNeighbor>& SpringLevelSet::getNearestNeighbors(
 		openvdb::Index32 id, int8_t e) {
 	return mNearestNeighbors[mConstellation.springls[id].offset + e];
 }

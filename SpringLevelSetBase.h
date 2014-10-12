@@ -133,12 +133,12 @@ public:
 	inline openvdb::math::Transform::Ptr transformPtr() {
 		return mTransform;
 	}
-	Springl& GetSpringl(const openvdb::Index32 id);
-	openvdb::Vec3s& GetParticle(const openvdb::Index32 id);
-	openvdb::Vec3s& GetParticleNormal(const openvdb::Index32 id);
-	openvdb::Vec3s& GetSpringlVertex(const openvdb::Index32 id, const int i);
-	openvdb::Vec3s& GetSpringlVertex(const openvdb::Index32 gid);
-	std::list<SpringlNeighbor>& GetNearestNeighbors(openvdb::Index32 id,
+	Springl& getSpringl(const openvdb::Index32 id);
+	openvdb::Vec3s& getParticle(const openvdb::Index32 id);
+	openvdb::Vec3s& getParticleNormal(const openvdb::Index32 id);
+	openvdb::Vec3s& getSpringlVertex(const openvdb::Index32 id, const int i);
+	openvdb::Vec3s& getSpringlVertex(const openvdb::Index32 gid);
+	std::list<SpringlNeighbor>& getNearestNeighbors(openvdb::Index32 id,
 			int8_t e);
 	void draw();
 	int clean();

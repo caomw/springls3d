@@ -293,7 +293,6 @@ bool EnrightSpringls::init(int width,int height){
 	isoShader=std::unique_ptr<GLShader>(new GLShader());
 	isoShader->Initialize(ReadTextFile("silhouette_shader.vert"),ReadTextFile("silhouette_shader.frag"),"",args);
 	mIsoTexture->setShader(isoShader.get());
-	std::cout<<"Update GL"<<std::endl;
 	mIsoTexture->updateGL();
 	std::vector<RGBA> imgBuffer;
 	int imgW,imgH;

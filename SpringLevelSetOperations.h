@@ -15,17 +15,17 @@ template<typename FieldT> Vec3d ComputeVelocity(const FieldT& field,
 		double h);
 template<typename OperatorT,
 		typename InterruptT = openvdb::util::NullInterrupter>
-class ComputeOperator {
+class ComputePertubationOperator {
 public:
 	SpringLevelSet& mGrid;
-	ComputeOperator(SpringLevelSet& grid, InterruptT* _interrupt,
+	ComputePertubationOperator(SpringLevelSet& grid, InterruptT* _interrupt,
 			double t = 0.0, double dt = 0.0,
 			imagesci::TemporalIntegrationScheme scheme =
 					imagesci::TemporalIntegrationScheme::RK1) :
 			mGrid(grid), mInterrupt(_interrupt), mIntegrationScheme(scheme), mTime(
 					t), mTimeStep(dt) {
 	}
-	virtual ~ComputeOperator() {
+	virtual ~ComputePertubationOperator() {
 	}
 	void process(bool threaded = true) {
 		if (mInterrupt)
@@ -144,16 +144,16 @@ public:
 };
 template<typename OperatorT,
 		typename InterruptT = openvdb::util::NullInterrupter>
-class ApplySpringlOperator {
+class PerturbSpringlOperator {
 public:
 	SpringLevelSet& mGrid;
 	double mDt;
-	ApplySpringlOperator(SpringLevelSet& grid, InterruptT* _interrupt,
+	PerturbSpringlOperator(SpringLevelSet& grid, InterruptT* _interrupt,
 			double dt) :
 			mGrid(grid), mInterrupt(_interrupt), mDt(dt) {
 
 	}
-	virtual ~ApplySpringlOperator() {
+	virtual ~PerturbSpringlOperator() {
 	}
 	void process(bool threaded = true) {
 		if (mInterrupt)
@@ -187,16 +187,16 @@ protected:
 };
 template<typename OperatorT,
 		typename InterruptT = openvdb::util::NullInterrupter>
-class ApplyMeshVertexOperator {
+class PerturbMeshVertexOperator {
 public:
 	SpringLevelSet& mGrid;
 	double mDt;
-	ApplyMeshVertexOperator(SpringLevelSet& grid, InterruptT* _interrupt,
+	PerturbMeshVertexOperator(SpringLevelSet& grid, InterruptT* _interrupt,
 			double dt) :
 			mGrid(grid), mInterrupt(_interrupt), mDt(dt) {
 
 	}
-	virtual ~ApplyMeshVertexOperator() {
+	virtual ~PerturbMeshVertexOperator() {
 	}
 	void process(bool threaded = true) {
 		if (mInterrupt)
@@ -238,7 +238,7 @@ public:
 	}
 	void process(bool threaded = true) {
 		typedef NearestNeighborOperation OpT;
-		ComputeOperator<OpT, InterruptT> op(mGrid, mInterrupt);
+		ComputePertubationOperator<OpT, InterruptT> op(mGrid, mInterrupt);
 		op.process(threaded);
 	}
 	SpringLevelSet& mGrid;
@@ -254,9 +254,9 @@ public:
 	}
 	void process(bool threaded = true) {
 		typedef RelaxOperation OpT;
-		ComputeOperator<OpT, InterruptT> op1(mGrid, mInterrupt);
+		ComputePertubationOperator<OpT, InterruptT> op1(mGrid, mInterrupt);
 		op1.process(threaded);
-		ApplySpringlOperator<OpT, InterruptT> op2(mGrid, mInterrupt, 1.0f);
+		PerturbSpringlOperator<OpT, InterruptT> op2(mGrid, mInterrupt, 1.0f);
 		op2.process(threaded);
 	}
 	SpringLevelSet& mGrid;

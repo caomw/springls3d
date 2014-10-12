@@ -5,12 +5,12 @@
  *      Author: blake
  */
 
-#include "Text.h"
+#include "GLText.h"
 
 #include <GL/gl.h>
 
 namespace imagesci {
-Text::~Text() {
+GLText::~GLText() {
 	if (mTextureId != 0) {
 		glDeleteTextures(1, &mTextureId);
 		mTextureId=0;
@@ -22,13 +22,13 @@ inline int next_p2(int a) {
 		rval <<= 1;
 	return rval;
 }
-void Text::updateGL() {
+void GLText::updateGL() {
 	if (mTextureId == 0) {
 		glGenTextures(1, &mTextureId);
 	}
 }
-Text::Text(int x, int y, int width, int height, const char* fname) :
-		Image(x, y, width, height, width, height,false), fontName(fname), m_face(
+GLText::GLText(int x, int y, int width, int height, const char* fname) :
+		GLImage(x, y, width, height, width, height,false), fontName(fname), m_face(
 				NULL), m_library(NULL) {
 	if (FT_Init_FreeType(&m_library))
 		std::cerr << ("FT_Init_FreeType failed") << std::endl;
@@ -42,7 +42,7 @@ Text::Text(int x, int y, int width, int height, const char* fname) :
 		return;
 	}
 }
-void Text::CreateBitmapString(FT_Face face, const char* message, int fontHeight,
+void GLText::CreateBitmapString(FT_Face face, const char* message, int fontHeight,
 		int textureId, bool center) {
 	if (face == NULL)
 		return;
@@ -124,7 +124,7 @@ void Text::CreateBitmapString(FT_Face face, const char* message, int fontHeight,
 	glBindTexture( GL_TEXTURE_2D, 0);
 
 }
-void Text::setText(const std::string& message, int fontHeight, bool center) {
+void GLText::setText(const std::string& message, int fontHeight, bool center) {
 	if (message != mText) {
 		CreateBitmapString(m_face, message.c_str(), fontHeight, mTextureId,
 				center);

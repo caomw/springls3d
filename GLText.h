@@ -1,5 +1,5 @@
 /*
- * Text.h
+ * GLText.h
  *
  *  Created on: Sep 21, 2014
  *      Author: blake
@@ -15,9 +15,9 @@
 #include <freetype2/freetype.h>
 #include <freetype2/ftoutln.h>
 #include <freetype2/fttrigon.h>
-#include "Image.h"
+#include "GLImage.h"
 namespace imagesci {
-class Text:public Image {
+class GLText:public GLImage {
 protected:
 	void CreateBitmapString(FT_Face face, const char* message,int fontHeight,int textureId,bool center);
 	FT_Face m_face;
@@ -26,10 +26,10 @@ protected:
 	std::string mText;
 public:
 
-	Text(int x,int y,int width,int height,const char* fname="verdana.ttf");
+	GLText(int x,int y,int width,int height,const char* fname="verdana.ttf");
 	void updateGL();
 	void setText(const std::string& message,int fontHeight=14,bool center=false);
-	virtual ~Text();
+	virtual ~GLText();
 };
 
 } /* namespace imagesci */

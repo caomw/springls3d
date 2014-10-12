@@ -52,17 +52,14 @@
 #include <thread>
 #include <mutex>
 #include <memory>
-#include "LuxCamera.h"
-#include "ClipBox.h"
-#include "Font.h"
 #include "Mesh.h"
 #include "SpringLevelSet.h"
 #include "SpringLevelSetAdvection.h"
 #include "GLRenderUI.h"
-#include "GLShaderSpringLS.h"
+#include "GLSpringlShader.h"
 #include "GLEnvironmentalShader.h"
-#include "GLWireframeShader.h"
 #include "GLFrameBuffer.h"
+#include "Camera.h"
 namespace imagesci{
 
 typedef openvdb::tools::EnrightField<float> FieldT;
@@ -86,7 +83,7 @@ protected:
 	boost::shared_ptr<AdvectT> advect;
 	std::thread simThread;
 	std::string rootFile;
-	std::unique_ptr<Image> bgImage;
+	std::unique_ptr<GLImage> bgImage;
 	std::unique_ptr<GLShader> isoShader;
 	std::unique_ptr<GLShaderSpringLS> mPrettySpringlShader;
 	std::vector<std::string> isoSurfaceFiles;
@@ -95,8 +92,6 @@ protected:
 	openvdb::Mat4s Pose;
 public:
 	typedef std::unique_ptr<Camera> CameraPtr;
-
-	typedef std::unique_ptr<openvdb_viewer::ClipBox> ClipBoxPtr;
 
 	static EnrightSpringls* GetInstance();
 	EnrightSpringls();
@@ -129,12 +124,10 @@ private:
     GLEnvironmentalShader mSpringlShader;
     std::unique_ptr<GLFrameBuffer> mIsoTexture;
     std::unique_ptr<GLFrameBuffer> mSpringlTexture;
-    GLWireframeShader mWireframeShader;
     GLFWwindow* mWin;
 	CameraPtr mCamera;
 	CameraPtr mMiniCamera;
 	GLRenderUI mUI;
-	ClipBoxPtr mClipBox;
 	std::string mGridName, mProgName, mGridInfo, mTransformInfo, mTreeInfo;
 	bool mShiftIsDown, mCtrlIsDown, mShowInfo;
 };

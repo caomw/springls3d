@@ -7,16 +7,16 @@
 
 #ifndef GLFRAMEBUFFER_H_
 #define GLFRAMEBUFFER_H_
-#include "Image.h"
+#include "GLImage.h"
 namespace imagesci {
 
-class GLFrameBuffer: public Image {
+class GLFrameBuffer: public GLImage {
 protected:
 	unsigned int mFrameBufferId;
 	unsigned int mDepthBufferId;
 public:
 	GLFrameBuffer(int _x,int _y,int _width,int _height,int _imageWidth,int _imageHeight):
-	Image(_x,_y,_width,_height,_imageWidth,_imageHeight,true),mFrameBufferId(0),mDepthBufferId(0){
+	GLImage(_x,_y,_width,_height,_imageWidth,_imageHeight,true),mFrameBufferId(0),mDepthBufferId(0){
 
 	};
 	GLFrameBuffer();

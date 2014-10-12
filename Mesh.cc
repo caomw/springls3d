@@ -79,18 +79,12 @@ PlyProperty faceProps[] = { // property information for a face
 };
 
 Mesh::Mesh() :
-		mVertexBuffer(0),
-		mNormalBuffer(0),
-		mColorBuffer(0),
-		mTriIndexBuffer(0),
-		mQuadIndexBuffer(0),
-		quadIndexCount(0),
-		particleCount(0),
-		triangleIndexCount(0),
-		vao(0),
+		mGL(),
+		mQuadIndexCount(0),
+		mParticleCount(0),
+		mTriangleIndexCount(0),
 		mPose(openvdb::math::Mat4f::identity()),
-		mLineBuffer(0),mParticleBuffer(0),mParticleNormalBuffer(0),
-		quadCount(0),triangleCount(0) {
+		mQuadCount(0),mTriangleCount(0) {
 }
 bool Mesh::save(const std::string& f) {
 	std::cout<<"Saving "<<f<<" ... ";
@@ -109,17 +103,17 @@ bool Mesh::save(const std::string& f) {
 	}
 
 	// compute colors, if any
-	int numPts = vertexes.size();
+	int numPts = mVertexes.size();
 
-	int numPolys =quadIndexes.size()/4+triIndexes.size()/3;
+	int numPolys =mQuadIndexes.size()/4+mTriIndexes.size()/3;
 
 	std::vector<unsigned char> pointColors;
 
-	if (colors.size() > 0) {
+	if (mColors.size() > 0) {
 		size_t inc=0;
-		pointColors.resize(3 * colors.size());
+		pointColors.resize(3 * mColors.size());
 		for (i = 0; i < numPts; i++) {
-			Vec3s d = colors[i];
+			Vec3s d = mColors[i];
 			pointColors[inc++] = (unsigned char) clamp(d[0] * 255.0f, 0.0f,
 					255.0f);
 			pointColors[inc++] = (unsigned char) clamp(d[1] * 255.0f, 0.0f,
@@ -133,7 +127,7 @@ bool Mesh::save(const std::string& f) {
 	ply_describe_property(ply, "vertex", &vertProps[0]);
 	ply_describe_property(ply, "vertex", &vertProps[1]);
 	ply_describe_property(ply, "vertex", &vertProps[2]);
-	if (colors.size() > 0) {
+	if (mColors.size() > 0) {
 		ply_describe_property(ply, "vertex", &vertProps[3]);
 		ply_describe_property(ply, "vertex", &vertProps[4]);
 		ply_describe_property(ply, "vertex", &vertProps[5]);
@@ -163,7 +157,7 @@ bool Mesh::save(const std::string& f) {
 	put_element_setup_ply(ply, "vertex");
 
 	for (i = 0; i < numPts; i++) {
-		Vec3s pt = vertexes[i];
+		Vec3s pt = mVertexes[i];
 		vert.x[0] = pt[0];
 		vert.x[1] = pt[1];
 		vert.x[2] = pt[2];
@@ -185,40 +179,40 @@ bool Mesh::save(const std::string& f) {
 	faceT.uvs = (float*)uvs;
 	put_element_setup_ply(ply, "face");
 	if (usingTexture){
-		int sz=quadIndexes.size()/4;
+		int sz=mQuadIndexes.size()/4;
 		for (int i = 0; i < sz; i++) {
 			faceT.nverts =4;
 			faceT.uvcount=8;
 			for (j = 0; j < 4; j++) {
-				faceT.verts[j] = quadIndexes[4 * i + j];
+				faceT.verts[j] = mQuadIndexes[4 * i + j];
 				uvs[j] = uvMap[4*i+j];
 			}
 			put_element_ply(ply, (void *) &faceT);
 		}
-		sz=triIndexes.size()/3;
+		sz=mTriIndexes.size()/3;
 		for (int i = 0; i < sz; i++) {
 			faceT.nverts =3;
 			faceT.uvcount=6;
 			for (j = 0; j < 3; j++) {
-				faceT.verts[j] = triIndexes[3 * i + j];
+				faceT.verts[j] = mTriIndexes[3 * i + j];
 				uvs[j] = uvMap[3 * i + j];
 			}
 			put_element_ply(ply, (void *) &faceT);
 		}
 	} else {
-		int sz=quadIndexes.size()/4;
+		int sz=mQuadIndexes.size()/4;
 		for (int i = 0; i < sz; i++) {
 			for (j = 0; j < 4; j++) {
 				face.nverts =4;
-				face.verts[j] = quadIndexes[4 * i + j];
+				face.verts[j] = mQuadIndexes[4 * i + j];
 			}
 			put_element_ply(ply, (void *) &face);
 		}
-		sz=triIndexes.size()/3;
+		sz=mTriIndexes.size()/3;
 		for (int i = 0; i < sz; i++) {
 			for (j = 0; j < 3; j++) {
 				face.nverts =3;
-				face.verts[j] = triIndexes[3 * i + j];
+				face.verts[j] = mTriIndexes[3 * i + j];
 			}
 			put_element_ply(ply, (void *) &face);
 		}
@@ -275,13 +269,13 @@ bool Mesh::openMesh(const std::string& file) {
 	// Check for optional attribute data. We can handle intensity; and the
 	// triplet red, green, blue.
 	bool RGBPointsAvailable = false;
-	this->triIndexes.clear();
-	this->quadIndexes.clear();
-	this->faces.clear();
-	this->vertexes.clear();
-	this->particles.clear();
-	this->particleNormals.clear();
-	this->vertexNormals.clear();
+	this->mTriIndexes.clear();
+	this->mQuadIndexes.clear();
+	this->mFaces.clear();
+	this->mVertexes.clear();
+	this->mParticles.clear();
+	this->mParticleNormals.clear();
+	this->mVertexNormals.clear();
 	if ((elem = find_element(ply, "vertex")) != NULL
 			&& find_property(elem, "red", &index) != NULL
 			&& find_property(elem, "green", &index) != NULL
@@ -302,23 +296,23 @@ bool Mesh::openMesh(const std::string& file) {
 		if (elemName && !strcmp("vertex", elemName)) {
 			// Create a list of points
 			numPts = numElems;
-			this->vertexes.resize(numPts,Vec3s(0.0f));
+			this->mVertexes.resize(numPts,Vec3s(0.0f));
 			// Setup to read the PLY elements
 			ply_get_property(ply, elemName, &vertProps[0]);
 			ply_get_property(ply, elemName, &vertProps[1]);
 			ply_get_property(ply, elemName, &vertProps[2]);
 
 			if (RGBPointsAvailable) {
-				this->colors.resize(numPts);
+				this->mColors.resize(numPts);
 				ply_get_property(ply, elemName, &vertProps[3]);
 				ply_get_property(ply, elemName, &vertProps[4]);
 				ply_get_property(ply, elemName, &vertProps[5]);
 			}
 			for (j = 0; j < numPts; j++) {
 				get_element_ply(ply, &vertex);
-				this->vertexes[j] = Vec3s(vertex.x[0], vertex.x[1], vertex.x[2]);
+				this->mVertexes[j] = Vec3s(vertex.x[0], vertex.x[1], vertex.x[2]);
 				if (RGBPointsAvailable) {
-					this->colors[j] = Vec3s(vertex.red / 255.0f,
+					this->mColors[j] = Vec3s(vertex.red / 255.0f,
 							vertex.green / 255.0f, vertex.blue / 255.0f);
 				}
 			}
@@ -336,14 +330,14 @@ bool Mesh::openMesh(const std::string& file) {
 
 				if(face.nverts==4){
 					for (k = 0; k < face.nverts; k++) {
-						this->quadIndexes.push_back(face.verts[k]);
+						this->mQuadIndexes.push_back(face.verts[k]);
 					}
-					this->faces.push_back(openvdb::Vec4I(face.verts[0],face.verts[1],face.verts[2],face.verts[3]));
+					this->mFaces.push_back(openvdb::Vec4I(face.verts[0],face.verts[1],face.verts[2],face.verts[3]));
 				} else if(face.nverts==3){
 					for (k = 0; k < face.nverts; k++) {
-						this->triIndexes.push_back(face.verts[k]);
+						this->mTriIndexes.push_back(face.verts[k]);
 					}
-					this->faces.push_back(openvdb::Vec4I(face.verts[0],face.verts[1],face.verts[2],openvdb::util::INVALID_IDX));
+					this->mFaces.push_back(openvdb::Vec4I(face.verts[0],face.verts[1],face.verts[2],openvdb::util::INVALID_IDX));
 				}
 			}
 		}							//if face
@@ -353,7 +347,7 @@ bool Mesh::openMesh(const std::string& file) {
 	} //for all elements of the PLY file
 	free(elist); //allocated by ply_open_for_reading
 	close_ply(ply);
-	if (this->vertexes.size() > 0) {
+	if (this->mVertexes.size() > 0) {
 		this->updateBBox();
 		return true;
 	} else {
@@ -363,15 +357,15 @@ bool Mesh::openMesh(const std::string& file) {
 void Mesh::create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr grid){
 	// Copy points and generate point normals.
 	openvdb::math::GenericMap map(grid->transform());
-	vertexes.clear();
-	vertexNormals.clear();
-	faces.clear();
-	triIndexes.clear();
-	quadIndexes.clear();
-	vertexes.resize(mesher.pointListSize());
+	mVertexes.clear();
+	mVertexNormals.clear();
+	mFaces.clear();
+	mTriIndexes.clear();
+	mQuadIndexes.clear();
+	mVertexes.resize(mesher.pointListSize());
 	Index64 N = mesher.pointListSize();
 	for (Index64 n = 0; n < N; ++n) {
-		vertexes[n] = mesher.pointList()[n];//map.applyInverseMap(
+		mVertexes[n] = mesher.pointList()[n];//map.applyInverseMap(
 	}
 	// Copy primitives
 	openvdb::tools::PolygonPoolList& polygonPoolList = mesher.polygonPoolList();
@@ -380,18 +374,18 @@ void Mesh::create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr g
 		//std::cout << "Polygon " << polygons.numTriangles() << " "<< polygons.numQuads() << std::endl;
 		for (Index64 i = 0, I = polygons.numQuads(); i < I; ++i) {
 			const openvdb::Vec4I& quad = polygons.quad(i);
-			faces.push_back(openvdb::Vec4I(quad[3],quad[2],quad[1],quad[0]));
-			quadIndexes.push_back(quad[3]);
-			quadIndexes.push_back(quad[2]);
-			quadIndexes.push_back(quad[1]);
-			quadIndexes.push_back(quad[0]);
+			mFaces.push_back(openvdb::Vec4I(quad[3],quad[2],quad[1],quad[0]));
+			mQuadIndexes.push_back(quad[3]);
+			mQuadIndexes.push_back(quad[2]);
+			mQuadIndexes.push_back(quad[1]);
+			mQuadIndexes.push_back(quad[0]);
 		}
 		for (Index64 i = 0, I = polygons.numTriangles(); i < I; ++i) {
 			const openvdb::Vec3I& quad = polygons.triangle(i);
-			faces.push_back(openvdb::Vec4I(quad[2],quad[1],quad[0],openvdb::util::INVALID_IDX));
-			triIndexes.push_back(quad[2]);
-			triIndexes.push_back(quad[1]);
-			triIndexes.push_back(quad[0]);
+			mFaces.push_back(openvdb::Vec4I(quad[2],quad[1],quad[0],openvdb::util::INVALID_IDX));
+			mTriIndexes.push_back(quad[2]);
+			mTriIndexes.push_back(quad[1]);
+			mTriIndexes.push_back(quad[0]);
 		}
 	}
 	updateVertexNormals(16);
@@ -402,15 +396,15 @@ void Mesh::create(FloatGrid::Ptr grid) {
 	mesher(*grid);
 	// Copy points and generate point normals.
 	openvdb::math::GenericMap map(grid->transform());
-	vertexes.clear();
-	vertexNormals.clear();
-	faces.clear();
-	triIndexes.clear();
-	quadIndexes.clear();
-	vertexes.resize(mesher.pointListSize());
+	mVertexes.clear();
+	mVertexNormals.clear();
+	mFaces.clear();
+	mTriIndexes.clear();
+	mQuadIndexes.clear();
+	mVertexes.resize(mesher.pointListSize());
 	Index64 N = mesher.pointListSize();
 	for (Index64 n = 0; n < N; ++n) {
-		vertexes[n] = map.applyInverseMap(mesher.pointList()[n]);
+		mVertexes[n] = map.applyInverseMap(mesher.pointList()[n]);
 	}
 	// Copy primitives
 	openvdb::tools::PolygonPoolList& polygonPoolList = mesher.polygonPoolList();
@@ -419,18 +413,18 @@ void Mesh::create(FloatGrid::Ptr grid) {
 		//std::cout << "Polygon " << polygons.numTriangles() << " "<< polygons.numQuads() << std::endl;
 		for (Index64 i = 0, I = polygons.numQuads(); i < I; ++i) {
 			const openvdb::Vec4I& quad = polygons.quad(i);
-			faces.push_back(openvdb::Vec4I(quad[3],quad[2],quad[1],quad[0]));
-			quadIndexes.push_back(quad[3]);
-			quadIndexes.push_back(quad[2]);
-			quadIndexes.push_back(quad[1]);
-			quadIndexes.push_back(quad[0]);
+			mFaces.push_back(openvdb::Vec4I(quad[3],quad[2],quad[1],quad[0]));
+			mQuadIndexes.push_back(quad[3]);
+			mQuadIndexes.push_back(quad[2]);
+			mQuadIndexes.push_back(quad[1]);
+			mQuadIndexes.push_back(quad[0]);
 		}
 		for (Index64 i = 0, I = polygons.numTriangles(); i < I; ++i) {
 			const openvdb::Vec3I& quad = polygons.triangle(i);
-			faces.push_back(openvdb::Vec4I(quad[2],quad[1],quad[0],openvdb::util::INVALID_IDX));
-			triIndexes.push_back(quad[2]);
-			triIndexes.push_back(quad[1]);
-			triIndexes.push_back(quad[0]);
+			mFaces.push_back(openvdb::Vec4I(quad[2],quad[1],quad[0],openvdb::util::INVALID_IDX));
+			mTriIndexes.push_back(quad[2]);
+			mTriIndexes.push_back(quad[1]);
+			mTriIndexes.push_back(quad[0]);
 		}
 	}
 	updateVertexNormals(16);
@@ -438,51 +432,51 @@ void Mesh::create(FloatGrid::Ptr grid) {
 }
 void Mesh::updateVertexNormals(int SMOOTH_ITERATIONS,float DOT_TOLERANCE){
 
-	Index32 sz=triIndexes.size();
+	Index32 sz=mTriIndexes.size();
 	Vec3s pt,norm;
-	vertexNormals.resize(vertexes.size(),Vec3f(0.0f));
+	mVertexNormals.resize(mVertexes.size(),Vec3f(0.0f));
 	for (Index32 i = 0; i < sz; i += 3) {
-		Vec3s v1 = vertexes[triIndexes[i]];
-		Vec3s v2 = vertexes[triIndexes[i + 1]];
-		Vec3s v3 = vertexes[triIndexes[i + 2]];
+		Vec3s v1 = mVertexes[mTriIndexes[i]];
+		Vec3s v2 = mVertexes[mTriIndexes[i + 1]];
+		Vec3s v3 = mVertexes[mTriIndexes[i + 2]];
 		norm=(v2-v1).cross(v3-v1);
-		vertexNormals[triIndexes[i]]+=norm;
-		vertexNormals[triIndexes[i+1]]+=norm;
-		vertexNormals[triIndexes[i+2]]+=norm;
+		mVertexNormals[mTriIndexes[i]]+=norm;
+		mVertexNormals[mTriIndexes[i+1]]+=norm;
+		mVertexNormals[mTriIndexes[i+2]]+=norm;
 	}
-	sz=quadIndexes.size();
+	sz=mQuadIndexes.size();
 	for (int i = 0; i < sz; i += 4) {
-		Vec3s v1 = vertexes[quadIndexes[i]];
-		Vec3s v2 = vertexes[quadIndexes[i + 1]];
-		Vec3s v3 = vertexes[quadIndexes[i + 2]];
-		Vec3s v4 = vertexes[quadIndexes[i + 3]];
+		Vec3s v1 = mVertexes[mQuadIndexes[i]];
+		Vec3s v2 = mVertexes[mQuadIndexes[i + 1]];
+		Vec3s v3 = mVertexes[mQuadIndexes[i + 2]];
+		Vec3s v4 = mVertexes[mQuadIndexes[i + 3]];
 		norm =(v1-pt).cross(v2-pt);
 		norm+=(v2-pt).cross(v3-pt);
 		norm+=(v3-pt).cross(v4-pt);
 		norm+=(v4-pt).cross(v1-pt);
-		vertexNormals[quadIndexes[i]]+=norm;
-		vertexNormals[quadIndexes[i+1]]+=norm;
-		vertexNormals[quadIndexes[i+2]]+=norm;
-		vertexNormals[quadIndexes[i+3]]+=norm;
+		mVertexNormals[mQuadIndexes[i]]+=norm;
+		mVertexNormals[mQuadIndexes[i+1]]+=norm;
+		mVertexNormals[mQuadIndexes[i+2]]+=norm;
+		mVertexNormals[mQuadIndexes[i+3]]+=norm;
 	}
-	for (Vec3s& norm : vertexNormals) {
+	for (Vec3s& norm : mVertexNormals) {
 		norm.normalize(1E-6f);
 	}
 
 	if(SMOOTH_ITERATIONS>0){
-		int vertCount=vertexes.size();
+		int vertCount=mVertexes.size();
 
 		std::vector<Vec3f> tmp(vertCount);
 
 		std::vector<std::list<int>> vertNbrs(vertCount);
-		int indexCount = quadIndexes.size();
+		int indexCount = mQuadIndexes.size();
 		int v1, v2, v3,v4;
 		Vec3s nnorm;
 		for (int i = 0; i < indexCount; i += 4){
-			int v1 = quadIndexes[i];
-			int v2 = quadIndexes[i + 1];
-			int v3 = quadIndexes[i + 2];
-			int v4 = quadIndexes[i + 3];
+			int v1 = mQuadIndexes[i];
+			int v2 = mQuadIndexes[i + 1];
+			int v3 = mQuadIndexes[i + 2];
+			int v4 = mQuadIndexes[i + 3];
 
 			vertNbrs[v1].push_back(v2);
 			vertNbrs[v2].push_back(v3);
@@ -495,10 +489,10 @@ void Mesh::updateVertexNormals(int SMOOTH_ITERATIONS,float DOT_TOLERANCE){
 		Vec3f avg;
 		for(int iter=0;iter<SMOOTH_ITERATIONS;iter++){
 			for(int i=0;i<vertCount;i++){
-				norm=vertexNormals[i];
+				norm=mVertexNormals[i];
 				avg=Vec3f(0.0f);
 				for(int nbr:vertNbrs[i]){
-					nnorm=vertexNormals[nbr];;
+					nnorm=mVertexNormals[nbr];;
 					if(norm.dot(nnorm)>DOT_TOLERANCE){
 						avg+=nnorm;
 					} else {
@@ -508,19 +502,19 @@ void Mesh::updateVertexNormals(int SMOOTH_ITERATIONS,float DOT_TOLERANCE){
 				avg.normalize();
 				tmp[i]=avg;
 			}
-			vertexNormals=tmp;
+			mVertexNormals=tmp;
 		}
 	}
 }
-float Mesh::EstimateVoxelSize(int stride) {
+float Mesh::estimateVoxelSize(int stride) {
 	float avg = 0.0f;
 	int count = 0;
 	float maxLength = 0.0f;
-	int sz = triIndexes.size();
+	int sz = mTriIndexes.size();
 		for (int i = 0; i < sz; i += 3 * stride) {
-			Vec3s v1 = vertexes[triIndexes[i]];
-			Vec3s v2 = vertexes[triIndexes[i + 1]];
-			Vec3s v3 = vertexes[triIndexes[i + 2]];
+			Vec3s v1 = mVertexes[mTriIndexes[i]];
+			Vec3s v2 = mVertexes[mTriIndexes[i + 1]];
+			Vec3s v3 = mVertexes[mTriIndexes[i + 2]];
 			float e1 = (v1 - v2).length();
 			float e2 = (v1 - v3).length();
 			float e3 = (v2 - v3).length();
@@ -528,12 +522,12 @@ float Mesh::EstimateVoxelSize(int stride) {
 			avg += e1 + e2 + e3;
 			count += 3;
 		}
-		sz=quadIndexes.size();
+		sz=mQuadIndexes.size();
 		for (int i = 0; i < sz; i += 4 * stride) {
-			Vec3s v1 = vertexes[quadIndexes[i]];
-			Vec3s v2 = vertexes[quadIndexes[i + 1]];
-			Vec3s v3 = vertexes[quadIndexes[i + 2]];
-			Vec3s v4 = vertexes[quadIndexes[i + 3]];
+			Vec3s v1 = mVertexes[mQuadIndexes[i]];
+			Vec3s v2 = mVertexes[mQuadIndexes[i + 1]];
+			Vec3s v3 = mVertexes[mQuadIndexes[i + 2]];
+			Vec3s v4 = mVertexes[mQuadIndexes[i + 3]];
 			float e1 = (v1 - v2).length();
 			float e2 = (v2 - v3).length();
 			float e3 = (v3 - v4).length();
@@ -558,9 +552,9 @@ openvdb::math::BBox<openvdb::Vec3d>& Mesh::updateBBox() {
 			std::numeric_limits<float>::min(),
 			std::numeric_limits<float>::min());
 	const int SAMPLE_STRIDE=8;
-	Index32 SZ=vertexes.size();
+	Index32 SZ=mVertexes.size();
 	for (Index32 idx=0;idx<SZ;idx+=SAMPLE_STRIDE) {
-		Vec3s& pt=vertexes[idx];
+		Vec3s& pt=mVertexes[idx];
 		minPt[0] = std::min(minPt[0], pt[0]);
 		minPt[1] = std::min(minPt[1], pt[1]);
 		minPt[2] = std::min(minPt[2], pt[2]);
@@ -569,57 +563,57 @@ openvdb::math::BBox<openvdb::Vec3d>& Mesh::updateBBox() {
 		maxPt[1] = std::max(maxPt[1], pt[1]);
 		maxPt[2] = std::max(maxPt[2], pt[2]);
 	}
-	bbox = openvdb::math::BBox<openvdb::Vec3d>(minPt, maxPt);
-	return bbox;
+	mBoundingBox = openvdb::math::BBox<openvdb::Vec3d>(minPt, maxPt);
+	return mBoundingBox;
 }
 void Mesh::scale(float sc) {
-	for (Vec3s& pt : vertexes) {
+	for (Vec3s& pt : mVertexes) {
 		pt *= sc;
 	}
-	bbox.min() *= static_cast<double>(sc);
-	bbox.max() *= static_cast<double>(sc);
+	mBoundingBox.min() *= static_cast<double>(sc);
+	mBoundingBox.max() *= static_cast<double>(sc);
 
 }
 void Mesh::mapIntoBoundingBox(float voxelSize) {
-	Vec3s minPt = bbox.min();
-	for (Vec3s& pt : vertexes) {
+	Vec3s minPt = mBoundingBox.min();
+	for (Vec3s& pt : mVertexes) {
 		pt = (pt - minPt) / voxelSize;
 	}
 }
 void Mesh::mapOutOfBoundingBox(float voxelSize) {
-	Vec3s minPt = bbox.min();
-	for (Vec3s& pt : vertexes) {
+	Vec3s minPt = mBoundingBox.min();
+	for (Vec3s& pt : mVertexes) {
 		pt = pt * voxelSize + minPt;
 	}
 }
-void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showParticleNormals,bool lighting) {
-	glBindVertexArray (vao);
-	if (mVertexBuffer > 0) {
+void Mesh::draw() {
+	glBindVertexArray (mGL.mVao);
+	if (mGL.mVertexBuffer > 0) {
 		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mVertexBuffer);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	}
-	if (mNormalBuffer > 0) {
+	if (mGL.mNormalBuffer > 0) {
 		glEnableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, mNormalBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mNormalBuffer);
 		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	}
-	if (mColorBuffer > 0) {
+	if (mGL.mColorBuffer > 0) {
 		glEnableVertexAttribArray(2);
-		glBindBuffer(GL_ARRAY_BUFFER, mColorBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mColorBuffer);
 		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	}
-	if (quadIndexCount > 0) {
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
-		glDrawElements(GL_TRIANGLES, quadIndexCount, GL_UNSIGNED_INT, NULL);
-	}  else if(quadCount>0){
-		glDrawArrays(GL_TRIANGLES, 0, quadCount);
+	if (mQuadIndexCount > 0) {
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mGL.mQuadIndexBuffer);
+		glDrawElements(GL_TRIANGLES, mQuadIndexCount, GL_UNSIGNED_INT, NULL);
+	}  else if(mQuadCount>0){
+		glDrawArrays(GL_TRIANGLES, 0, mQuadCount);
 	}
-	if (triangleIndexCount > 0) {
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mTriIndexBuffer);
-		glDrawElements(GL_TRIANGLES, triangleIndexCount, GL_UNSIGNED_INT, NULL);
-	} else if(triangleCount>0){
-		glDrawArrays(GL_TRIANGLES, 0, triangleCount);
+	if (mTriangleIndexCount > 0) {
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mGL.mTriIndexBuffer);
+		glDrawElements(GL_TRIANGLES, mTriangleIndexCount, GL_UNSIGNED_INT, NULL);
+	} else if(mTriangleCount>0){
+		glDrawArrays(GL_TRIANGLES, 0, mTriangleCount);
 	}
 
 	glBindVertexArray (0);
@@ -627,158 +621,158 @@ void Mesh::draw(bool colorEnabled,bool wireframe,bool showParticles,bool showPar
 }
 
 void Mesh::updateGL() {
-	quadCount=0;
-	triangleCount=0;
-	triangleIndexCount=0;
-	quadIndexCount=0;
-	particleCount=0;
+	mQuadCount=0;
+	mTriangleCount=0;
+	mTriangleIndexCount=0;
+	mQuadIndexCount=0;
+	mParticleCount=0;
 
-	if(vao==0)glGenVertexArrays (1, &vao);
+	if(mGL.mVao==0)glGenVertexArrays (1, &mGL.mVao);
 
-	if (vertexes.size() > 0) {
-		if (glIsBuffer(mVertexBuffer) == GL_TRUE)
-			glDeleteBuffers(1, &mVertexBuffer);
-		glGenBuffers(1, &mVertexBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
-		if (glIsBuffer(mVertexBuffer) == GL_FALSE)
+	if (mVertexes.size() > 0) {
+		if (glIsBuffer(mGL.mVertexBuffer) == GL_TRUE)
+			glDeleteBuffers(1, &mGL.mVertexBuffer);
+		glGenBuffers(1, &mGL.mVertexBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mVertexBuffer);
+		if (glIsBuffer(mGL.mVertexBuffer) == GL_FALSE)
 			throw Exception("Error: Unable to create vertex buffer");
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * vertexes.size(),
-				&vertexes[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * mVertexes.size(),
+				&mVertexes[0], GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
-	if (particles.size() > 0) {
-		if (glIsBuffer(mParticleBuffer) == GL_TRUE)
-			glDeleteBuffers(1, &mParticleBuffer);
-		glGenBuffers(1, &mParticleBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, mParticleBuffer);
-		if (glIsBuffer(mParticleBuffer) == GL_FALSE)
+	if (mParticles.size() > 0) {
+		if (glIsBuffer(mGL.mParticleBuffer) == GL_TRUE)
+			glDeleteBuffers(1, &mGL.mParticleBuffer);
+		glGenBuffers(1, &mGL.mParticleBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mParticleBuffer);
+		if (glIsBuffer(mGL.mParticleBuffer) == GL_FALSE)
 			throw Exception("Error: Unable to create particle buffer");
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * particles.size(),
-				&particles[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * mParticles.size(),
+				&mParticles[0], GL_STATIC_DRAW);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
-		particleCount=particles.size();
+		mParticleCount=mParticles.size();
 	}
-	if (colors.size() > 0) {
-		if (glIsBuffer(mColorBuffer) == GL_TRUE)
-			glDeleteBuffers(1, &mColorBuffer);
+	if (mColors.size() > 0) {
+		if (glIsBuffer(mGL.mColorBuffer) == GL_TRUE)
+			glDeleteBuffers(1, &mGL.mColorBuffer);
 
-		glGenBuffers(1, &mColorBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, mColorBuffer);
-		if (glIsBuffer(mColorBuffer) == GL_FALSE)
+		glGenBuffers(1, &mGL.mColorBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mColorBuffer);
+		if (glIsBuffer(mGL.mColorBuffer) == GL_FALSE)
 			throw Exception("Error: Unable to create color buffer");
 
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * colors.size(),
-				&colors[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * mColors.size(),
+				&mColors[0], GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
-	if(lines.size()>0){
-		std::cout<<"Update lines "<<lines.size()<<std::endl;
+	if(mLines.size()>0){
+		std::cout<<"Update lines "<<mLines.size()<<std::endl;
 		// clear old buffer
-		if (glIsBuffer(mLineBuffer) == GL_TRUE)
-			glDeleteBuffers(1, &mLineBuffer);
+		if (glIsBuffer(mGL.mLineBuffer) == GL_TRUE)
+			glDeleteBuffers(1, &mGL.mLineBuffer);
 		// gen new buffer
-		glGenBuffers(1, &mLineBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, mLineBuffer);
-		if (glIsBuffer(mLineBuffer) == GL_FALSE)
+		glGenBuffers(1, &mGL.mLineBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mLineBuffer);
+		if (glIsBuffer(mGL.mLineBuffer) == GL_FALSE)
 			throw Exception("Error: Unable to create index buffer");
 		// upload data
-		glBufferData(GL_ARRAY_BUFFER,  sizeof(GLfloat) * 3  * lines.size(),
-				&lines[0], GL_STATIC_DRAW); // upload data
+		glBufferData(GL_ARRAY_BUFFER,  sizeof(GLfloat) * 3  * mLines.size(),
+				&mLines[0], GL_STATIC_DRAW); // upload data
 		// release buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		std::cout<<"Disable Lines "<<std::endl;
 	}
-	if (triIndexes.size() > 0) {
+	if (mTriIndexes.size() > 0) {
 		// clear old buffer
-		if (glIsBuffer(mTriIndexBuffer) == GL_TRUE)
-			glDeleteBuffers(1, &mTriIndexBuffer);
+		if (glIsBuffer(mGL.mTriIndexBuffer) == GL_TRUE)
+			glDeleteBuffers(1, &mGL.mTriIndexBuffer);
 
 		// gen new buffer
-		glGenBuffers(1, &mTriIndexBuffer);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mTriIndexBuffer);
-		if (glIsBuffer(mTriIndexBuffer) == GL_FALSE)
+		glGenBuffers(1, &mGL.mTriIndexBuffer);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mGL.mTriIndexBuffer);
+		if (glIsBuffer(mGL.mTriIndexBuffer) == GL_FALSE)
 			throw Exception("Error: Unable to create index buffer");
 
 		// upload data
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * triIndexes.size(),
-				&triIndexes[0], GL_STATIC_DRAW); // upload data
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * mTriIndexes.size(),
+				&mTriIndexes[0], GL_STATIC_DRAW); // upload data
 
 
-		triangleIndexCount = triIndexes.size();
+		mTriangleIndexCount = mTriIndexes.size();
 		// release buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
-	if (quadIndexes.size() > 0) {
+	if (mQuadIndexes.size() > 0) {
 		// clear old buffer
-		if (glIsBuffer(mQuadIndexBuffer) == GL_TRUE)
-			glDeleteBuffers(1, &mQuadIndexBuffer);
+		if (glIsBuffer(mGL.mQuadIndexBuffer) == GL_TRUE)
+			glDeleteBuffers(1, &mGL.mQuadIndexBuffer);
 
 		// gen new buffer
-		glGenBuffers(1, &mQuadIndexBuffer);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mQuadIndexBuffer);
-		if (glIsBuffer(mQuadIndexBuffer) == GL_FALSE)
+		glGenBuffers(1, &mGL.mQuadIndexBuffer);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mGL.mQuadIndexBuffer);
+		if (glIsBuffer(mGL.mQuadIndexBuffer) == GL_FALSE)
 			throw Exception("Error: Unable to create index buffer");
 
 		// upload data
-		int sz=quadIndexes.size();
-		std::vector<GLuint> tmp(12*(quadIndexes.size()/4));
+		int sz=mQuadIndexes.size();
+		std::vector<GLuint> tmp(12*(mQuadIndexes.size()/4));
 		int offset=0;
 		for(unsigned int i=0;i<sz;i+=4){
-			tmp[offset++]=quadIndexes[i+1];
-			tmp[offset++]=quadIndexes[i+2];
-			tmp[offset++]=quadIndexes[i+0];
+			tmp[offset++]=mQuadIndexes[i+1];
+			tmp[offset++]=mQuadIndexes[i+2];
+			tmp[offset++]=mQuadIndexes[i+0];
 
 
-			tmp[offset++]=quadIndexes[i+2];
-			tmp[offset++]=quadIndexes[i+3];
-			tmp[offset++]=quadIndexes[i+1];
+			tmp[offset++]=mQuadIndexes[i+2];
+			tmp[offset++]=mQuadIndexes[i+3];
+			tmp[offset++]=mQuadIndexes[i+1];
 
-			tmp[offset++]=quadIndexes[i+0];
-			tmp[offset++]=quadIndexes[i+1];
-			tmp[offset++]=quadIndexes[i+3];
+			tmp[offset++]=mQuadIndexes[i+0];
+			tmp[offset++]=mQuadIndexes[i+1];
+			tmp[offset++]=mQuadIndexes[i+3];
 
 
-			tmp[offset++]=quadIndexes[i+3];
-			tmp[offset++]=quadIndexes[i];
-			tmp[offset++]=quadIndexes[i+2];
+			tmp[offset++]=mQuadIndexes[i+3];
+			tmp[offset++]=mQuadIndexes[i];
+			tmp[offset++]=mQuadIndexes[i+2];
 
 		}
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * tmp.size(),
 				&tmp[0], GL_STATIC_DRAW); // upload data
 
 
-		quadIndexCount = tmp.size();
+		mQuadIndexCount = tmp.size();
 		// release buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
-	if (particleNormals.size() > 0) {
-		if (glIsBuffer(mParticleNormalBuffer) == GL_TRUE)
-			glDeleteBuffers(1, &mParticleNormalBuffer);
+	if (mParticleNormals.size() > 0) {
+		if (glIsBuffer(mGL.mParticleNormalBuffer) == GL_TRUE)
+			glDeleteBuffers(1, &mGL.mParticleNormalBuffer);
 
-		glGenBuffers(1, &mParticleNormalBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, mParticleNormalBuffer);
-		if (glIsBuffer(mParticleNormalBuffer) == GL_FALSE)
+		glGenBuffers(1, &mGL.mParticleNormalBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mParticleNormalBuffer);
+		if (glIsBuffer(mGL.mParticleNormalBuffer) == GL_FALSE)
 			throw Exception("Error: Unable to create particle normal buffer");
 
 		glBufferData(GL_ARRAY_BUFFER,
-				sizeof(GLfloat) * 3 * particleNormals.size(),
-				&particleNormals[0], GL_STATIC_DRAW);
+				sizeof(GLfloat) * 3 * mParticleNormals.size(),
+				&mParticleNormals[0], GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
-	if (vertexNormals.size() > 0) {
-		if (glIsBuffer(mNormalBuffer) == GL_TRUE)
-			glDeleteBuffers(1, &mNormalBuffer);
+	if (mVertexNormals.size() > 0) {
+		if (glIsBuffer(mGL.mNormalBuffer) == GL_TRUE)
+			glDeleteBuffers(1, &mGL.mNormalBuffer);
 
-		glGenBuffers(1, &mNormalBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, mNormalBuffer);
-		if (glIsBuffer(mNormalBuffer) == GL_FALSE)
+		glGenBuffers(1, &mGL.mNormalBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mNormalBuffer);
+		if (glIsBuffer(mGL.mNormalBuffer) == GL_FALSE)
 			throw Exception("Error: Unable to create normal buffer");
 
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * vertexNormals.size(),
-				&vertexNormals[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * mVertexNormals.size(),
+				&mVertexNormals[0], GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}

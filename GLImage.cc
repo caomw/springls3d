@@ -1,26 +1,26 @@
 /*
- * Image.cc
+ * GLImage.cc
  *
  *  Created on: Sep 21, 2014
  *      Author: blake
  */
 
-#include "Image.h"
+#include "GLImage.h"
 #define GLFW_INCLUDE_GLU
 #include <GLFW/glfw3.h>
 #include "ImageSciUtil.h"
 namespace imagesci {
-GLuint Image::vao=0;
-GLuint Image::mPositionBuffer=0;
-GLuint Image::mUVBuffer=0;
-std::unique_ptr<GLShader> Image::defaultShader;
-const UV Image::TextureCoords[6]={
+GLuint GLImage::vao=0;
+GLuint GLImage::mPositionBuffer=0;
+GLuint GLImage::mUVBuffer=0;
+std::unique_ptr<GLShader> GLImage::defaultShader;
+const UV GLImage::TextureCoords[6]={
 		UV(1.0f,1.0f),UV(0.0f,1.0f),UV(0.0f,0.0f),
 		UV(0.0f,0.0f),UV(1.0f,0.0f),UV(1.0f,1.0f)};
-const float3 Image::PositionCoords[6]={
+const float3 GLImage::PositionCoords[6]={
 		float3(1.0f,1.0f,0.0f),float3(0.0f,1.0f,0.0f),float3(0.0f,0.0f,0.0f),
 		float3(0.0f,0.0f,0.0f),float3(1.0f,0.0f,0.0f),float3(1.0f,1.0f,0.0f)};
-GLShader* Image::getShader(){
+GLShader* GLImage::getShader(){
 	if(imageShader==NULL){
 		if(defaultShader.get()==nullptr){
 			std::vector<std::string> attrib={"vp","uv"};
@@ -31,7 +31,7 @@ GLShader* Image::getShader(){
 	}
 	return imageShader;
 }
-void Image::render(GLFWwindow* win) {
+void GLImage::render(GLFWwindow* win) {
 	glBindVertexArray (vao);
 	GLShader* shader=NULL;
 	if(mShadeEnabled){
@@ -68,28 +68,28 @@ void Image::render(GLFWwindow* win) {
 	}
 
 }
-Image::Image(int _x,int _y,int _width,int _height,int imageWidth,int imageHeight,bool floatType):imageShader(NULL),mFloatType(floatType),GLComponent(_x,_y,_width,_height),mWidth(imageWidth),mHeight(imageHeight),mTextureId(0),mData(imageWidth*imageHeight,RGBA(0,0,0,0)),mShadeEnabled(true){
+GLImage::GLImage(int _x,int _y,int _width,int _height,int imageWidth,int imageHeight,bool floatType):imageShader(NULL),mFloatType(floatType),GLComponent(_x,_y,_width,_height),mWidth(imageWidth),mHeight(imageHeight),mTextureId(0),mData(imageWidth*imageHeight,RGBA(0,0,0,0)),mShadeEnabled(true){
 
 }
-Image::Image(const std::vector<RGBA>& data,int width,int height):imageShader(NULL),mFloatType(false),GLComponent(0,0,width,height),mWidth(width),mHeight(height),mTextureId(0),mShadeEnabled(true){
+GLImage::GLImage(const std::vector<RGBA>& data,int width,int height):imageShader(NULL),mFloatType(false),GLComponent(0,0,width,height),mWidth(width),mHeight(height),mTextureId(0),mShadeEnabled(true){
 	mData=data;
 }
-Image::Image(const std::vector<RGBAf>& data,int width,int height):imageShader(NULL),mFloatType(true),GLComponent(0,0,width,height),mWidth(width),mHeight(height),mTextureId(0),mShadeEnabled(true){
+GLImage::GLImage(const std::vector<RGBAf>& data,int width,int height):imageShader(NULL),mFloatType(true),GLComponent(0,0,width,height),mWidth(width),mHeight(height),mTextureId(0),mShadeEnabled(true){
 	mDataf=data;
 }
-Image* Image::read(const std::string& file){
+GLImage* GLImage::read(const std::string& file){
 	int w,h;
 	std::vector<RGBA> data;
 	if(ReadImageFromFile(file,data,w,h)){
-		return new Image(data,w,h);
+		return new GLImage(data,w,h);
 	} else {
 		return NULL;
 	}
 }
-bool Image::write(const std::string& file){
+bool GLImage::write(const std::string& file){
 	return WriteImageToFile(file,mData,mWidth,mHeight);
 }
-bool Image::writeTexture(const std::string& file){
+bool GLImage::writeTexture(const std::string& file){
 
 	glBindTexture(GL_TEXTURE_2D,mTextureId);
 	if(mFloatType){
@@ -102,13 +102,13 @@ bool Image::writeTexture(const std::string& file){
 	}
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
-Image::~Image(){
+GLImage::~GLImage(){
 	if(mTextureId!=0){
 		glDeleteTextures(1,&mTextureId);
 		mTextureId=0;
 	}
 }
-void Image::updateGL() {
+void GLImage::updateGL() {
 	if(mTextureId==0){
 		glGenTextures( 1,&mTextureId);
 	}

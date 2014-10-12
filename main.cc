@@ -116,10 +116,10 @@ int main(int argc, char *argv[]) {
 				dim=atoi(argv[1]);
 			}
 			float voxelSize = 1 / (float) (dim - 1);
-			FloatGrid::Ptr signedLevelSet =
+			FloatGrid::Ptr mSignedLevelSet =
 					openvdb::tools::createLevelSetSphere<FloatGrid>(radius,
 							center, voxelSize);
-			viewer->openGrid(*signedLevelSet);
+			viewer->openGrid(*mSignedLevelSet);
 			viewer->start();
 			viewer->init(1600, 900);
 		}

@@ -52,7 +52,7 @@ Camera::Camera()
     , mTumblingSpeed(0.5)
     , mZoomSpeed(0.2)
     , mStrafeSpeed(0.05)
-    , mDistance(1.0)
+    , mDistanceToObject(1.0)
     , mMouseDown(false)
     , mStartTumbling(false)
     , mZoomMode(false)
@@ -61,9 +61,9 @@ Camera::Camera()
     , mMouseXPos(0.0)
     , mMouseYPos(0.0)
     , mWheelPos(0)
-	, P(openvdb::Mat4s::identity())
-	, V(openvdb::Mat4s::identity())
-	, M(openvdb::Mat4s::identity())
+	, mProjection(openvdb::Mat4s::identity())
+	, mView(openvdb::Mat4s::identity())
+	, mModel(openvdb::Mat4s::identity())
 {
 }
 
@@ -72,7 +72,7 @@ void
 Camera::lookAt(const openvdb::Vec3d& p, double dist)
 {
     mLookAt = p;
-    mDistance = dist;
+    mDistanceToObject = dist;
     mChanged=true;
     mNeedsDisplay = true;
 }
@@ -181,9 +181,9 @@ void Camera::aim(int x,int y,int width,int height,GLShader& shader){
         Teye(1,3)=mEye[1];
         Teye(2,3)=mEye[2];
 
-        S(0,0)=mDistance;
-        S(1,1)=mDistance;
-        S(2,2)=mDistance;
+        S(0,0)=mDistanceToObject;
+        S(1,1)=mDistanceToObject;
+        S(2,2)=mDistanceToObject;
 
 
 
@@ -192,17 +192,17 @@ void Camera::aim(int x,int y,int width,int height,GLShader& shader){
         Tcamera(1,3)=mCameraTrans[1];
         Tcamera(2,3)=mCameraTrans[2];
 
-        P=Tcamera*perspectiveMatrix(mFov,aspectRatio,mNearPlane,mFarPlane).transpose();
-        V=Teye*S*mRw*T*mRm;
+        mProjection=Tcamera*perspectiveMatrix(mFov,aspectRatio,mNearPlane,mFarPlane).transpose();
+        mView=Teye*S*mRw*T*mRm;
     }
     /*
     std::cout<<"P=\n"<<P<<std::endl;
     std::cout<<"V=\n"<<V<<std::endl;
     std::cout<<"M=\n"<<M<<std::endl;
     */
-    glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "P"), 1,GL_TRUE, P.asPointer());
-    glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "V"), 1,GL_TRUE, V.asPointer());
-    glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "M"), 1,GL_TRUE, M.asPointer());
+    glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "P"), 1,GL_TRUE, mProjection.asPointer());
+    glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "V"), 1,GL_TRUE, mView.asPointer());
+    glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "M"), 1,GL_TRUE, mModel.asPointer());
     mNeedsDisplay = false;
 }
 
@@ -223,7 +223,7 @@ void Camera::keyCallback(GLFWwindow* win,int key, int action)
 	} else if((char)key=='R'){
 		mRm.setIdentity();
 		mRw.setIdentity();
-		mDistance=1.0;
+		mDistanceToObject=1.0;
 		mLookAt=openvdb::Vec3d(0);
 		mCameraTrans=openvdb::Vec3d(0);
 		mChanged=true;
@@ -240,10 +240,10 @@ void Camera::keyCallback(GLFWwindow* win,int key, int action)
 		mCameraTrans[0]+=0.025;
 		mChanged=true;
 	} else if(key==GLFW_KEY_PAGE_UP){
-		mDistance =(1+mZoomSpeed)*mDistance;
+		mDistanceToObject =(1+mZoomSpeed)*mDistanceToObject;
 		mChanged=true;
 	} else if(key==GLFW_KEY_PAGE_DOWN){
-		mDistance =(1-mZoomSpeed)*mDistance;
+		mDistanceToObject =(1-mZoomSpeed)*mDistanceToObject;
 		mChanged=true;
 	} else{
 		if (glfwGetKey(win,key) == GLFW_PRESS) {
@@ -316,59 +316,59 @@ Camera::mousePosCallback(int x, int y)
 
     mChanged = true;
 }
-CameraPose Camera::getPose(){
-	CameraPose p;
-	p.mRModel=mRm;
-	p.mRWorld=mRw;
-	p.mTModel=mCameraTrans;
-	p.mTWorld=mLookAt;
-	p.mDistance=mDistance;
+CameraAndSceneConfig Camera::getConfig(){
+	CameraAndSceneConfig p;
+	p.mModelRotation=mRm;
+	p.mWorldRotation=mRw;
+	p.mModelTranslation=mCameraTrans;
+	p.mWorldTranslation=mLookAt;
+	p.mDistanceToObject=mDistanceToObject;
 	return p;
 }
-bool Camera::savePose(const std::string& file){
+bool Camera::saveConfig(const std::string& file){
 	if(!mChanged&&!mNeedsDisplay)return false;
 	FILE* f = fopen(file.c_str(), "wb");
 	if(f!=NULL){
-		CameraPose p;
-		p.mRModel=mRm;
-		p.mRWorld=mRw;
-		p.mTModel=mCameraTrans;
-		p.mTWorld=mLookAt;
-		p.mDistance=mDistance;
-		fwrite(&p, sizeof(CameraPose), 1, f);
+		CameraAndSceneConfig p;
+		p.mModelRotation=mRm;
+		p.mWorldRotation=mRw;
+		p.mModelTranslation=mCameraTrans;
+		p.mWorldTranslation=mLookAt;
+		p.mDistanceToObject=mDistanceToObject;
+		fwrite(&p, sizeof(CameraAndSceneConfig), 1, f);
 		fclose(f);
 	return true;
 	} else return false;
 }
-bool Camera::loadPose(const std::string& file){
+bool Camera::loadConfig(const std::string& file){
 	FILE* f = fopen(file.c_str(), "rb");
 	if(f!=NULL){
-		CameraPose p;
-		fread(&p,sizeof(CameraPose),1,f);
-		mRm=p.mRModel;
-		mRw=p.mRWorld;
-		mCameraTrans=p.mTModel;
-		mLookAt=p.mTWorld;
-		mDistance=p.mDistance;
+		CameraAndSceneConfig p;
+		fread(&p,sizeof(CameraAndSceneConfig),1,f);
+		mRm=p.mModelRotation;
+		mRw=p.mWorldRotation;
+		mCameraTrans=p.mModelTranslation;
+		mLookAt=p.mWorldTranslation;
+		mDistanceToObject=p.mDistanceToObject;
 		fclose(f);
 		mChanged=true;
 		mNeedsDisplay=true;
 	return true;
 	} else return false;
 }
-void Camera::setPose(const CameraPose& p){
-	mRm=p.mRModel;
-	mRw=p.mRWorld;
-	mCameraTrans=p.mTModel;
-	mLookAt=p.mTWorld;
-	mDistance=p.mDistance;
+void Camera::setConfig(const CameraAndSceneConfig& p){
+	mRm=p.mModelRotation;
+	mRw=p.mWorldRotation;
+	mCameraTrans=p.mModelTranslation;
+	mLookAt=p.mWorldTranslation;
+	mDistanceToObject=p.mDistanceToObject;
 	mChanged=true;
 	mNeedsDisplay=true;
 }
 void
 Camera::mouseWheelCallback(double pos)
 {
-    mDistance =(1-pos*mZoomSpeed)*mDistance;
+    mDistanceToObject =(1-pos*mZoomSpeed)*mDistanceToObject;
     mChanged = true;
     mNeedsDisplay = true;
 }

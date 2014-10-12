@@ -16,7 +16,7 @@
 #include <openvdb/openvdb.h>
 #include "GLShader.h"
 namespace imagesci {
-class Image:public GLComponent {
+class GLImage:public GLComponent {
 protected:
 	std::vector<RGBA> mData;
 	std::vector<RGBAf> mDataf;
@@ -47,7 +47,7 @@ public:
 	inline int height(){return mHeight;}
 	unsigned int textureId(){return mTextureId;}
 	RGBA& At(int i,int j){return mData[clamp(j,0,mHeight-1)*mWidth+clamp(i,0,mWidth-1)];}
-	Image():GLComponent(),imageShader(NULL),mWidth(0),mHeight(0),mData(0),mTextureId(0),mFloatType(false),mShadeEnabled(true){
+	GLImage():GLComponent(),imageShader(NULL),mWidth(0),mHeight(0),mData(0),mTextureId(0),mFloatType(false),mShadeEnabled(true){
 
 	}
 	void setBounds(int _x,int _y,int _w,int _h){
@@ -56,15 +56,15 @@ public:
 		w=_w;
 		h=_h;
 	}
-	Image(int _x,int _y,int _width,int _height,int imageWidth,int imageHeight,bool floatvType=false);
-	Image(const std::vector<RGBA>& data,int width,int height);
-	Image(const std::vector<RGBAf>& data,int width,int height);
-	static Image* read(const std::string& file);
+	GLImage(int _x,int _y,int _width,int _height,int imageWidth,int imageHeight,bool floatvType=false);
+	GLImage(const std::vector<RGBA>& data,int width,int height);
+	GLImage(const std::vector<RGBAf>& data,int width,int height);
+	static GLImage* read(const std::string& file);
 	bool write(const std::string& file);
 	bool writeTexture(const std::string& file);
 	virtual void updateGL();
 	virtual void render(GLFWwindow* win);
-	virtual ~Image();
+	virtual ~GLImage();
 };
 
 } /* namespace imagesci */

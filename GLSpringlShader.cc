@@ -5,7 +5,7 @@
  *      Author: blake
  */
 
-#include "GLShaderSpringLS.h"
+#include "GLSpringlShader.h"
 #define GLFW_INCLUDE_GLU
 #include <GL/glx.h>
 #include <GL/glxext.h>
@@ -62,7 +62,7 @@ void GLShaderSpringLS::updateGL() {
 		isoImage=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(0,0,w,h,w,h));
 		wireImage=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(0,0,w,h,w,h));
 		springlImage=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(0,0,w,h,w,h));
-		renderImage=std::unique_ptr<Image>(new Image(0,0,w,h,w,h,false));
+		renderImage=std::unique_ptr<GLImage>(new GLImage(0,0,w,h,w,h,false));
 
 		isoImage->updateGL();
 		springlImage->updateGL();
@@ -119,7 +119,7 @@ void GLShaderSpringLS::compute(GLFWwindow* win){
 		glUniform1f(glGetUniformLocation(mNormalsAndDepthProgram.GetProgramHandle(),"MIN_DEPTH"),mCamera->nearPlane());
 		mCamera->aim(0,0, w, h,mNormalsAndDepthProgram);
 		glDisable(GL_BLEND);
-		mSpringLS->isoSurface.draw(false, false, false, false,false);
+		mSpringLS->mIsoSurface.draw();
 		glUseProgram((GLuint)NULL);
 	isoImage->end();
 
@@ -130,19 +130,19 @@ void GLShaderSpringLS::compute(GLFWwindow* win){
 		glUniform1f(glGetUniformLocation(mNormalsAndDepthProgram.GetProgramHandle(),"MIN_DEPTH"),mCamera->nearPlane());
 		mCamera->aim(0,0, w, h,mNormalsAndDepthProgram);
 		glDisable(GL_BLEND);
-		mSpringLS->constellation.draw(false, false, false, false,false);
+		mSpringLS->mConstellation.draw();
 		glUseProgram((GLuint)NULL);
 	springlImage->end();
 
 	wireImage->begin();
 		glUseProgram(mWireframeProgram.GetProgramHandle());
 		mCamera->aim(0,0, w, h,mWireframeProgram);
-		float scale=mCamera->GetScale();
+		float scale=mCamera->getScale();
 		glUniform1f(glGetUniformLocation(mWireframeProgram.GetProgramHandle(),"SCALE"),scale);
 		glUniform1f(glGetUniformLocation(mWireframeProgram.GetProgramHandle(),"MAX_DEPTH"),mCamera->farPlane());
 		glUniform1f(glGetUniformLocation(mWireframeProgram.GetProgramHandle(),"MIN_DEPTH"),mCamera->nearPlane());
 		glDisable(GL_BLEND);
-		mSpringLS->constellation.draw(false, false, false, false,false);
+		mSpringLS->mConstellation.draw();
 		glUseProgram((GLuint)NULL);
 	wireImage->end();
 
@@ -153,7 +153,7 @@ void GLShaderSpringLS::render(GLFWwindow* win) {
 	//isoImage->render(win);
 	//springlImage->render(win);
 	//wireImage->render(win);
-	float scale=mCamera->GetScale();
+	float scale=mCamera->getScale();
 	glDisable(GL_DEPTH_TEST);
 	glUseProgram(mMixerProgram.GetProgramHandle());
 	glUniform1i(glGetUniformLocation(mMixerProgram.GetProgramHandle(),"isoTexture"),0);

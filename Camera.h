@@ -42,37 +42,49 @@
 #include <GLFW/glfw3.h>
 #include "GLShader.h"
 namespace imagesci{
-struct CameraPose{
+struct CameraAndSceneConfig{
 public:
-	openvdb::Mat4s mRWorld;
-	openvdb::Vec3s mTWorld;
+	openvdb::Mat4s mWorldRotation;
+	openvdb::Vec3s mWorldTranslation;
 
-	openvdb::Mat4s mRModel;
-	openvdb::Vec3s mTModel;
+	openvdb::Mat4s mModelRotation;
+	openvdb::Vec3s mModelTranslation;
 
-	double mDistance;
+	double mDistanceToObject;
 
 };
 class Camera
 {
+protected:
+    // Camera parameters
+    openvdb::math::Mat4s mRw,mRm;
+    openvdb::Mat4s mProjection,mView,mModel;
+    openvdb::Vec3d mCameraTrans;
+    double mFov, mNearPlane, mFarPlane;
+    openvdb::Vec3d mLookAt, mEye;
+    double mTumblingSpeed, mZoomSpeed, mStrafeSpeed;
+    double mDistanceToObject;
+    bool mMouseDown, mStartTumbling, mZoomMode, mChanged, mNeedsDisplay;
+    double mMouseXPos, mMouseYPos;
+    int mWheelPos;
 public:
     Camera();
 
     void aim(int x,int y,int width,int height,GLShader& shader);
     void setPose(const openvdb::Mat4s& m){
-    	M=m;
+    	mModel=m;
     }
-    openvdb::Mat4s& GetPose(){
-    	return M;
+    openvdb::Mat4s& getPose(){
+    	return mModel;
     }
-    double GetScale(){
-    	return M(0,0)*mDistance;
+    double getScale(){
+    	return mModel(0,0)*mDistanceToObject;
     }
 
-    CameraPose getPose();
-    void setPose(const CameraPose& pose);
-    bool savePose(const std::string& file=".pose_desc");
-    bool loadPose(const std::string& file=".pose_desc");
+    CameraAndSceneConfig getConfig();
+    void setConfig(const CameraAndSceneConfig& pose);
+    bool saveConfig(const std::string& file=".pose_desc");
+    bool loadConfig(const std::string& file=".pose_desc");
     void lookAt(const openvdb::Vec3d& p, double dist = 1.0);
 
     void setNearFarPlanes(double n, double f) { mNearPlane = n; mFarPlane = f; }
@@ -84,7 +96,7 @@ public:
     void mousePosCallback(int x, int y);
     void mouseWheelCallback(double pos);
     void setDistance(double distance){
-    	mDistance=distance;
+    	mDistanceToObject=distance;
     	mChanged = true;
     	mNeedsDisplay=true;
     }
@@ -100,29 +112,17 @@ public:
     bool needsDisplay() const { return mNeedsDisplay; }
     openvdb::Vec3s transform(openvdb::Vec3s& pt){
     	openvdb::Vec4s ptp(pt[0],pt[1],pt[2],1.0f);
-    	openvdb::Vec4s p=P*V*M*ptp;
+    	openvdb::Vec4s p=mProjection*mView*mModel*ptp;
     	return openvdb::Vec3s(p[0]/p[3],p[1]/p[3],p[2]/p[3]);
     }
     void resetTranslation(){
     	mCameraTrans=openvdb::Vec3d(0,0,0);
     	mLookAt=openvdb::Vec3d(0,0,0);
     }
-protected:
-    // Camera parameters
-    openvdb::math::Mat4s mRw,mRm;
-    openvdb::Vec3d mCameraTrans;
-    double mFov, mNearPlane, mFarPlane;
-    openvdb::Vec3d mLookAt, mEye;
-    double mTumblingSpeed, mZoomSpeed, mStrafeSpeed;
-    double mDistance;
-    openvdb::Mat4s P,V,M;
-    // Input states
-    bool mMouseDown, mStartTumbling, mZoomMode, mChanged, mNeedsDisplay;
-    double mMouseXPos, mMouseYPos;
-    int mWheelPos;
+
 
     void setZoom(double z){
-    	mDistance=z;
+    	mDistanceToObject=z;
     }
     static const double sDeg2rad;
 }; // class Camera

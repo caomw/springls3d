@@ -2,10 +2,13 @@
 #define SPRINGLEVELSETADVECTION_H_
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/LevelSetAdvect.h>
+#include "SpringLevelSetOperations.h"
 namespace imagesci {
-template<typename FieldT = openvdb::tools::EnrightField<float>,
-		typename InterruptT = openvdb::util::NullInterrupter>
+template<typename FieldT,typename InterruptT = openvdb::util::NullInterrupter>
 class SpringLevelSetAdvection {
+private:
+	SpringLevelSet& mGrid;
+	const FieldT& mField;
 public:
 	typedef FloatGrid GridType;
 	typedef LevelSetTracker<FloatGrid, InterruptT> TrackerT;
@@ -14,28 +17,24 @@ public:
 	typedef typename TrackerT::BufferType BufferType;
 	typedef typename TrackerT::ValueType ScalarType;
 	typedef typename FieldT::VectorType VectorType;
-	SpringLevelSet& mGrid;
-	const FieldT& mField;
-	SpringlTemporalIntegrationScheme mTemporalScheme;
+
+	imagesci::TemporalIntegrationScheme mTemporalScheme;
 	InterruptT* mInterrupt;
 	// disallow copy by assignment
 	void operator=(const SpringLevelSetAdvection& other){}
 	/// Main constructor
-	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,
-			InterruptT* interrupt = NULL) :
-			mGrid(grid), mField(field), mInterrupt(interrupt), mTemporalScheme(
-					SpringlTemporalIntegrationScheme::RK4b) {
+	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,InterruptT* interrupt = NULL) :mGrid(grid), mField(field), mInterrupt(interrupt), mTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b) {
 	}
 	/// @return the temporal integration scheme
-	SpringlTemporalIntegrationScheme getTemporalScheme() const {
+	imagesci::TemporalIntegrationScheme getTemporalScheme() const {
 		return mTemporalScheme;
 	}
 	/// @brief Set the spatial finite difference scheme
-	void setTemporalScheme(SpringlTemporalIntegrationScheme scheme) {
+	void setTemporalScheme(imagesci::TemporalIntegrationScheme scheme) {
 		mTemporalScheme = scheme;
 	}
 	size_t advect(double  startTime, double endTime) {
-	    const math::Transform& trans = mGrid.signedLevelSet->transform();
+	    const math::Transform& trans = mGrid.mSignedLevelSet->transform();
 		if (trans.mapType() == math::UniformScaleMap::mapType()) {
 	        return advect1<math::UniformScaleMap>(startTime,endTime);
 	    } else if (trans.mapType() == math::UniformScaleTranslateMap::mapType()) {
@@ -52,30 +51,27 @@ public:
 	template<typename MapT> void track(double time,bool clean){
 		const int RELAX_OUTER_ITERS=1;
 		const int RELAX_INNER_ITERS=5;
-		mGrid.updateUnsignedLevelSet();
+		mGrid.updateUnSignedLevelSet();
 		for(int iter=0;iter<RELAX_OUTER_ITERS;iter++){
 			mGrid.updateNearestNeighbors();
 			mGrid.relax(RELAX_INNER_ITERS);
 		}
-		mGrid.updateUnsignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
+		mGrid.updateUnSignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
 		mGrid.updateGradient();
-		TrackerT mTracker(*mGrid.signedLevelSet,mInterrupt);
+		TrackerT mTracker(*mGrid.mSignedLevelSet,mInterrupt);
 		SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,32);
 		evolve.process();
 		if(clean){
 			int cleaned=mGrid.clean();
-			mGrid.updateUnsignedLevelSet();
-			std::cout<<"Cleaned "<<cleaned<<" "<<100*cleaned/(double)mGrid.constellation.getNumSpringls()<<"%"<<std::endl;
+			mGrid.updateUnSignedLevelSet();
+			std::cout<<"Cleaned "<<cleaned<<" "<<100*cleaned/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
 		}
 		mGrid.updateIsoSurface();
 		int added=mGrid.fill();
-		std::cout<<time<<"Filled "<<added<<" "<<100*added/(double)mGrid.constellation.getNumSpringls()<<"%"<<std::endl;
+		std::cout<<time<<"Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
 	}
 	template<typename MapT> size_t advect1(double  mStartTime, double mEndTime) {
-//	    typedef AdvectVertexOperation<FieldT> OpT
-	    typedef AdvectParticleOperation<FieldT> OpT;
-	    typedef AdvectMeshOperation<FieldT> OpS;
-
+	    typedef AdvectSpringlParticleOperation<FieldT> OpT;
 		double dt = 0.0;
 		Vec3d vsz = mGrid.transformPtr()->voxelSize();
 		double scale = std::max(std::max(vsz[0], vsz[1]), vsz[2]);
@@ -83,18 +79,16 @@ public:
 		double voxelDistance=0;
 		const double MAX_TIME_STEP=SpringLevelSet::MAX_VEXT;
 		for (double time = mStartTime; time < mEndTime; time += dt) {
-			MaxOperator<OpT, FieldT, InterruptT> op2(mGrid,mField,time, mInterrupt);
+			MaxVelocityOperator<OpT, FieldT, InterruptT> op2(mGrid,mField,time, mInterrupt);
 			double maxV = std::max(EPS, std::sqrt(op2.process()));
 			dt=clamp(MAX_TIME_STEP*scale/std::max(1E-30,maxV),0.0,mEndTime-time);
 			if (dt < EPS)break;
 			AdvectSpringlOperator<OpT, FieldT, InterruptT> op1(mGrid, mField,mTemporalScheme, time,dt,mInterrupt);
 			op1.process();
-			//AdvectMeshOperator<OpS, FieldT, InterruptT> opm1(mGrid, mField,mTemporalScheme, time,dt,mInterrupt);
-			//opm1.process();
 		}
 		track<MapT>(mEndTime,true);
 
-		mGrid.constellation.updateVertexNormals();
+		mGrid.mConstellation.updateVertexNormals();
 		return 0;
 	}
 
@@ -113,7 +107,7 @@ public:
 				mParent(parent),
 				mTracker(tracker),
 				mIterations(iterations),
-				mField(DiscreteField<openvdb::VectorGrid>(*(mParent.mGrid.gradient))),
+				mField(DiscreteField<openvdb::VectorGrid>(*(mParent.mGrid.mGradient))),
 				mTime(time), mDt(dt),leafs(tracker.leafs()) {
 
 		}
@@ -158,6 +152,5 @@ public:
 	};
 
 };
-//end of LevelSetAdvection
 }
 #endif

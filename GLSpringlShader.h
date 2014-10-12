@@ -13,7 +13,7 @@
 #include "Mesh.h"
 #include "Camera.h"
 #include "SpringLevelSet.h"
-#include "Image.h"
+#include "GLImage.h"
 #include "GLFrameBuffer.h"
 
 namespace imagesci {
@@ -27,7 +27,7 @@ private:
 	std::unique_ptr<GLFrameBuffer> springlImage;
 	std::unique_ptr<GLFrameBuffer> isoImage;
 	std::unique_ptr<GLFrameBuffer> wireImage;
-	std::unique_ptr<Image> renderImage;
+	std::unique_ptr<GLImage> renderImage;
 
 	unsigned int mMatCapId1;
 	unsigned int mMatCapId2;

@@ -18,7 +18,7 @@
 using namespace openvdb;
 using namespace openvdb::tools;
 using namespace openvdb::math;
-namespace imagesci{
+namespace imagesci {
 template<DScheme DiffScheme>
 struct ISAdvectionForce {
 	//static const DScheme FD = BIAS_SCHEME<DiffScheme>::FD;
@@ -31,25 +31,25 @@ struct ISAdvectionForce {
 		typedef Vec3<ValueType> Vec3Type;
 
 		/*
-		ValueType DXPLUS = D1<FD>::inX(grid, ijk);
-		ValueType DYPLUS = D1<FD>::inY(grid, ijk);
-		ValueType DZPLUS = D1<FD>::inZ(grid, ijk);
+		 ValueType DXPLUS = D1<FD>::inX(grid, ijk);
+		 ValueType DYPLUS = D1<FD>::inY(grid, ijk);
+		 ValueType DZPLUS = D1<FD>::inZ(grid, ijk);
 
-		ValueType DXMINUS = D1<BD>::inX(grid, ijk);
-		ValueType DYMINUS = D1<BD>::inY(grid, ijk);
-		ValueType DZMINUS = D1<BD>::inZ(grid, ijk);
-		Vec3Type vec=Vec3Type(
-				std::max(static_cast<ValueType>(0.0), DXPLUS) + std::min(static_cast<ValueType>(0.0), DXMINUS),
-				std::max(static_cast<ValueType>(0.0), DYPLUS) + std::min(static_cast<ValueType>(0.0), DYMINUS),
-				std::max(static_cast<ValueType>(0.0), DZPLUS) + std::min(static_cast<ValueType>(0.0), DZMINUS));
-				*/
-		Vec3Type vec=Vec3Type(
-				D1<DiffScheme>::inX(grid, ijk),
-                D1<DiffScheme>::inY(grid, ijk),
-                D1<DiffScheme>::inZ(grid, ijk) );
+		 ValueType DXMINUS = D1<BD>::inX(grid, ijk);
+		 ValueType DYMINUS = D1<BD>::inY(grid, ijk);
+		 ValueType DZMINUS = D1<BD>::inZ(grid, ijk);
+		 Vec3Type vec=Vec3Type(
+		 std::max(static_cast<ValueType>(0.0), DXPLUS) + std::min(static_cast<ValueType>(0.0), DXMINUS),
+		 std::max(static_cast<ValueType>(0.0), DYPLUS) + std::min(static_cast<ValueType>(0.0), DYMINUS),
+		 std::max(static_cast<ValueType>(0.0), DZPLUS) + std::min(static_cast<ValueType>(0.0), DZMINUS));
+		 */
+		Vec3Type vec = Vec3Type(D1<DiffScheme>::inX(grid, ijk),
+				D1<DiffScheme>::inY(grid, ijk), D1<DiffScheme>::inZ(grid, ijk));
 		//vec.normalize(1E-6f);
-		double scale=-clamp(grid.getValue(ijk)/(double)(openvdb::LEVEL_SET_HALF_WIDTH),-1.0,1.0);
-		vec=scale*vec;
+		double scale = -clamp(
+				grid.getValue(ijk) / (double) (openvdb::LEVEL_SET_HALF_WIDTH),
+				-1.0, 1.0);
+		vec = scale * vec;
 		return vec;
 	}
 
@@ -58,14 +58,14 @@ struct ISAdvectionForce {
 			const StencilT& stencil) {
 		typedef typename StencilT::ValueType ValueType;
 		typedef Vec3<ValueType> Vec3Type;
-		Vec3Type vec=Vec3Type(
-				D1<DiffScheme>::inX(stencil),
-                D1<DiffScheme>::inY(stencil),
-                D1<DiffScheme>::inZ(stencil) );
+		Vec3Type vec = Vec3Type(D1<DiffScheme>::inX(stencil),
+				D1<DiffScheme>::inY(stencil), D1<DiffScheme>::inZ(stencil));
 		//vec.normalize(1E-6f);
-		double scale=-clamp(stencil.template getValue< 0, 0, 0>()/(double)(openvdb::LEVEL_SET_HALF_WIDTH),-1.0,1.0);
+		double scale = -clamp(
+				stencil.template getValue<0, 0, 0>()
+						/ (double) (openvdb::LEVEL_SET_HALF_WIDTH), -1.0, 1.0);
 
-		vec=scale*vec;
+		vec = scale * vec;
 		return vec;
 	}
 };
@@ -269,7 +269,7 @@ protected:
 
 		template<typename MapT>
 		void operator()(const MapT& map) {
-			typedef AdvectionForce<MapT,DScheme::CD_2ND> OpT;
+			typedef AdvectionForce<MapT, DScheme::CD_2ND> OpT;
 			gridop::GridOperator<InGridType, MaskGridType, OutGridType, MapT,
 					OpT, InterruptT> op(mInputGrid, mMask, map, mInterrupt);
 			mOutputGrid = op.process(mThreaded); // cache the result
@@ -311,8 +311,8 @@ template<typename GridType, typename MaskT> inline typename ScalarToVectorConver
 template<typename GridType, typename InterruptT> inline typename ScalarToVectorConverter<
 		GridType>::Type::Ptr advectionForce(const GridType& grid, bool threaded,
 		InterruptT* interrupt) {
-	AdvectionForceGrid<GridType, typename gridop::ToBoolGrid<GridType>::Type, InterruptT> op(
-			grid, interrupt);
+	AdvectionForceGrid<GridType, typename gridop::ToBoolGrid<GridType>::Type,
+			InterruptT> op(grid, interrupt);
 	return op.process(threaded);
 }
 

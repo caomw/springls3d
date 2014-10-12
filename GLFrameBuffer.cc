@@ -13,7 +13,7 @@
 
 namespace imagesci {
 
-GLFrameBuffer::GLFrameBuffer():Image(),mFrameBufferId(0),mDepthBufferId(0) {
+GLFrameBuffer::GLFrameBuffer():GLImage(),mFrameBufferId(0),mDepthBufferId(0) {
 	// TODO Auto-generated constructor stub
 
 }

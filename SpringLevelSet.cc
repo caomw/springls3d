@@ -919,43 +919,6 @@ int SpringLevelSet::clean() {
 			mConstellation.mVertexes.end());
 	return (N - newSpringlCount);
 }
-template<typename FieldT> Vec3d ComputeVelocity(const FieldT& field,
-		imagesci::TemporalIntegrationScheme scheme, Vec3d pt, double t,
-		double h) {
-	Vec3d velocity(0.0);
-	Vec3d k1, k2, k3, k4;
-	switch (scheme) {
-	case imagesci::TemporalIntegrationScheme::RK1:
-		velocity = h * field(pt, t);
-		break;
-	case imagesci::TemporalIntegrationScheme::RK2:
-		k1 = h * field(pt, t);
-		velocity = h * field(pt + 0.5 * k1, t + 0.5f * h);
-		break;
-	case imagesci::TemporalIntegrationScheme::RK3:
-		k1 = h * field(pt, t);
-		k2 = h * field(pt + 0.5 * k1, t + 0.5f * h);
-		k3 = h * field(pt - 1.0 * k1 + 2.0 * k2, t + h);
-		velocity = (1.0f / 6.0f) * (k1 + 4 * k2 + k3);
-		break;
-	case imagesci::TemporalIntegrationScheme::RK4a:
-		k1 = h * field(pt, t);
-		k2 = h * field(pt + 0.5f * k1, t + 0.5f * h);
-		k3 = h * field(pt + 0.5f * k2, t + 0.5f * h);
-		k4 = h * field(pt + k3, t + h);
-		velocity = (1.0f / 6.0f) * (k1 + 2 * k2 + 2 * k3 + k4);
-		break;
-	case imagesci::TemporalIntegrationScheme::RK4b:
-	default:
-		k1 = h * field(pt, t);
-		k2 = h * field(pt + (1 / 3.0) * k1, t + (1 / 3.0) * h);
-		k3 = h * field(pt - (1 / 3.0) * k1 + k2, t + (2 / 3.0) * h);
-		k4 = h * field(pt + k1 - k2 + k3, t + h);
-		velocity = (1.0f / 8.0f) * (k1 + 3 * k2 + 3 * k3 + k4);
-		break;
 
-	}
-	return velocity;
-}
 }
 

@@ -187,7 +187,6 @@ bool EnrightSpringls::openMesh(const std::string& fileName){
 }
 
 bool EnrightSpringls::openGrid(FloatGrid& mSignedLevelSet){
-    openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     springlGrid.create(mSignedLevelSet);
     springlGrid.mIsoSurface.updateBBox();
 	rootFile="/home/blake/tmp/enright";

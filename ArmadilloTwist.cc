@@ -19,46 +19,16 @@
  * THE SOFTWARE.
  */
 
-#ifndef SIMULATION_H_
-#define SIMULATION_H_
+#include "ArmadilloTwist.h"
 
-#include "SpringLevelSet.h"
-#include <thread>
-#include <mutex>
 namespace imagesci {
-class Simulation;
-void ExecuteSimulation(Simulation* sim);
-/*
- *
- */
-class Simulation {
 
-protected:
-	std::string mName;
-	SpringLevelSet mSource;
-	double mSimulationTime;
-	double mTimeStep;
-	double mSimulationDuration;
-	long mSimulationIteration;
-	bool mRunning;
-	std::thread mSimulationThread;
+ArmadilloTwist::ArmadilloTwist(const std::string& fileName):Simulation() {
+	if(!setSource(fileName))throw Exception("Could not open "+fileName);
+}
 
-public:
-	Simulation();
-	void loadParameters(const std::string& paramFile);
-	void saveParameters(const std::string& paramFile);
-	bool setSource(const std::string& sourceFileName);
-	inline const std::string& getName(){return mName;}
-	inline void setName(const std::string& name){mName=name;}
-	virtual bool init()=0;
-	virtual bool step()=0;
-	virtual void render()=0;
-	void reset();
-	bool start();
-	bool stop();
-	virtual ~Simulation();
-};
+ArmadilloTwist::~ArmadilloTwist() {
+	// TODO Auto-generated destructor stub
+}
 
 } /* namespace imagesci */
-
-#endif /* SIMULATION_H_ */

@@ -40,6 +40,9 @@ public:
 	Exception(const char* str){
 		message=str;
 	}
+	Exception(const std::string& str){
+		message=str;
+	}
 	const char* what(){
 		return message.c_str();
 	}

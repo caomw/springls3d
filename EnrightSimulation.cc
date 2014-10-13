@@ -20,6 +20,9 @@
  */
 
 #include "EnrightSimulation.h"
+#include <openvdb/openvdb.h>
+#include <openvdb/tools/LevelSetUtil.h>
+#include <openvdb/tools/LevelSetSphere.h>
 
 namespace imagesci {
 
@@ -33,11 +36,10 @@ bool EnrightSimulation::init(){
 	const openvdb::Vec3f center(0.35f, 0.35f, 0.35f);
 	float voxelSize = 1 / (float) (dim - 1);
 	FloatGrid::Ptr mSignedLevelSet =openvdb::tools::createLevelSetSphere<FloatGrid>(radius,center, voxelSize);
-    mSource=std::unique_ptr<SpringLevelSet>(new SpringLevelSet());
-	mSource->create(*mSignedLevelSet);
-    mSource->mIsoSurface.updateBBox();
+	mSource.create(*mSignedLevelSet);
+    mSource.mIsoSurface.updateBBox();
 
-	advect=std::unique_ptr<AdvectT>(new AdvectT(*mSource.get(),field));
+	advect=std::unique_ptr<AdvectT>(new AdvectT(mSource,field));
 	advect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mSimulationDuration=3.0f;
 	mTimeStep=0.001;

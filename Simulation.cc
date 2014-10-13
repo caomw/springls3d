@@ -20,7 +20,8 @@
  */
 
 #include "Simulation.h"
-
+#include <boost/filesystem.hpp>
+#include <openvdb/openvdb.h>
 namespace imagesci {
 void ExecuteSimulation(Simulation* sim){
 	sim->reset();
@@ -29,9 +30,51 @@ void ExecuteSimulation(Simulation* sim){
 	}
 }
 
-Simulation::Simulation():mRunning(false),mSimulationDuration(0),mSimulationTime(0),mSimulationIteration(0) {
+Simulation::Simulation():mRunning(false),mTimeStep(0),mSimulationDuration(0),mSimulationTime(0),mSimulationIteration(0) {
 	// TODO Auto-generated constructor stub
 
+}
+bool Simulation::setSource(const std::string& fileName){
+	std::string ext = boost::filesystem::extension(
+			boost::filesystem::path(fileName));
+	if (ext == std::string(".ply")) {
+		Mesh* mesh=new Mesh();
+		if(!mesh->openMesh(fileName)){
+			delete mesh;
+			return false;
+		}
+		//Normalize mesh to lie within unit cube, centered at (0.5f,0.5f,0.5f)
+		mesh->mapIntoBoundingBox(mesh->estimateVoxelSize());
+		BBoxd bbox=mesh->updateBBox();
+		mSource.create(mesh);
+		openvdb::math::Transform::Ptr trans=mSource.transformPtr();
+		Vec3d extents=bbox.extents();
+		double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
+		double scale=1.0/max_extent;
+		const float radius = 0.15f;
+		const openvdb::Vec3f center(0.5f,0.5f,0.5f);
+		Vec3s t=-0.5f*(bbox.min()+bbox.max());
+		trans->postTranslate(t);
+		trans->postScale(scale);
+		trans->postTranslate(center);
+		return true;
+	} else if (ext == std::string(".vdb")) {
+		openvdb::io::File file(fileName);
+		file.open();
+		openvdb::GridPtrVecPtr grids = file.getGrids();
+		openvdb::GridPtrVec allGrids;
+		allGrids.insert(allGrids.end(), grids->begin(), grids->end());
+		GridBase::Ptr ptr = allGrids[0];
+		Mesh* mesh = new Mesh();
+		FloatGrid::Ptr mSignedLevelSet=boost::static_pointer_cast<FloatGrid>(ptr);
+	    openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
+	    mSource.create(*mSignedLevelSet);
+	    mSource.mIsoSurface.updateBBox();
+	    mSource.transform()=mSource.mSignedLevelSet->transform();
+	    mSource.mSignedLevelSet->transform()=*trans;
+		return true;
+	}
+	return false;
 }
 void Simulation::reset(){
 	mSimulationTime=0;

@@ -279,7 +279,7 @@ bool EnrightSpringls::init(int width,int height){
     //Text* txt=new Text(100,100,300,100);
 
 	int mainW=1200;
-	mPrettySpringlShader=std::unique_ptr<GLShaderSpringLS>(new GLShaderSpringLS(0,0,width,height));
+	mPrettySpringlShader=std::unique_ptr<GLSpringlShader>(new GLSpringlShader(0,0,width,height));
 	mPrettySpringlShader->setMesh(mCamera.get(),&springlGrid,"./matcap/JG_Red.png","./matcap/JG_Silver.png");
 	mPrettySpringlShader->updateGL();
 

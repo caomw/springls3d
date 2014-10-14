@@ -4,7 +4,7 @@
 namespace openvdb{
 	typedef openvdb::math::Mat3<float>   Mat3s;
 }
-class JsonSerializer
+class JsonUtil
 {
 private:
 	static std::vector<float> Vec4sToVector(openvdb::Vec4s &in);
@@ -16,14 +16,14 @@ private:
 	static std::vector<float> Vec2sToVector(openvdb::Vec2s &in);
 	static openvdb::Vec2s VectorToVec2s(const std::vector<float> &vector_in);
 
-	static std::vector<int> Vec2iToVector(openvdb::Vec2i &in);
-	static openvdb::Vec2i VectorToVec2i(const std::vector<int> &vector_in);
+	static std::vector<int> Vec4iToVector(openvdb::Vec4i &in);
+	static openvdb::Vec4i VectorToVec4i(const std::vector<int> &vector_in);
 
 	static std::vector<int> Vec3iToVector(openvdb::Vec3i &in);
 	static openvdb::Vec3i VectorToVec3i(const std::vector<int> &vector_in);
 
-	static std::vector<int> Vec4iToVector(openvdb::Vec4i &in);
-	static openvdb::Vec4i VectorToVec4i(const std::vector<int> &vector_in);
+	static std::vector<int> Vec2iToVector(openvdb::Vec2i &in);
+	static openvdb::Vec2i VectorToVec2i(const std::vector<int> &vector_in);
 
 	static std::vector<float> Mat4sToVector(openvdb::Mat4s &in);
 	static std::vector<float> Mat3sToVector(openvdb::Mat3s &in);
@@ -110,6 +110,6 @@ public:
 		return IntVectorToJson(Vec2iToVector(in), out);
 	}
 private:
-	JsonSerializer( void ) {};
+	JsonUtil( void ) {};
 };
 

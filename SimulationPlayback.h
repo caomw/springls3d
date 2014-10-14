@@ -28,6 +28,10 @@ namespace imagesci {
  *
  */
 class SimulationPlayback:public Simulation {
+protected:
+	std::vector<std::string> isoSurfaceFiles;
+	std::vector<std::string> constellationFiles;
+	std::vector<std::string> signedDistanceFiles;
 public:
 	SimulationPlayback();
 	virtual ~SimulationPlayback();

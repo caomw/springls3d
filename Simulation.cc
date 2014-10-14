@@ -30,9 +30,17 @@ void ExecuteSimulation(Simulation* sim){
 	}
 }
 
-Simulation::Simulation():mRunning(false),mTimeStep(0),mSimulationDuration(0),mSimulationTime(0),mSimulationIteration(0) {
+Simulation::Simulation():mIsMeshDirty(false),mRunning(false),mTimeStep(0),mSimulationDuration(0),mSimulationTime(0),mSimulationIteration(0) {
 	// TODO Auto-generated constructor stub
 
+}
+bool Simulation::updateGL(){
+	if(mIsMeshDirty){
+		mSource.mConstellation.updateGL();
+		mSource.mIsoSurface.updateGL();
+		mIsMeshDirty=false;
+		return true;
+	} else return false;
 }
 bool Simulation::setSource(const std::string& fileName){
 	std::string ext = boost::filesystem::extension(
@@ -57,6 +65,7 @@ bool Simulation::setSource(const std::string& fileName){
 		trans->postTranslate(t);
 		trans->postScale(scale);
 		trans->postTranslate(center);
+		mIsMeshDirty=true;
 		return true;
 	} else if (ext == std::string(".vdb")) {
 		openvdb::io::File file(fileName);
@@ -72,6 +81,7 @@ bool Simulation::setSource(const std::string& fileName){
 	    mSource.mIsoSurface.updateBBox();
 	    mSource.transform()=mSource.mSignedLevelSet->transform();
 	    mSource.mSignedLevelSet->transform()=*trans;
+	    mIsMeshDirty=true;
 		return true;
 	}
 	return false;

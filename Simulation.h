@@ -41,6 +41,7 @@ protected:
 	double mSimulationDuration;
 	long mSimulationIteration;
 	bool mRunning;
+	bool mIsMeshDirty;
 	std::thread mSimulationThread;
 
 public:
@@ -48,11 +49,16 @@ public:
 	void loadParameters(const std::string& paramFile);
 	void saveParameters(const std::string& paramFile);
 	bool setSource(const std::string& sourceFileName);
+	inline bool isRunning(){return mRunning;}
+	inline SpringLevelSet& getSource(){return mSource;}
 	inline const std::string& getName(){return mName;}
 	inline void setName(const std::string& name){mName=name;}
+	inline double getSimulationTime(){return mSimulationTime;}
+	inline double getSimulationDuration(){return mSimulationDuration;}
+	inline long getSimulationIteration(){return mSimulationIteration;}
 	virtual bool init()=0;
 	virtual bool step()=0;
-	virtual void render()=0;
+	bool updateGL();
 	void reset();
 	bool start();
 	bool stop();

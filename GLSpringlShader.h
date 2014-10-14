@@ -31,7 +31,7 @@
 
 namespace imagesci {
 
-class GLShaderSpringLS: public GLComponent {
+class GLSpringlShader: public GLComponent {
 private:
 	GLShader mNormalsAndDepthProgram;
 	GLShader mWireframeProgram;
@@ -50,14 +50,14 @@ private:
 	std::string mSpringlMatcap;
 	std::string mIsoMatcap;
 public:
-	GLShaderSpringLS(int x,int y,int w,int h);
+	GLSpringlShader(int x,int y,int w,int h);
 	void setMesh(Camera* camera,SpringLevelSet* mesh,const std::string& springlMatcap,const std::string& isoMatcap);
 	void updateGL();
 	void render(GLFWwindow* win);
 	void compute(GLFWwindow* win);
 
 	bool save(const std::string& file);
-	virtual ~GLShaderSpringLS();
+	virtual ~GLSpringlShader();
 };
 
 } /* namespace imagesci */

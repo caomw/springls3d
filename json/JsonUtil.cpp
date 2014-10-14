@@ -1,8 +1,8 @@
-#include "JsonSerializer.h"
+#include "JsonUtil.h"
 
 
 
-bool JsonSerializer::Serialize( JsonSerializable* pObj, std::string& output )
+bool JsonUtil::Serialize( JsonSerializable* pObj, std::string& output )
 {
 	if (pObj == NULL)
 		return false;
@@ -16,7 +16,7 @@ bool JsonSerializer::Serialize( JsonSerializable* pObj, std::string& output )
 	return true;
 }
 
-bool JsonSerializer::Deserialize( JsonSerializable* pObj, std::string& input )
+bool JsonUtil::Deserialize( JsonSerializable* pObj, std::string& input )
 {
 	if (pObj == NULL)
 		return false;
@@ -32,7 +32,7 @@ bool JsonSerializer::Deserialize( JsonSerializable* pObj, std::string& input )
 	return true;
 }
 
-bool JsonSerializer::FloatArrayToJson(const float* vector_in, Json::Value& node_out,int size)
+bool JsonUtil::FloatArrayToJson(const float* vector_in, Json::Value& node_out,int size)
 {
 	node_out.resize(static_cast<Json::Value::UInt>(size));
 
@@ -49,7 +49,7 @@ bool JsonSerializer::FloatArrayToJson(const float* vector_in, Json::Value& node_
 
 
 
-bool JsonSerializer::JsonToFloatArray(Json::Value& node_in,float* vector_out,int size)
+bool JsonUtil::JsonToFloatArray(Json::Value& node_in,float* vector_out,int size)
 {
 	if(size != node_in.size())
 		return false;
@@ -62,7 +62,7 @@ bool JsonSerializer::JsonToFloatArray(Json::Value& node_in,float* vector_out,int
 	return true;
 
 }
-bool JsonSerializer::FloatVectorToJson(const std::vector<float> &vector_in, Json::Value& node_out)
+bool JsonUtil::FloatVectorToJson(const std::vector<float> &vector_in, Json::Value& node_out)
 {
 	node_out.resize(static_cast<Json::Value::UInt>(vector_in.size()));
 
@@ -76,7 +76,7 @@ bool JsonSerializer::FloatVectorToJson(const std::vector<float> &vector_in, Json
 
 	return true;
 }
-bool JsonSerializer::IntVectorToJson(const std::vector<int> &vector_in, Json::Value& node_out)
+bool JsonUtil::IntVectorToJson(const std::vector<int> &vector_in, Json::Value& node_out)
 {
 	node_out.resize(static_cast<Json::Value::UInt>(vector_in.size()));
 	if(node_out.size() != vector_in.size())
@@ -89,7 +89,7 @@ bool JsonSerializer::IntVectorToJson(const std::vector<int> &vector_in, Json::Va
 
 	return true;
 }
-bool JsonSerializer::JsonToIntVector(Json::Value& node_in, std::vector<int> &vector_out)
+bool JsonUtil::JsonToIntVector(Json::Value& node_in, std::vector<int> &vector_out)
 {
 
 	vector_out.resize(node_in.size());
@@ -103,7 +103,7 @@ bool JsonSerializer::JsonToIntVector(Json::Value& node_in, std::vector<int> &vec
 	return true;
 }
 
-bool JsonSerializer::JsonToFloatVector(Json::Value& node_in, std::vector<float> &vector_out)
+bool JsonUtil::JsonToFloatVector(Json::Value& node_in, std::vector<float> &vector_out)
 {
 
 	vector_out.resize(node_in.size());
@@ -115,19 +115,19 @@ bool JsonSerializer::JsonToFloatVector(Json::Value& node_in, std::vector<float> 
 	}
 	return true;
 }
-std::vector<float> JsonSerializer::Vec4sToVector(openvdb::Vec4s &in)
+std::vector<float> JsonUtil::Vec4sToVector(openvdb::Vec4s &in)
 {
 	std::vector<float> output(4);
 	for(int i=0;i<4;i++){output[i]=in[i];}
 	return output;
 }
-std::vector<float> JsonSerializer::Vec3sToVector(openvdb::Vec3s &in)
+std::vector<float> JsonUtil::Vec3sToVector(openvdb::Vec3s &in)
 {
 	std::vector<float> output(3);
 	for(int i=0;i<3;i++){output[i]=in[i];}
 	return output;
 }
-std::vector<float> JsonSerializer::Vec2sToVector(openvdb::Vec2s &in)
+std::vector<float> JsonUtil::Vec2sToVector(openvdb::Vec2s &in)
 {
 	std::vector<float> output(2);
 	for(int i=0;i<2;i++){output[i]=in[i];}
@@ -135,7 +135,7 @@ std::vector<float> JsonSerializer::Vec2sToVector(openvdb::Vec2s &in)
 	return output;
 }
 
-std::vector<float> JsonSerializer::Mat4sToVector(openvdb::Mat4s &M)
+std::vector<float> JsonUtil::Mat4sToVector(openvdb::Mat4s &M)
 {
 	std::vector<float> output(16);
 	float* ptr=M.asPointer();
@@ -144,7 +144,7 @@ std::vector<float> JsonSerializer::Mat4sToVector(openvdb::Mat4s &M)
 	}
 	return output;
 }
-openvdb::Mat4s JsonSerializer::VectorToMat4s(const std::vector<float>& in)
+openvdb::Mat4s JsonUtil::VectorToMat4s(const std::vector<float>& in)
 {
 	openvdb::Mat4s M;
 	float* ptr=M.asPointer();
@@ -154,7 +154,7 @@ openvdb::Mat4s JsonSerializer::VectorToMat4s(const std::vector<float>& in)
 	return M;
 }
 
-std::vector<float> JsonSerializer::Mat3sToVector(openvdb::Mat3s &M)
+std::vector<float> JsonUtil::Mat3sToVector(openvdb::Mat3s &M)
 {
 	std::vector<float> output(9);
 	float* ptr=M.asPointer();
@@ -163,7 +163,7 @@ std::vector<float> JsonSerializer::Mat3sToVector(openvdb::Mat3s &M)
 	}
 	return output;
 }
-openvdb::Mat3s JsonSerializer::VectorToMat3s(const std::vector<float>& in)
+openvdb::Mat3s JsonUtil::VectorToMat3s(const std::vector<float>& in)
 {
 	openvdb::Mat3s M;
 	float* ptr=M.asPointer();
@@ -172,57 +172,57 @@ openvdb::Mat3s JsonSerializer::VectorToMat3s(const std::vector<float>& in)
 	}
 	return M;
 }
-openvdb::Vec4s JsonSerializer::VectorToVec4s(const std::vector<float>& in)
+openvdb::Vec4s JsonUtil::VectorToVec4s(const std::vector<float>& in)
 {
 	openvdb::Vec4s value;
 	for(int i=0;i<4;i++){value[i]=in[i];}
 	return value;
 }
-openvdb::Vec3s JsonSerializer::VectorToVec3s(const std::vector<float>& in)
+openvdb::Vec3s JsonUtil::VectorToVec3s(const std::vector<float>& in)
 {
 	openvdb::Vec3s value;
 	for(int i=0;i<3;i++){value[i]=in[i];}
 	return value;
 }
-openvdb::Vec2s JsonSerializer::VectorToVec2s(const std::vector<float>& in)
+openvdb::Vec2s JsonUtil::VectorToVec2s(const std::vector<float>& in)
 {
 	openvdb::Vec2s value;
 	for(int i=0;i<2;i++){value[i]=in[i];}
 	return value;
 }
 
-openvdb::Vec4i JsonSerializer::VectorToVec4i(const std::vector<int>& in)
+openvdb::Vec4i JsonUtil::VectorToVec4i(const std::vector<int>& in)
 {
 	openvdb::Vec4i value;
 	for(int i=0;i<4;i++){value[i]=in[i];}
 	return value;
 }
 
-openvdb::Vec2i JsonSerializer::VectorToVec2i(const std::vector<int>& in)
+openvdb::Vec2i JsonUtil::VectorToVec2i(const std::vector<int>& in)
 {
 	openvdb::Vec2i value;
 	for(int i=0;i<2;i++){value[i]=in[i];}
 	return value;
 }
-openvdb::Vec3i JsonSerializer::VectorToVec3i(const std::vector<int>& in)
+openvdb::Vec3i JsonUtil::VectorToVec3i(const std::vector<int>& in)
 {
 	openvdb::Vec3i value;
 	for(int i=0;i<3;i++){value[i]=in[i];}
 	return value;
 }
-std::vector<int> JsonSerializer::Vec4iToVector(openvdb::Vec4i &in)
+std::vector<int> JsonUtil::Vec4iToVector(openvdb::Vec4i &in)
 {
 	std::vector<int> output(4);
 	for(int i=0;i<4;i++){output[i]=in[i];}
 	return output;
 }
-std::vector<int> JsonSerializer::Vec2iToVector(openvdb::Vec2i &in)
+std::vector<int> JsonUtil::Vec2iToVector(openvdb::Vec2i &in)
 {
 	std::vector<int> output(2);
 	for(int i=0;i<2;i++){output[i]=in[i];}
 	return output;
 }
-std::vector<int> JsonSerializer::Vec3iToVector(openvdb::Vec3i &in)
+std::vector<int> JsonUtil::Vec3iToVector(openvdb::Vec3i &in)
 {
 	std::vector<int> output(3);
 	for(int i=0;i<3;i++){output[i]=in[i];}

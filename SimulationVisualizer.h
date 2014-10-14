@@ -21,15 +21,55 @@
 
 #ifndef SIMULATIONVISUALIZER_H_
 #define SIMULATIONVISUALIZER_H_
-
+#include "Simulation.h"
+#include "Camera.h"
+#include "GLEnvironmentalShader.h"
+#include "GLFrameBuffer.h"
+#include "GLImage.h"
+#include "GLSpringlShader.h"
+#include "GLRenderUI.h"
+#include <memory>
 namespace imagesci {
-
-/*
- *
- */
 class SimulationVisualizer {
-public:
+private:
+
+	int mUpdates;
+    GLEnvironmentalShader mIsoShader;
+    GLEnvironmentalShader mSpringlShader;
+    std::unique_ptr<GLFrameBuffer> mIsoTexture;
+    std::unique_ptr<GLFrameBuffer> mSpringlTexture;
+	std::unique_ptr<GLImage> bgImage;
+	std::unique_ptr<GLShader> isoShader;
+	std::unique_ptr<GLSpringlShader> mPrettySpringlShader;
+	std::unique_ptr<Camera> mCamera;
+	std::unique_ptr<Camera> mMiniCamera;
+
+    GLFWwindow* mWin;
+	GLRenderUI mUI;
+	std::string mGridName, mProgName, mGridInfo, mTransformInfo, mTreeInfo;
+	bool mShiftIsDown, mCtrlIsDown, mShowInfo;
+	std::unique_ptr<Simulation> mSimulation;
+	static SimulationVisualizer* mSimVis;
 	SimulationVisualizer();
+public:
+	static SimulationVisualizer* getInstance();
+	static void deleteInstance();
+	bool update();
+	void stash();
+	bool needsDisplay();
+	void setNeedsDisplay();
+	void setWindowTitle(double fps = 0.0);
+	void render();
+	void resume();
+	bool init(int width, int height);
+	void keyCallback(GLFWwindow* win,int key, int action,int mod);
+	void mouseButtonCallback(int button, int action);
+	void mousePosCallback(int x, int y);
+	void mouseWheelCallback(double pos);
+	void windowSizeCallback(int width, int height);
+	void windowRefreshCallback();
+	void start();
+	void stop();
 	virtual ~SimulationVisualizer();
 };
 

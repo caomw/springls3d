@@ -75,7 +75,7 @@ protected:
 	std::string rootFile;
 	std::unique_ptr<GLImage> bgImage;
 	std::unique_ptr<GLShader> isoShader;
-	std::unique_ptr<GLShaderSpringLS> mPrettySpringlShader;
+	std::unique_ptr<GLSpringlShader> mPrettySpringlShader;
 	std::vector<std::string> isoSurfaceFiles;
 	std::vector<std::string> constellationFiles;
 	std::vector<std::string> signedDistanceFiles;

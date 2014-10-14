@@ -40,7 +40,7 @@ const char* const fragmentShaderDepthGPU =
 		"}\n";
 const char* const NormalAndDepthAttributes[] = { 0 };
 const char* const MixerAttributes[] = { 0};
-GLShaderSpringLS::GLShaderSpringLS(int x, int y, int w, int h) :
+GLSpringlShader::GLSpringlShader(int x, int y, int w, int h) :
 		GLComponent(x, y, w, h),
 		mSpringLS(NULL),
 		mCamera(NULL),
@@ -48,13 +48,13 @@ GLShaderSpringLS::GLShaderSpringLS(int x, int y, int w, int h) :
 		mMatCapId2(0){
 
 }
-void GLShaderSpringLS::setMesh(Camera* camera, SpringLevelSet* mesh,const std::string& springlMatcap,const std::string& isoMatcap) {
+void GLSpringlShader::setMesh(Camera* camera, SpringLevelSet* mesh,const std::string& springlMatcap,const std::string& isoMatcap) {
 	mCamera = camera;
 	mSpringLS = mesh;
 	mIsoMatcap=isoMatcap;
 	mSpringlMatcap=springlMatcap;
 }
-void GLShaderSpringLS::updateGL() {
+void GLSpringlShader::updateGL() {
 		std::vector<std::string> attrib;
 		attrib.push_back("vp");
 		attrib.push_back("vn");
@@ -119,10 +119,10 @@ void GLShaderSpringLS::updateGL() {
 		}
 }
 
-bool GLShaderSpringLS::save(const std::string& file){
+bool GLSpringlShader::save(const std::string& file){
 	return renderImage->write(file);
 }
-void GLShaderSpringLS::compute(GLFWwindow* win){
+void GLSpringlShader::compute(GLFWwindow* win){
 	glEnable(GL_DEPTH_TEST);
 
 
@@ -160,7 +160,7 @@ void GLShaderSpringLS::compute(GLFWwindow* win){
 	wireImage->end();
 
 }
-void GLShaderSpringLS::render(GLFWwindow* win) {
+void GLSpringlShader::render(GLFWwindow* win) {
 	int winw,winh;
 	glfwGetWindowSize(win,&winw,&winh);
 	//isoImage->render(win);
@@ -206,7 +206,7 @@ void GLShaderSpringLS::render(GLFWwindow* win) {
 
 
 }
-GLShaderSpringLS::~GLShaderSpringLS() {
+GLSpringlShader::~GLSpringlShader() {
 	// TODO Auto-generated destructor stub
 }
 

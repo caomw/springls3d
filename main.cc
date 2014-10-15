@@ -60,9 +60,8 @@ int main(int argc, char *argv[]) {
 	int status = EXIT_SUCCESS;
 
 	try {
-		Simulation* sim=new EnrightSimulation();
-		SimulationVisualizer::run(sim,1024,768);
-		delete sim;
+		EnrightSimulation sim;
+		SimulationVisualizer::run(static_cast<Simulation*>(&sim),1024,768);
 		/*
 		if (argc > 2) {
 			if (std::string(argv[1]) == "-playback") {

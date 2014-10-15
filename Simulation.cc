@@ -24,13 +24,12 @@
 #include <openvdb/openvdb.h>
 namespace imagesci {
 void ExecuteSimulation(Simulation* sim){
-	sim->reset();
 	while(sim->step()){
 		std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	}
 }
 
-Simulation::Simulation():mIsMeshDirty(false),mRunning(false),mTimeStep(0),mSimulationDuration(0),mSimulationTime(0),mSimulationIteration(0) {
+Simulation::Simulation(const std::string& name):mName(name),mIsInitialized(false),mIsMeshDirty(false),mRunning(false),mTimeStep(0),mSimulationDuration(0),mSimulationTime(0),mSimulationIteration(0) {
 	// TODO Auto-generated constructor stub
 
 }
@@ -89,6 +88,11 @@ bool Simulation::setSource(const std::string& fileName){
 void Simulation::reset(){
 	mSimulationTime=0;
 	mSimulationIteration=0;
+	if(mIsInitialized){
+		cleanup();
+	}
+	mIsInitialized=false;
+
 }
 bool Simulation::stop(){
 	if(!mRunning)return true;
@@ -101,7 +105,11 @@ bool Simulation::stop(){
 	return true;
 }
 bool Simulation::start(){
-	if(!mRunning)return false;
+	if(mRunning)return false;
+	if(!mIsInitialized){
+		init();
+		mIsInitialized=true;
+	}
 	mRunning=true;
 	mSimulationThread=std::thread(ExecuteSimulation,this);
 	return true;

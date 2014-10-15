@@ -42,10 +42,11 @@ protected:
 	long mSimulationIteration;
 	bool mRunning;
 	bool mIsMeshDirty;
+	bool mIsInitialized;
 	std::thread mSimulationThread;
 
 public:
-	Simulation();
+	Simulation(const std::string& name="");
 	void loadParameters(const std::string& paramFile);
 	void saveParameters(const std::string& paramFile);
 	bool setSource(const std::string& sourceFileName);
@@ -58,6 +59,7 @@ public:
 	inline long getSimulationIteration(){return mSimulationIteration;}
 	virtual bool init()=0;
 	virtual bool step()=0;
+	virtual void cleanup()=0;
 	bool updateGL();
 	void reset();
 	bool start();

@@ -55,6 +55,7 @@
 namespace imagesci{
 
 using namespace imagesci;
+SimulationVisualizer* SimulationVisualizer::mSimVis=NULL;
 SimulationVisualizer* SimulationVisualizer::getInstance(){
 	if(mSimVis==NULL)mSimVis=new SimulationVisualizer();
 	return mSimVis;
@@ -65,12 +66,6 @@ void SimulationVisualizer::deleteInstance(){
 		mSimVis=NULL;
 	}
 }
-void UpdateView(SimulationVisualizer* v){
-	while(v->update()){
-		std::this_thread::sleep_for(std::chrono::milliseconds(5));
-	}
-}
-
 
 void
 keyCB(GLFWwindow * win, int key, int scancode, int action, int mods)
@@ -127,25 +122,35 @@ SimulationVisualizer::SimulationVisualizer()
     , mCtrlIsDown(false)
     , mShowInfo(true)
 	, mWin(NULL)
+	, mSimulation(NULL)
 	, mUpdates(0)
 {
 }
+void SimulationVisualizer::run(Simulation* simulation,int width,int height){
+	getInstance()->setSimulation(simulation);
+	getInstance()->init(width,height);
+	deleteInstance();
+}
 void SimulationVisualizer::start(){
-	mSimulation->reset();
-	mMiniCamera->loadConfig();
-	mSimulation->start();
+	if(mSimulation!=NULL){
+		mSimulation->reset();
+		mMiniCamera->loadConfig();
+		mSimulation->start();
+	}
 	render();
 }
 void SimulationVisualizer::resume(){
-	mMiniCamera->loadConfig();
-	mSimulation->start();
+	if(mSimulation!=NULL){
+		mMiniCamera->loadConfig();
+		mSimulation->start();
+	}
 	render();
 }
 SimulationVisualizer::~SimulationVisualizer(){
-	if(mSimulation.get()!=nullptr)mSimulation->stop();
+	if(mSimulation!=NULL)mSimulation->stop();
 }
 void SimulationVisualizer::stop(){
-	mSimulation->stop();
+	if(mSimulation!=NULL)mSimulation->stop();
 }
 
 bool SimulationVisualizer::init(int width,int height){
@@ -190,10 +195,6 @@ bool SimulationVisualizer::init(int width,int height){
 	mIsoShader.Init("./matcap/JG_Red.png");
 
 	mSpringlShader.Init("./matcap/JG_Silver.png");
-
-    //Image* img=Image::read("buddha.png");
-    //Text* txt=new Text(100,100,300,100);
-
 	int mainW=1200;
 	mPrettySpringlShader=std::unique_ptr<GLSpringlShader>(new GLSpringlShader(0,0,width,height));
 	mPrettySpringlShader->setMesh(mCamera.get(),&mSimulation->getSource(),"./matcap/JG_Red.png","./matcap/JG_Silver.png");
@@ -211,11 +212,6 @@ bool SimulationVisualizer::init(int width,int height){
 	mIsoTexture->updateGL();
 	std::vector<RGBA> imgBuffer;
 	int imgW,imgH;
-
-	//mUI.init();
-
-    //txt->setText("Hello World",14,true);
-
     glfwSetKeyCallback(mWin,keyCB);
     glfwSetMouseButtonCallback(mWin,mouseButtonCB);
     glfwSetCursorPosCallback(mWin,mousePosCB);
@@ -224,25 +220,18 @@ bool SimulationVisualizer::init(int width,int height){
     glfwSetWindowRefreshCallback(mWin,windowRefreshCB);
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_TEST);
-    glPointSize(4);
-    glLineWidth(2);
-	const float ambient[]={0.2f,0.2f,0.2f,1.0f};
-	const float diffuse[]={0.8f,0.8f,0.8f,1.0f};
-	const float specular[]={0.9f,0.9f,0.9f,1.0f};
-	const float position[]={0.3f,0.5f,1.0f,0.0f};
-
 	glEnable( GL_BLEND );
-
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_POLYGON_SMOOTH);
 	glEnable(GL_LINE_SMOOTH);
 	glEnable( GL_MULTISAMPLE );
-
     size_t frame = 0;
     double time = glfwGetTime();
     glfwSwapInterval(1);
+    start();
     do {
     	if(mSimulation->updateGL()){
+    		mSimulation->getSource().mConstellation.updateBBox();
 			render();
         } else {
     		if(needsDisplay()){
@@ -271,8 +260,10 @@ void
 SimulationVisualizer::setWindowTitle(double fps)
 {
     std::ostringstream ss;
-    ss  << mSimulation->getName()<<":: time="<<mSimulation->getSimulationTime()<<" iteration="<<mSimulation->getSimulationIteration();
-    glfwSetWindowTitle(mWin,ss.str().c_str());
+    if(mSimulation!=NULL){
+    	ss  << mSimulation->getName()<<":: time="<<mSimulation->getSimulationTime()<<" iteration="<<mSimulation->getSimulationIteration();
+    	glfwSetWindowTitle(mWin,ss.str().c_str());
+    }
 }
 
 
@@ -285,7 +276,6 @@ SimulationVisualizer::render()
 
 
     const openvdb::BBoxd renderBBox=BBoxd(Vec3s(-0.5,-0.5,-0.5),Vec3s(0.5,0.5,0.5));
-
     openvdb::BBoxd bbox=mSimulation->getSource().mIsoSurface.GetBBox();
     openvdb::Vec3d extents = bbox.extents();
     openvdb::Vec3d rextents=renderBBox.extents();
@@ -297,8 +287,7 @@ SimulationVisualizer::render()
     Pose.postTranslate(-minPt);
 	Pose.postScale(Vec3s(scale,scale,scale));
 	Pose.postTranslate(rminPt);
-
-    bbox=mSimulation->getSource().mConstellation.GetBBox();
+	bbox=mSimulation->getSource().mConstellation.GetBBox();
     extents = bbox.extents();
     scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));
     minPt=bbox.getCenter();
@@ -340,24 +329,12 @@ SimulationVisualizer::render()
 	mSimulation->getSource().mIsoSurface.draw();
 	mIsoShader.end();
 	mIsoTexture->end();
-
-	/*
-	mSpringlTexture->begin();
-    mSpringlShader.begin();
-	mMiniCamera->aim(0,0,mIsoTexture->w,mIsoTexture->h,mSpringlShader);
-	springlGrid.draw(false,true,false,false);
-	mSpringlShader.end();
-	mSpringlTexture->end();
-		*/
 	mPrettySpringlShader->compute(mWin);
-
 	glViewport(0,0,width,height);
 
 	glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
-	//bgImage->render(mWin);
 	mPrettySpringlShader->render(mWin);
-	//mSpringlTexture->render(mWin);
 	mIsoTexture->render(mWin);
 
 	/*
@@ -377,20 +354,6 @@ SimulationVisualizer::render()
 		WriteImageToFile(ostr1.str(),tmp2,width,height);
 	}
 	*/
-	/*
-	mWireframeShader.begin();
-	mCamera->aim(0,height/2,height/2,height/2,mWireframeShader);
-	springlGrid.draw(false,true,false,false);
-	mWireframeShader.end();
-	*/
-    //
-
-
-	//mUI.aim(height/2,0,width-height/2,height);
-    //mUI.render();
-
-
-
 }
 
 

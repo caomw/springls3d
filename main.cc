@@ -28,7 +28,6 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#include "EnrightSpringls.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -54,7 +53,6 @@
 #include <openvdb/util/Util.h>
 #include <openvdb/math/Stats.h>
 #include <boost/filesystem.hpp>
-#include "Util.h"
 #include <tbb/mutex.h>
 
 #ifdef DWA_OPENVDB
@@ -62,13 +60,20 @@
 #include <usagetrack.h>
 
 #endif
-
+#include "Util.h"
+#include "SimulationVisualizer.h"
+#include "EnrightSimulation.h"
 using namespace openvdb;
+using namespace imagesci;
 tbb::mutex sLock;
 int main(int argc, char *argv[]) {
 	int status = EXIT_SUCCESS;
 
 	try {
+		Simulation* sim=new EnrightSimulation();
+		SimulationVisualizer::run(sim,1024,768);
+		delete sim;
+		/*
 		if (argc > 2) {
 			if (std::string(argv[1]) == "-playback") {
 				std::string fileName(argv[2]);
@@ -123,6 +128,7 @@ int main(int argc, char *argv[]) {
 			viewer->start();
 			viewer->init(1600, 900);
 		}
+		 */
 	} catch (imagesci::Exception& e) {
 		std::cout << e.what() << std::endl;
 		status = EXIT_FAILURE;

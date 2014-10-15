@@ -48,14 +48,17 @@ private:
 	GLRenderUI mUI;
 	std::string mGridName, mProgName, mGridInfo, mTransformInfo, mTreeInfo;
 	bool mShiftIsDown, mCtrlIsDown, mShowInfo;
-	std::unique_ptr<Simulation> mSimulation;
+	Simulation* mSimulation;
 	static SimulationVisualizer* mSimVis;
 	SimulationVisualizer();
 public:
 	static SimulationVisualizer* getInstance();
 	static void deleteInstance();
-	bool update();
+	static void run(Simulation* simulation,int width,int height);
 	void stash();
+	void setSimulation(Simulation* simulation){
+		this->mSimulation=simulation;
+	}
 	bool needsDisplay();
 	void setNeedsDisplay();
 	void setWindowTitle(double fps = 0.0);

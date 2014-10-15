@@ -26,9 +26,7 @@
 
 namespace imagesci {
 
-EnrightSimulation::EnrightSimulation() {
-	// TODO Auto-generated constructor stub
-
+EnrightSimulation::EnrightSimulation():Simulation("Enright") {
 }
 bool EnrightSimulation::init(){
 	int dim = 256;
@@ -38,18 +36,22 @@ bool EnrightSimulation::init(){
 	FloatGrid::Ptr mSignedLevelSet =openvdb::tools::createLevelSetSphere<FloatGrid>(radius,center, voxelSize);
 	mSource.create(*mSignedLevelSet);
     mSource.mIsoSurface.updateBBox();
-
 	advect=std::unique_ptr<AdvectT>(new AdvectT(mSource,field));
 	advect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mSimulationDuration=3.0f;
-	mTimeStep=0.001;
-
+	mTimeStep=0.005;
+	mIsMeshDirty=true;
 	return true;
+}
+void EnrightSimulation::cleanup(){
+	advect.reset();
 }
 bool EnrightSimulation::step(){
 	advect->advect(mSimulationTime,mSimulationTime+mTimeStep);
+	mIsMeshDirty=true;
 	mSimulationIteration++;
 	mSimulationTime=mTimeStep*mSimulationIteration;
+
 	if(mSimulationTime<=mSimulationDuration&&mRunning){
 		return true;
 	} else {

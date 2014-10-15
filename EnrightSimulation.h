@@ -32,12 +32,10 @@ class EnrightSimulation:public Simulation {
 protected:
 	FieldT field;
 	std::unique_ptr<AdvectT> advect;
-
-	virtual bool init()=0;
-	virtual bool step()=0;
-
+	bool init();
+	bool step();
+	void cleanup();
 public:
-	virtual void render()=0;
 	EnrightSimulation();
 };
 

@@ -108,17 +108,16 @@ void SimulationVisualizer::windowRefreshCallback(){
 SimulationVisualizer::SimulationVisualizer()
     : mCamera(new Camera())
 	, mMiniCamera(new Camera())
-    , mShiftIsDown(false)
-    , mCtrlIsDown(false)
-    , mShowInfo(true)
 	, mWin(NULL)
 	, mSimulation(NULL)
 	, mUpdates(0)
+	, mOutputDirectory("./")
 {
 }
-void SimulationVisualizer::run(Simulation* simulation,int width,int height){
+void SimulationVisualizer::run(Simulation* simulation,int width,int height,const std::string outputDirectory){
 	getInstance()->setSimulation(simulation);
 	getInstance()->init(width,height);
+	mOutputDirectory=outputDirectory;
 	deleteInstance();
 }
 void SimulationVisualizer::start(){
@@ -142,15 +141,14 @@ SimulationVisualizer::~SimulationVisualizer(){
 void SimulationVisualizer::stop(){
 	if(mSimulation!=NULL)mSimulation->stop();
 }
+void SimulationVisualizer::stash(){
 
+}
 bool SimulationVisualizer::init(int width,int height){
     if (glfwInit() != GL_TRUE) {
         std::cout<<"GLFW Initialization Failed.";
         return false;
     }
-
-
-    mGridName.clear();
     // Create window
     mWin=NULL;
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -165,7 +163,7 @@ bool SimulationVisualizer::init(int width,int height){
     }
     GLint major,minor,rev;
 
-    glfwSetWindowTitle(mWin,mProgName.c_str());
+    glfwSetWindowTitle(mWin,"Simulation Visualizer");
     glfwMakeContextCurrent(mWin);
     glfwSwapBuffers(mWin);
 
@@ -352,9 +350,6 @@ SimulationVisualizer::keyCallback(GLFWwindow* win,int key, int action,int mod)
 {
     bool keyPress = (glfwGetKey(win,key) == GLFW_PRESS);
     mCamera->keyCallback(win,key, action);
-    mShiftIsDown = glfwGetKey(win,GLFW_KEY_LEFT_SHIFT);
-    mCtrlIsDown = glfwGetKey(win,GLFW_KEY_LEFT_CONTROL);
-
     if(keyPress){
 		if(key==' '){
 			if(mSimulation->isRunning()){
@@ -365,9 +360,7 @@ SimulationVisualizer::keyCallback(GLFWwindow* win,int key, int action,int mod)
 				resume();
 			}
 		}
-
     }
-
     setNeedsDisplay();
 
 }

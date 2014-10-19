@@ -28,6 +28,7 @@
 #include "Mesh.h"
 #include "ImageSciUtil.h"
 #include "AdvectionForce.h"
+#include "json/JsonSerializable.h"
 #undef OPENVDB_REQUIRE_VERSION_NAME
 
 namespace imagesci {
@@ -298,6 +299,17 @@ private:
 	}
 };
 
+class SpringLevelSetDescription: public JsonSerializable{
+	public:
+		std::string mConstellationFile;
+		std::string mIsoSurfaceFile;
+		std::string mSignedLevelSetFile;
+		static std::vector<std::string> mMetricNames;
+		std::vector<double> mMetricValues;
+		SpringLevelSetDescription();
+		void serialize(Json::Value& root_in);
+		void deserialize(Json::Value& root_in);
+};
 }
 
 #endif

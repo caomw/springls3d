@@ -8,7 +8,7 @@ bool JsonUtil::Serialize( JsonSerializable* pObj, std::string& output )
 		return false;
 
 	Json::Value serializeRoot;
-	pObj->Serialize(serializeRoot);
+	pObj->serialize(serializeRoot);
 
 	Json::StyledWriter writer;
 	output = writer.write( serializeRoot );
@@ -27,7 +27,7 @@ bool JsonUtil::Deserialize( JsonSerializable* pObj, std::string& input )
 	if ( !reader.parse(input, deserializeRoot) )
 		return false;
 
-	pObj->Deserialize(deserializeRoot);
+	pObj->deserialize(deserializeRoot);
 
 	return true;
 }

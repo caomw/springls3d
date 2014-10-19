@@ -22,6 +22,7 @@
 #include "Simulation.h"
 #include <boost/filesystem.hpp>
 #include <openvdb/openvdb.h>
+#include "json/JsonUtil.h"
 namespace imagesci {
 void ExecuteSimulation(Simulation* sim){
 	while(sim->step()){
@@ -85,6 +86,15 @@ bool Simulation::setSource(const std::string& fileName){
 	}
 	return false;
 }
+SimulationTimeStepDescription Simulation::getDescription(){
+	SimulationTimeStepDescription desc;
+	desc.mSimulationDuration=mSimulationDuration;
+	desc.mSimulationIteration=mSimulationIteration;
+	desc.mSimulationTime=mSimulationTime;
+	desc.mTimeStep=mTimeStep;
+	desc.mSimulationName=mName;
+	return desc;
+}
 void Simulation::reset(){
 	mSimulationTime=0;
 	mSimulationIteration=0;
@@ -116,6 +126,56 @@ bool Simulation::start(){
 }
 Simulation::~Simulation() {
 	stop();
+}
+void SimulationTimeStepDescription::serialize(Json::Value& root_in)
+{
+	Json::Value &root = root_in["SimulationTimeStep"];
+	root["Name"] = mSimulationName;
+	root["Iteration"] = (int)mSimulationIteration;
+	root["Time"] = mSimulationTime;
+	root["TimeStep"] = mTimeStep;
+	root["Duration"] = mSimulationDuration;
+
+}
+void SimulationTimeStepDescription::deserialize(Json::Value& root_in)
+{
+	Json::Value &root = root_in["SimulationTimeStep"];
+	mSimulationName=root.get("SimulationTimeStep","").asString();
+	mSimulationIteration=root.get("Iteration",0).asInt();
+	mSimulationTime=root.get("Time",0.0).asDouble();
+	mTimeStep=root.get("TimeStep",0.0).asDouble();
+	mSimulationDuration=root.get("Duration",0.0).asDouble();
+}
+
+bool SimulationTimeStepDescription::load(const std::string& file, SimulationTimeStepDescription* out){
+	std::ifstream ifs;
+	ifs.open(file, std::ifstream::in);
+	if (ifs.is_open()){
+		std::cout << "Reading " << file << " ... ";
+		std::string str((std::istreambuf_iterator<char>(ifs)),
+			std::istreambuf_iterator<char>());
+		ifs.close();
+		std::cout << "Done." << std::endl;
+		return JsonUtil::Deserialize(out, str);
+	}
+	else {
+		return false;
+	}
+}
+
+bool SimulationTimeStepDescription::save(const std::string& file) {
+	std::ofstream ofs;
+	ofs.open(file, std::ofstream::out);
+	if (ofs.is_open()){
+		std::cout << "Saving " << file << " ... ";
+		std::string output;
+		bool ret = JsonUtil::Serialize(this, output);
+		if (ret)ofs << output;
+		ofs.close();
+		std::cout << "Done." << std::endl;
+		return ret;
+	}
+	return false;
 }
 
 } /* namespace imagesci */

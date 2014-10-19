@@ -26,28 +26,27 @@
 
 namespace imagesci {
 
-EnrightSimulation::EnrightSimulation():Simulation("Enright") {
+EnrightSimulation::EnrightSimulation(int gridSize):Simulation("Enright"),mGridSize(gridSize) {
 }
 bool EnrightSimulation::init(){
-	int dim = 256;
 	const float radius = 0.15f;
 	const openvdb::Vec3f center(0.35f, 0.35f, 0.35f);
-	float voxelSize = 1 / (float) (dim - 1);
+	float voxelSize = 1 / (float) (mGridSize - 1);
 	FloatGrid::Ptr mSignedLevelSet =openvdb::tools::createLevelSetSphere<FloatGrid>(radius,center, voxelSize);
 	mSource.create(*mSignedLevelSet);
     mSource.mIsoSurface.updateBBox();
-	advect=std::unique_ptr<AdvectT>(new AdvectT(mSource,field));
-	advect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
+	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,mField));
+	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mSimulationDuration=3.0f;
 	mTimeStep=0.005;
 	mIsMeshDirty=true;
 	return true;
 }
 void EnrightSimulation::cleanup(){
-	advect.reset();
+	mAdvect.reset();
 }
 bool EnrightSimulation::step(){
-	advect->advect(mSimulationTime,mSimulationTime+mTimeStep);
+	mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
 	mIsMeshDirty=true;
 	mSimulationIteration++;
 	mSimulationTime=mTimeStep*mSimulationIteration;

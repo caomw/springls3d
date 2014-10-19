@@ -32,8 +32,12 @@ protected:
 	std::vector<std::string> isoSurfaceFiles;
 	std::vector<std::string> constellationFiles;
 	std::vector<std::string> signedDistanceFiles;
+	std::string mDirectory;
 public:
-	SimulationPlayback();
+	SimulationPlayback(const std::string& directory);
+	virtual bool init();
+	virtual bool step();
+	virtual void cleanup();
 	virtual ~SimulationPlayback();
 };
 

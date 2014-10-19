@@ -19,13 +19,13 @@
  * THE SOFTWARE.
  */
 #include "SpringLevelSet.h"
+#include "json/JsonUtil.h"
 #include <openvdb/Grid.h>
 #include <openvdb/util/Util.h>
 #include <openvdb/math/Stencils.h>
 #include <openvdb/tools/MeshToVolume.h>
 #include <openvdb/tools/VolumeToMesh.h>
 #include <openvdb/tools/LevelSetAdvect.h>
-
 #include <openvdb/openvdb.h>
 namespace imagesci {
 using namespace openvdb;
@@ -46,6 +46,29 @@ const float SpringLevelSet::RELAX_TIMESTEP = 0.1f;
 const float SpringLevelSet::MIN_AREA = 0.05f;
 const float SpringLevelSet::MAX_AREA = 2.0 * 2.0f;
 const float SpringLevelSet::MIN_ASPECT_RATIO = 0.1f;
+void SpringLevelSetDescription::serialize(Json::Value& root_in)
+	{
+		Json::Value &root = root_in["SpringLevelSet"];
+		root["ConstellationFile"]=mConstellationFile;
+		root["IsoSurfaceFile"]=mIsoSurfaceFile;
+		root["SignedLevelSetFile"]=mSignedLevelSetFile;
+		for(int i=0;i<mMetricNames.size();i++){
+			root[mMetricNames[i]]=mMetricValues[i];
+		}
+	}
+void SpringLevelSetDescription::deserialize(Json::Value& root_in)
+	{
+		Json::Value &root = root_in["SpringLevelSet"];
+		mConstellationFile=root.get("ConstellationFile","").asString();
+		mIsoSurfaceFile=root.get("IsoSurfaceFile","").asString();
+		mSignedLevelSetFile=root.get("SignedLevelSetFile","").asString();
+		for(int i=0;i<mMetricNames.size();i++){
+			mMetricValues[i]=root.get(mMetricNames[i],0.0).asDouble();
+		}
+	}
+std::vector<std::string> SpringLevelSetDescription::mMetricNames={"Added","Removed"};
+SpringLevelSetDescription::SpringLevelSetDescription():mMetricValues(mMetricNames.size(),0.0){
+}
 std::ostream& operator<<(std::ostream& ostr, const SpringlNeighbor& classname) {
 	ostr << "{" << classname.springlId << "|"
 			<< static_cast<int>(classname.edgeId) << ":" << std::setprecision(4)

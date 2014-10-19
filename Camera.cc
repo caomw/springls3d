@@ -318,8 +318,8 @@ Camera::mousePosCallback(int x, int y)
 }
 CameraAndSceneConfig Camera::getConfig(){
 	CameraAndSceneConfig p;
-	p.mModelRotation=mRm;
-	p.mWorldRotation=mRw;
+	p.mModelRotation=mRm.getMat3();
+	p.mWorldRotation=mRw.getMat3();
 	p.mModelTranslation=mCameraTrans;
 	p.mWorldTranslation=mLookAt;
 	p.mDistanceToObject=mDistanceToObject;
@@ -327,38 +327,31 @@ CameraAndSceneConfig Camera::getConfig(){
 }
 bool Camera::saveConfig(const std::string& file){
 	if(!mChanged&&!mNeedsDisplay)return false;
-	FILE* f = fopen(file.c_str(), "wb");
-	if(f!=NULL){
-		CameraAndSceneConfig p;
-		p.mModelRotation=mRm;
-		p.mWorldRotation=mRw;
-		p.mModelTranslation=mCameraTrans;
-		p.mWorldTranslation=mLookAt;
-		p.mDistanceToObject=mDistanceToObject;
-		fwrite(&p, sizeof(CameraAndSceneConfig), 1, f);
-		fclose(f);
-	return true;
-	} else return false;
+	CameraAndSceneConfig p;
+	p.mModelRotation=mRm.getMat3();
+	p.mWorldRotation=mRw.getMat3();
+	p.mModelTranslation=mCameraTrans;
+	p.mWorldTranslation=mLookAt;
+	p.mDistanceToObject=mDistanceToObject;
+	return p.save(file);
 }
 bool Camera::loadConfig(const std::string& file){
-	FILE* f = fopen(file.c_str(), "rb");
-	if(f!=NULL){
-		CameraAndSceneConfig p;
-		fread(&p,sizeof(CameraAndSceneConfig),1,f);
-		mRm=p.mModelRotation;
-		mRw=p.mWorldRotation;
+	CameraAndSceneConfig p;
+	if(CameraAndSceneConfig::load(file,&p)){
+		mRm.setMat3(p.mModelRotation);
+		mRw.setMat3(p.mWorldRotation);
 		mCameraTrans=p.mModelTranslation;
 		mLookAt=p.mWorldTranslation;
 		mDistanceToObject=p.mDistanceToObject;
-		fclose(f);
+
 		mChanged=true;
 		mNeedsDisplay=true;
-	return true;
+		return true;
 	} else return false;
 }
 void Camera::setConfig(const CameraAndSceneConfig& p){
-	mRm=p.mModelRotation;
-	mRw=p.mWorldRotation;
+	mRm.setMat3(p.mModelRotation);
+	mRw.setMat3(p.mWorldRotation);
 	mCameraTrans=p.mModelTranslation;
 	mLookAt=p.mWorldTranslation;
 	mDistanceToObject=p.mDistanceToObject;

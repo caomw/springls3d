@@ -24,6 +24,11 @@
 #include <openvdb/tools/LevelSetUtil.h>
 #include <boost/filesystem.hpp>
 #include <png.h>
+#if defined(WIN32) || defined(_WIN32)
+#define PATH_SEPARATOR "\\"
+#else
+#define PATH_SEPARATOR "/"
+#endif
 namespace imagesci {
 using namespace openvdb;
 using namespace openvdb::tools;
@@ -49,6 +54,15 @@ std::string GetFileNameWithoutExtension(const std::string& file) {
 	 return file;
 	 }
 	 */
+}
+std::string GetFileDirectoryPath(std::string FileName)
+{
+	if (FileName.find_last_of(PATH_SEPARATOR) != std::string::npos)
+	{
+		size_t end = FileName.find_last_of(PATH_SEPARATOR);
+		return FileName.substr(0, end);
+	}
+	return FileName;
 }
 int GetDirectoryListing(const std::string& dirName,
 		std::vector<std::string>& files, const std::string& mask,

@@ -53,71 +53,33 @@
 #include "Util.h"
 #include "SimulationVisualizer.h"
 #include "EnrightSimulation.h"
+#include "SimulationPlayback.h"
+#include <iostream>
 using namespace openvdb;
 using namespace imagesci;
-tbb::mutex sLock;
+using namespace std;
 int main(int argc, char *argv[]) {
 	int status = EXIT_SUCCESS;
-
 	try {
-		EnrightSimulation sim;
-		SimulationVisualizer::run(static_cast<Simulation*>(&sim),1024,768);
-		/*
-		if (argc > 2) {
-			if (std::string(argv[1]) == "-playback") {
-				std::string fileName(argv[2]);
-				openvdb::initialize();
-				tbb::mutex::scoped_lock(sLock);
-				OPENVDB_START_THREADSAFE_STATIC_WRITE
-				imagesci::EnrightSpringls* viewer =
-						imagesci::EnrightSpringls::GetInstance();
-				OPENVDB_FINISH_THREADSAFE_STATIC_WRITE
-				if(viewer->openRecording(fileName)){
-					if(argc>3){
-						viewer->setFrameIndex(atoi(argv[3]));
-					}
-					viewer->init(1600, 900);
-				}
+		if (argc > 3){
+			if(std::string(argv[1]) == "-playback") {
+				std::string dirName=std::string(argv[2]);
+				SimulationPlayback sim(dirName);
 
-			} else if (std::string(argv[1]) == "-simulate") {
-				std::string fileName(argv[2]);
-				openvdb::initialize();
-				tbb::mutex::scoped_lock(sLock);
-				OPENVDB_START_THREADSAFE_STATIC_WRITE
-				imagesci::EnrightSpringls* viewer =
-						imagesci::EnrightSpringls::GetInstance();
-				OPENVDB_FINISH_THREADSAFE_STATIC_WRITE
-				std::string ext = boost::filesystem::extension(
-						boost::filesystem::path(fileName));
-				if (ext == std::string(".ply")) {
-					viewer->openMesh(fileName);
-				} else if (ext == std::string(".vdb")) {
-					viewer->openGrid(fileName);
+				SimulationVisualizer::run(static_cast<Simulation*>(&sim),1024,768,dirName);
+			} else if(std::string(argv[1]) == "-simulate"){
+				std::string dirName=std::string(argv[2]);
+				int dim = 256;
+				if(argc>4){
+					dim=atoi(argv[3]);
 				}
-				viewer->start();
-				viewer->init(1600, 900);
+				EnrightSimulation sim(dim);
+				SimulationVisualizer::run(static_cast<Simulation*>(&sim),1024,768,dirName);
 			}
 		} else {
-			openvdb::initialize();
-			tbb::mutex::scoped_lock(sLock);
-			OPENVDB_START_THREADSAFE_STATIC_WRITE
-			imagesci::EnrightSpringls* viewer =
-					imagesci::EnrightSpringls::GetInstance();
-			const float radius = 0.15f;
-			const openvdb::Vec3f center(0.35f, 0.35f, 0.35f);
-			int dim = 256;
-			if(argc>1){
-				dim=atoi(argv[1]);
-			}
-			float voxelSize = 1 / (float) (dim - 1);
-			FloatGrid::Ptr mSignedLevelSet =
-					openvdb::tools::createLevelSetSphere<FloatGrid>(radius,
-							center, voxelSize);
-			viewer->openGrid(*mSignedLevelSet);
-			viewer->start();
-			viewer->init(1600, 900);
+			std::cout<<"Usage: "<<argv[0]<<" -playback INPUT_DIRECTORY"<<endl;
+			std::cout<<"Usage: "<<argv[0]<<" -simulate OUTPUT_DIRECTORY INTEGER_GRID_SIZE"<<endl;
 		}
-		 */
 	} catch (imagesci::Exception& e) {
 		std::cout << e.what() << std::endl;
 		status = EXIT_FAILURE;

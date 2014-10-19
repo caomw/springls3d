@@ -20,14 +20,67 @@
  */
 
 #include "SimulationPlayback.h"
-
+#include "ImageSciUtil.h"
 namespace imagesci {
 
-SimulationPlayback::SimulationPlayback() {
+SimulationPlayback::SimulationPlayback(const std::string& directory):Simulation(),mDirectory(directory) {
 	// TODO Auto-generated constructor stub
 
 }
+bool SimulationPlayback::init(){
+	isoSurfaceFiles.clear();
+	constellationFiles.clear();
+	signedDistanceFiles.clear();
+	int n1=GetDirectoryListing(mDirectory,isoSurfaceFiles,"_iso",".ply");
+	int n2=GetDirectoryListing(mDirectory,constellationFiles,"_sls",".ply");
+	int n3=GetDirectoryListing(mDirectory,signedDistanceFiles,"",".vdb");
+	mSimulationDuration=3.0f;
+	mTimeStep=0.005;
+	mSimulationIteration=0;
+	if(!(n1==n2&&n2==n3)||n1==0)return false;
+	Mesh c;
+	c.openMesh(constellationFiles[mSimulationIteration]);
+	mSource.mConstellation.create(&c);
+	mSource.mIsoSurface.openMesh(isoSurfaceFiles[mSimulationIteration]);
+	mSource.mIsoSurface.updateVertexNormals(16);
+	mSource.mConstellation.updateVertexNormals();
+	return true;
+}
+bool SimulationPlayback::step(){
 
+	mSimulationIteration++;
+	mSimulationTime=mTimeStep*mSimulationIteration;
+
+	Mesh c;
+	c.openMesh(constellationFiles[mSimulationIteration]);
+	mSource.mConstellation.create(&c);
+	mSource.mIsoSurface.openMesh(isoSurfaceFiles[mSimulationIteration]);
+	mSource.mIsoSurface.updateVertexNormals(16);
+	mSource.mConstellation.updateVertexNormals();
+	openvdb::io::File file(signedDistanceFiles[mSimulationIteration]);
+	file.open();
+	openvdb::GridPtrVecPtr grids =file.getGrids();
+	openvdb::GridPtrVec allGrids;
+	allGrids.insert(allGrids.end(), grids->begin(), grids->end());
+	GridBase::Ptr ptr = allGrids[0];
+	FloatGrid::Ptr mSignedLevelSet=boost::static_pointer_cast<FloatGrid>(ptr);
+	mSource.transform()=mSignedLevelSet->transform();
+	mSignedLevelSet->setTransform(openvdb::math::Transform::createLinearTransform(1.0));
+	mSource.mSignedLevelSet=mSignedLevelSet;
+	mSource.mConstellation.updateBBox();
+	mIsMeshDirty=true;
+
+	if(mSimulationTime<=mSimulationDuration&&mRunning){
+		return true;
+	} else {
+		return false;
+	}
+}
+void SimulationPlayback::cleanup(){
+	isoSurfaceFiles.clear();
+	constellationFiles.clear();
+	signedDistanceFiles.clear();
+}
 SimulationPlayback::~SimulationPlayback() {
 	// TODO Auto-generated destructor stub
 }

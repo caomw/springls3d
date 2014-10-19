@@ -25,17 +25,26 @@
 #include "SpringLevelSet.h"
 #include <thread>
 #include <mutex>
+#include "json/JsonSerializable.h"
 namespace imagesci {
 class Simulation;
 void ExecuteSimulation(Simulation* sim);
-/*
- *
- */
+class SimulationTimeStepDescription: public JsonSerializable{
+public:
+	void deserialize(Json::Value& root_in);
+	void serialize(Json::Value& root_in);
+	std::string mSimulationName;
+	long mSimulationIteration;
+	double mSimulationTime;
+	double mTimeStep;
+	double mSimulationDuration;
+	static bool load(const std::string& file, SimulationTimeStepDescription* out);
+	bool save(const std::string& file);
+};
 class Simulation {
-
 protected:
-	std::string mName;
 	SpringLevelSet mSource;
+	std::string mName;
 	double mSimulationTime;
 	double mTimeStep;
 	double mSimulationDuration;
@@ -44,8 +53,9 @@ protected:
 	bool mIsMeshDirty;
 	bool mIsInitialized;
 	std::thread mSimulationThread;
-
 public:
+	SimulationTimeStepDescription getDescription();
+
 	Simulation(const std::string& name="");
 	void loadParameters(const std::string& paramFile);
 	void saveParameters(const std::string& paramFile);

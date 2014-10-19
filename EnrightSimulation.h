@@ -30,13 +30,14 @@ class EnrightSimulation:public Simulation {
 	typedef openvdb::tools::EnrightField<float> FieldT;
 	typedef SpringLevelSetAdvection<FieldT> AdvectT;
 protected:
-	FieldT field;
-	std::unique_ptr<AdvectT> advect;
+	FieldT mField;
+	std::unique_ptr<AdvectT> mAdvect;
+	int mGridSize;
 	bool init();
 	bool step();
 	void cleanup();
 public:
-	EnrightSimulation();
+	EnrightSimulation(int gridSize=256);
 };
 
 } /* namespace imagesci */

@@ -41,19 +41,75 @@
 #include <GL/glxext.h>
 #include <GLFW/glfw3.h>
 #include "GLShader.h"
+#include "json/JsonSerializable.h"
+#include "json/JsonUtil.h"
+#include <fstream>
 namespace imagesci{
-struct CameraAndSceneConfig{
+class CameraAndSceneConfig:public JsonSerializable{
 public:
-	openvdb::Mat4s mWorldRotation;
+	openvdb::Mat3s mWorldRotation;
 	openvdb::Vec3s mWorldTranslation;
 
-	openvdb::Mat4s mModelRotation;
+	openvdb::Mat3s mModelRotation;
 	openvdb::Vec3s mModelTranslation;
 
 	double mDistanceToObject;
 
+	void serialize(Json::Value& root_in)
+	{
+		Json::Value &root = root_in["CameraAndScene"];
+		JsonUtil::Mat3sToJson(mWorldRotation,root["WorldRotaiton"]);
+		JsonUtil::Vec3sToJson(mWorldTranslation,root["WorldTranslation"]);
+
+		JsonUtil::Mat3sToJson(mModelRotation,root["ModelRotaiton"]);
+		JsonUtil::Vec3sToJson(mModelTranslation,root["ModelTranslation"]);
+
+		root["DistanceToObject"]=mDistanceToObject;
+
+	}
+	void deserialize(Json::Value& root_in)
+	{
+		Json::Value &root = root_in["CameraAndScene"];
+		mWorldRotation=JsonUtil::JsonToMat3s(root["WorldRotaiton"]);
+		mWorldTranslation=JsonUtil::JsonToVec3s(root["WorldTranslation"]);
+
+		mModelRotation=JsonUtil::JsonToMat3s(root["ModelRotaiton"]);
+		mModelTranslation=JsonUtil::JsonToVec3s(root["ModelTranslation"]);
+
+		mDistanceToObject=root.get("DistanceToObject",0.0).asDouble();
+	}
+	static bool load(const std::string& file,CameraAndSceneConfig* out){
+		std::ifstream ifs;
+		ifs.open(file, std::ifstream::in);
+		if (ifs.is_open()){
+			std::cout << "Reading " << file << " ... ";
+			std::string str((std::istreambuf_iterator<char>(ifs)),
+				std::istreambuf_iterator<char>());
+			ifs.close();
+			std::cout << "Done." << std::endl;
+			return JsonUtil::Deserialize(out, str);
+		}
+		else {
+			return false;
+		}
+	}
+
+	bool save(const std::string& file) {
+		std::ofstream ofs;
+		ofs.open(file, std::ofstream::out);
+		if (ofs.is_open()){
+			std::cout << "Saving " << file << " ... ";
+			std::string output;
+			bool ret = JsonUtil::Serialize(this, output);
+			if (ret)ofs << output;
+			ofs.close();
+			std::cout << "Done." << std::endl;
+			return ret;
+		}
+		return false;
+	}
 };
-class Camera
+class Camera:public JsonSerializable
 {
 protected:
     // Camera parameters
@@ -68,6 +124,20 @@ protected:
     double mMouseXPos, mMouseYPos;
     int mWheelPos;
 public:
+	void serialize(Json::Value& root_in)
+	{
+		Json::Value &root = root_in["Camera"];
+		JsonUtil::Mat4sToJson(mModel,root["ModelMatrix"]);
+		JsonUtil::Mat4sToJson(mView,root["ViewMatrix"]);
+		JsonUtil::Mat4sToJson(mView,root["ProjectionMatrix"]);
+	}
+	void deserialize(Json::Value& root_in)
+	{
+		Json::Value &root = root_in["Camera"];
+		mModel=JsonUtil::JsonToMat4s(root["ModelMatrix"]);
+		mView=JsonUtil::JsonToMat4s(root["ViewMatrix"]);
+		mProjection=JsonUtil::JsonToMat4s(root["ProjectionMatrix"]);
+	}
     Camera();
 
     void aim(int x,int y,int width,int height,GLShader& shader);

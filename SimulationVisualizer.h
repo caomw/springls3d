@@ -46,15 +46,14 @@ private:
 
     GLFWwindow* mWin;
 	GLRenderUI mUI;
-	std::string mGridName, mProgName, mGridInfo, mTransformInfo, mTreeInfo;
-	bool mShiftIsDown, mCtrlIsDown, mShowInfo;
+	std::string mOutputDirectory;
 	Simulation* mSimulation;
 	static SimulationVisualizer* mSimVis;
 	SimulationVisualizer();
 public:
 	static SimulationVisualizer* getInstance();
 	static void deleteInstance();
-	static void run(Simulation* simulation,int width,int height);
+	static void run(Simulation* simulation,int width,int height,const std::string outputDirectory);
 	void stash();
 	void setSimulation(Simulation* simulation){
 		this->mSimulation=simulation;

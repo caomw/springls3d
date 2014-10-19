@@ -155,9 +155,10 @@ typedef struct PlyFile {        /* description of PLY file */
 /*
 extern char *my_alloc();
 */
-#define myalloc(mem_size) malloc (mem_size)
+void* myalloc(size_t mem_size);
 
-
+void myfree(void* ptr);
+void* myrealloc (void* ptr,size_t mem_size);
 /* old routines */
 
 #if 0

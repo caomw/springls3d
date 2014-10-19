@@ -47,11 +47,8 @@ bool SimulationPlayback::init(){
 	return true;
 }
 bool SimulationPlayback::step(){
-
-
-	Mesh c;
-	c.openMesh(constellationFiles[mSimulationIteration]);
-	mSource.mConstellation.create(&c);
+	mTemporaryMesh.openMesh(constellationFiles[mSimulationIteration]);
+	mSource.mConstellation.create(&mTemporaryMesh);
 	mSource.mConstellation.updateVertexNormals();
 	mSource.mIsoSurface.openMesh(isoSurfaceFiles[mSimulationIteration]);
 	mSource.mIsoSurface.updateVertexNormals(16);

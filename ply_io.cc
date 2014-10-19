@@ -35,6 +35,9 @@ WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <list>
+#include <map>
+#include <iostream>
 #include "ply_io.h"
 /* names of scalar types */
 
@@ -72,19 +75,42 @@ int ply_type_size[] = {
 #define OTHER_PROP       0
 #define NAMED_PROP       1
 
-char* my_strdup(char* str){
-	//return strdup(str);
+std::map<void*,size_t> OBJECT_MEMORY;
+void* myalloc (size_t mem_size){
+	void* ptr=malloc(mem_size);
+	OBJECT_MEMORY[ptr]=mem_size;
+	return ptr;
+}
+void myfree(void* ptr){
 
+	std::map<void*,size_t>::iterator iter=OBJECT_MEMORY.find(ptr);
+	if(iter!=OBJECT_MEMORY.end()){
+		OBJECT_MEMORY.erase(iter);
+		free(ptr);
+	}
+}
+void* myrealloc (void* ptr,size_t mem_size){
+	if(OBJECT_MEMORY.find(ptr)!=OBJECT_MEMORY.end()){
+		return ptr;
+	} else {
+		return myalloc(mem_size);
+	}
+
+}
+char* my_strdup(char* str){
 	int len=strlen(str);
 	if(len>0){
-		char* newStr=malloc(sizeof(char)*(len+1));
+		char* newStr=(char*)myalloc(sizeof(char)*(len+1));
 		strcpy(newStr,str);
 		return newStr;
 	} else {
 		return NULL;
 	}
-
 }
+
+
+
+
 
 /*************/
 /*  Writing  */
@@ -257,9 +283,9 @@ void ply_describe_property ( PlyFile *plyfile, char *elem_name,
 	else {
 		elem->nprops++;
 		elem->props = (PlyProperty **)
-			realloc (elem->props, sizeof (PlyProperty *) * elem->nprops);
+			myrealloc (elem->props, sizeof (PlyProperty *) * elem->nprops);
 		elem->store_prop = (char *)
-			realloc (elem->store_prop, sizeof (char) * elem->nprops);
+			myrealloc (elem->store_prop, sizeof (char) * elem->nprops);
 	}
 
 	/* copy the new property */
@@ -598,11 +624,7 @@ PlyFile *ply_read(FILE *fp, int *nelems, char ***elem_names)
 	words = get_words (plyfile->fp, &nwords, &orig_line);
 	if (!words || !equal_strings (words[0], "ply"))
 		return (NULL);
-
 	while (words) {
-
-		/* parse words */
-
 		if (equal_strings (words[0], "format")) {
 			if (nwords != 3)
 				return (NULL);
@@ -617,23 +639,26 @@ PlyFile *ply_read(FILE *fp, int *nelems, char ***elem_names)
 			plyfile->version = atof (words[2]);
 			found_format = 1;
 		}
-		else if (equal_strings (words[0], "element"))
+		else if (equal_strings (words[0], "element")){
 			add_element (plyfile, words, nwords);
-		else if (equal_strings (words[0], "property"))
+		}
+		else if (equal_strings (words[0], "property")){
 			add_property (plyfile, words, nwords);
-		else if (equal_strings (words[0], "comment"))
+		}
+		else if (equal_strings (words[0], "comment")){
 			add_comment (plyfile, orig_line);
-		else if (equal_strings (words[0], "obj_info"))
+		}
+		else if (equal_strings (words[0], "obj_info")){
 			add_obj_info (plyfile, orig_line);
-		else if (equal_strings (words[0], "end_header"))
+		}
+		else if (equal_strings (words[0], "end_header")){
 			break;
-
+		}
 		/* free up words space */
-		free (words);
+		myfree(words);
 
 		words = get_words (plyfile->fp, &nwords, &orig_line);
 	}
-
 	/* create tags for each property of each element, to be used */
 	/* later to say whether or not to store each property for the user */
 
@@ -646,7 +671,6 @@ PlyFile *ply_read(FILE *fp, int *nelems, char ***elem_names)
 	}
 
 	/* set return values about the elements */
-
 	elist = (char **) myalloc (sizeof (char *) * plyfile->num_elem_types);
 	for (i = 0; i < plyfile->num_elem_types; i++)
 		elist[i] = my_strdup(plyfile->elems[i]->name);
@@ -687,8 +711,8 @@ PlyFile *ply_open_for_reading(
 	char *name;
 
 	/* tack on the extension .ply, if necessary */
-
 	name = (char *) myalloc (sizeof (char) * (strlen (filename) + 5));
+
 	strcpy(name,filename);
 	/*
 	if (strlen (name) < 4 ||
@@ -703,7 +727,6 @@ PlyFile *ply_open_for_reading(
 	/* create the PlyFile data structure */
 
 	plyfile = ply_read (fp, nelems, elem_names);
-
 	/* determine the file type and version */
 
 	*file_type = plyfile->file_type;
@@ -1138,7 +1161,7 @@ PlyOtherElems *get_other_element_ply (PlyFile *plyfile)
 	}
 	else {
 		other_elems = plyfile->other_elems;
-		other_elems->other_list = (OtherElem *) realloc (other_elems->other_list,
+		other_elems->other_list = (OtherElem *) myrealloc (other_elems->other_list,
 			sizeof (OtherElem) * other_elems->num_elems + 1);
 		other = &(other_elems->other_list[other_elems->num_elems]);
 		other_elems->num_elems++;
@@ -1152,7 +1175,7 @@ PlyOtherElems *get_other_element_ply (PlyFile *plyfile)
 
 	/* create a list to hold all the current elements */
 	other->other_data = (OtherData **)
-		malloc (sizeof (OtherData *) * other->elem_count);
+		myalloc (sizeof (OtherData *) * other->elem_count);
 
 	/* set up for getting elements */
 	other->other_props = ply_get_other_properties (plyfile, elem_name,
@@ -1161,7 +1184,7 @@ PlyOtherElems *get_other_element_ply (PlyFile *plyfile)
 	/* grab all these elements */
 	for (i = 0; i < other->elem_count; i++) {
 		/* grab and element from the file */
-		other->other_data[i] = (OtherData *) malloc (sizeof (OtherData));
+		other->other_data[i] = (OtherData *) myalloc (sizeof (OtherData));
 		ply_get_element (plyfile, (void *) other->other_data[i]);
 	}
 
@@ -1232,7 +1255,7 @@ void ply_close(PlyFile *plyfile)
 	fclose (plyfile->fp);
 
 	/* free up memory associated with the PLY file */
-	free (plyfile);
+	//free (plyfile);
 }
 
 
@@ -1293,7 +1316,7 @@ char *recreate_command_line (int argc, char *argv[])
 		len += strlen(argv[i]) + 1;
 
 	/* create empty line */
-	line = (char *) malloc (sizeof(char) * len);
+	line = (char *) myalloc (sizeof(char) * len);
 	line[0] = '\0';
 
 	/* repeatedly append argv */
@@ -1487,7 +1510,7 @@ void ascii_get_element(PlyFile *plyfile, char *elem_ptr)
 
 	}
 
-	free (words);
+	myfree(words);
 }
 
 
@@ -1708,7 +1731,7 @@ char **get_words(FILE *fp, int *nwords, char **orig_line)
 		/* allocate more room for words if necessary */
 		if (num_words >= max_words) {
 			max_words += 10;
-			words = (char **) realloc (words, sizeof (char *) * max_words);
+			words = (char **) myrealloc (words, sizeof (char *) * max_words);
 		}
 
 		if (*ptr == '\"') {  /* a quote indidicates that we have a string */
@@ -2203,10 +2226,9 @@ words   - list of words describing the element
 nwords  - number of words in the list
 ******************************************************************************/
 
-void add_element (PlyFile *plyfile, char **words, int nwords)
+void add_element(PlyFile *plyfile, char **words, int nwords)
 {
 	PlyElement *elem;
-
 	/* create the new element */
 	elem = (PlyElement *) myalloc (sizeof (PlyElement));
 	elem->name = my_strdup(words[1]);
@@ -2214,11 +2236,13 @@ void add_element (PlyFile *plyfile, char **words, int nwords)
 	elem->nprops = 0;
 
 	/* make room for new element in the object's list of elements */
-	if (plyfile->num_elem_types == 0)
+	if (plyfile->num_elem_types == 0){
 		plyfile->elems = (PlyElement **) myalloc (sizeof (PlyElement *));
-	else
-		plyfile->elems = (PlyElement **) realloc (plyfile->elems,
+	} else{
+		plyfile->elems = (PlyElement **) myrealloc (plyfile->elems,
 		sizeof (PlyElement *) * (plyfile->num_elem_types + 1));
+	}
+
 
 	/* add the new element to the object's list */
 	plyfile->elems[plyfile->num_elem_types] = elem;
@@ -2300,7 +2324,7 @@ void add_property (PlyFile *plyfile, char **words, int nwords)
 	if (elem->nprops == 0)
 		elem->props = (PlyProperty **) myalloc (sizeof (PlyProperty *));
 	else
-		elem->props = (PlyProperty **) realloc (elem->props,
+		elem->props = (PlyProperty **) myrealloc (elem->props,
 		sizeof (PlyProperty *) * (elem->nprops + 1));
 	elem->props[elem->nprops] = prop;
 	elem->nprops++;
@@ -2380,7 +2404,7 @@ static char *my_alloc(int size, int lnum, char *fname)
 {
 	char *ptr;
 
-	ptr = (char *) malloc (size);
+	ptr = (char *) myalloc (size);
 
 	if (ptr == 0) {
 		fprintf(stderr, "Memory allocation bombed on line %d in %s\n", lnum, fname);
@@ -2491,7 +2515,7 @@ void append_comment_ply(PlyFile *ply, char *comment)
 	if (ply->num_comments == 0)
 		ply->comments = (char **) myalloc (sizeof (char *));
 	else
-		ply->comments = (char **) realloc (ply->comments,
+		ply->comments = (char **) myrealloc (ply->comments,
 		sizeof (char *) * (ply->num_comments + 1));
 
 	/* add comment to list */
@@ -2531,7 +2555,7 @@ void append_obj_info_ply(PlyFile *ply, char *obj_info)
 	if (ply->num_obj_info == 0)
 		ply->obj_info = (char **) myalloc (sizeof (char *));
 	else
-		ply->obj_info = (char **) realloc (ply->obj_info,
+		ply->obj_info = (char **) myrealloc (ply->obj_info,
 		sizeof (char *) * (ply->num_obj_info + 1));
 
 	/* add info to list */
@@ -2579,8 +2603,10 @@ plyfile - identifier of file
 
 void free_ply(PlyFile *plyfile)
 {
-	/* free up memory associated with the PLY file */
-	free (plyfile);
+	for(std::pair<void*,size_t> obj:OBJECT_MEMORY){
+		free(obj.first);
+	}
+	OBJECT_MEMORY.clear();
 }
 
 
@@ -2760,9 +2786,9 @@ void describe_property_ply(
 	else {
 		elem->nprops++;
 		elem->props = (PlyProperty **)
-			realloc (elem->props, sizeof (PlyProperty *) * elem->nprops);
+			myrealloc (elem->props, sizeof (PlyProperty *) * elem->nprops);
 		elem->store_prop = (char *)
-			realloc (elem->store_prop, sizeof (char) * elem->nprops);
+			myrealloc (elem->store_prop, sizeof (char) * elem->nprops);
 	}
 
 	/* copy the new property */
@@ -2809,9 +2835,9 @@ void describe_other_properties_ply(
 		int newsize;
 		newsize = elem->nprops + other->nprops;
 		elem->props = (PlyProperty **)
-			realloc (elem->props, sizeof (PlyProperty *) * newsize);
+			myrealloc (elem->props, sizeof (PlyProperty *) * newsize);
 		elem->store_prop = (char *)
-			realloc (elem->store_prop, sizeof (char) * newsize);
+			myrealloc (elem->store_prop, sizeof (char) * newsize);
 	}
 
 	/* copy the other properties */
@@ -3031,9 +3057,9 @@ void weight_props_ply (PlyFile *ply, float weight, void *other_props)
 	}
 	if (rules->nprops == rules->max_props) {
 		rules->max_props *= 2;
-		rules->props = (void **) realloc (rules->props,
+		rules->props = (void **) myrealloc (rules->props,
 			sizeof (void *) * rules->max_props);
-		rules->weights = (float *) realloc (rules->weights,
+		rules->weights = (float *) myrealloc (rules->weights,
 			sizeof (float) * rules->max_props);
 	}
 
@@ -3088,7 +3114,7 @@ void *get_new_props_ply(PlyFile *ply)
 	}
 	if (rules->nprops >= max_vals) {
 		max_vals = rules->nprops;
-		vals = (double *) realloc (vals, sizeof (double) * rules->nprops);
+		vals = (double *) myrealloc (vals, sizeof (double) * rules->nprops);
 	}
 
 	/* in case we need a random choice */
@@ -3222,7 +3248,7 @@ PlyRuleList *append_prop_rule (
 		return (rule_list);
 	}
 
-	rule = (PlyRuleList *) malloc (sizeof (PlyRuleList));
+	rule = (PlyRuleList *) myalloc (sizeof (PlyRuleList));
 	rule->name = name;
 	rule->element = str;
 	rule->property = str2;

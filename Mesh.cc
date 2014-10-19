@@ -232,6 +232,7 @@ bool Mesh::save(const std::string& f) {
 	}
 	// close the PLY file
 	close_ply(ply);
+	free_ply(ply);
 	std::cout<<"Done."<<std::endl;
 	return true;
 }
@@ -251,7 +252,6 @@ bool Mesh::openGrid(const std::string& fileName) {
 bool Mesh::openMesh(const std::string& file) {
 	int i, j, k;
 	int numPts = 0, numPolys = 0;
-
 	// open a PLY file for reading
 	PlyFile *ply;
 	int nelems = 3, fileType = PLY_BINARY_LE, numElems, nprops;
@@ -263,7 +263,6 @@ bool Mesh::openMesh(const std::string& file) {
 		std::cerr << "Could not open ply file." << std::endl;
 		return false;
 	}
-
 	// Check to make sure that we can read geometry
 	PlyElement *elem;
 	int index;
@@ -277,6 +276,7 @@ bool Mesh::openMesh(const std::string& file) {
 		close_ply(ply);
 		return false;
 	}
+
 	// Check for optional attribute data. We can handle intensity; and the
 	// triplet red, green, blue.
 	bool RGBPointsAvailable = false;
@@ -354,11 +354,12 @@ bool Mesh::openMesh(const std::string& file) {
 			}
 		}							//if face
 
-		free(elist[i]); //allocated by ply_open_for_reading
+		//free(elist[i]); //allocated by ply_open_for_reading
 
 	} //for all elements of the PLY file
-	free(elist); //allocated by ply_open_for_reading
+	//free(elist); //allocated by ply_open_for_reading
 	close_ply(ply);
+	free_ply(ply);
 	if (this->mVertexes.size() > 0) {
 		this->updateBBox();
 		return true;

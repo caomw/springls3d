@@ -61,8 +61,13 @@ using namespace imagesci;
 using namespace std;
 int main(int argc, char *argv[]) {
 	int status = EXIT_FAILURE;
+	for(int i=0;i<argc;i++){
+		cout<<argv[i]<<" ";
+	}
+	cout<<endl;
 	try {
-		if (argc > 3){
+		openvdb::initialize();
+		if (argc > 2){
 			std::string task=std::string(argv[1]);
 			if( task== "-playback") {
 				std::string dirName=std::string(argv[2]);
@@ -90,12 +95,14 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	} catch (imagesci::Exception& e) {
-		std::cout << e.what() << std::endl;
+		cout << "ImageSci Error:: "<< e.what() << endl;
+	} catch (openvdb::Exception& e) {
+		cout << "OpenVDB Error:: "<< e.what() << endl;
 	}
 	if(status==EXIT_FAILURE){
-		std::cout<<"Usage: "<<argv[0]<<" -playback <INPUT_DIRECTORY>"<<endl;
-		std::cout<<"Usage: "<<argv[0]<<" -enright <OUTPUT_DIRECTORY> <INTEGER_GRID_SIZE>"<<endl;
-		std::cout<<"Usage: "<<argv[0]<<" -twist <OUTPUT_DIRECTORY> <MESH_FILE>"<<endl;
+		cout<<"Usage: "<<argv[0]<<" -playback <INPUT_DIRECTORY>"<<endl;
+		cout<<"Usage: "<<argv[0]<<" -enright <OUTPUT_DIRECTORY> <INTEGER_GRID_SIZE>"<<endl;
+		cout<<"Usage: "<<argv[0]<<" -twist <OUTPUT_DIRECTORY> <MESH_FILE>"<<endl;
 	}
 	return status;
 }

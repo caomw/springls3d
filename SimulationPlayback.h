@@ -33,6 +33,7 @@ protected:
 	std::vector<std::string> constellationFiles;
 	std::vector<std::string> signedDistanceFiles;
 	std::string mDirectory;
+	Mesh mTemporaryMesh;
 public:
 	SimulationPlayback(const std::string& directory);
 	virtual bool init();

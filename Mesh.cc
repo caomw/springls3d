@@ -277,8 +277,6 @@ bool Mesh::openMesh(const std::string& file) {
 		close_ply(ply);
 		return false;
 	}
-	boost::shared_ptr<Mesh> mesh = boost::shared_ptr<Mesh>(new Mesh());
-
 	// Check for optional attribute data. We can handle intensity; and the
 	// triplet red, green, blue.
 	bool RGBPointsAvailable = false;
@@ -289,6 +287,7 @@ bool Mesh::openMesh(const std::string& file) {
 	this->mParticles.clear();
 	this->mParticleNormals.clear();
 	this->mVertexNormals.clear();
+	this->mColors.clear();
 	if ((elem = find_element(ply, "vertex")) != NULL
 			&& find_property(elem, "red", &index) != NULL
 			&& find_property(elem, "green", &index) != NULL

@@ -25,8 +25,14 @@
 #include "json/JsonUtil.h"
 namespace imagesci {
 void ExecuteSimulation(Simulation* sim){
-	while(sim->step()){
-		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	try {
+		while(sim->step()){
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		}
+	} catch (imagesci::Exception& e) {
+		std::cout << "ImageSci Error:: "<< e.what() << std::endl;
+	} catch (openvdb::Exception& e) {
+		std::cout << "OpenVDB Error:: "<< e.what() << std::endl;
 	}
 }
 

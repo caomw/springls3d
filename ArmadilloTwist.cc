@@ -32,7 +32,7 @@ ArmadilloTwist::~ArmadilloTwist() {
 }
 
 bool ArmadilloTwist::init(){
-	setSource(mSourceFileName);
+	if(mSourceFileName.length()>0)setSource(mSourceFileName);
 	return false;
 }
 bool ArmadilloTwist::step(){

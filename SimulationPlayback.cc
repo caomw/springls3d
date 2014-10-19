@@ -48,15 +48,13 @@ bool SimulationPlayback::init(){
 }
 bool SimulationPlayback::step(){
 
-	mSimulationIteration++;
-	mSimulationTime=mTimeStep*mSimulationIteration;
 
 	Mesh c;
 	c.openMesh(constellationFiles[mSimulationIteration]);
 	mSource.mConstellation.create(&c);
+	mSource.mConstellation.updateVertexNormals();
 	mSource.mIsoSurface.openMesh(isoSurfaceFiles[mSimulationIteration]);
 	mSource.mIsoSurface.updateVertexNormals(16);
-	mSource.mConstellation.updateVertexNormals();
 	openvdb::io::File file(signedDistanceFiles[mSimulationIteration]);
 	file.open();
 	openvdb::GridPtrVecPtr grids =file.getGrids();
@@ -68,6 +66,9 @@ bool SimulationPlayback::step(){
 	mSignedLevelSet->setTransform(openvdb::math::Transform::createLinearTransform(1.0));
 	mSource.mSignedLevelSet=mSignedLevelSet;
 	mSource.mConstellation.updateBBox();
+	mSimulationIteration++;
+	mSimulationTime=mTimeStep*mSimulationIteration;
+
 	mIsMeshDirty=true;
 
 	if(mSimulationTime<=mSimulationDuration&&mRunning){

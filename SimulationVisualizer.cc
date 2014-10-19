@@ -262,7 +262,6 @@ void
 SimulationVisualizer::render()
 {
 
-
     const openvdb::BBoxd renderBBox=BBoxd(Vec3s(-0.5,-0.5,-0.5),Vec3s(0.5,0.5,0.5));
     openvdb::BBoxd bbox=mSimulation->getSource().mIsoSurface.GetBBox();
     openvdb::Vec3d extents = bbox.extents();
@@ -296,18 +295,21 @@ SimulationVisualizer::render()
 
     mCamera->setPose(Pose.transpose());
     float t=mSimulation->getSimulationTime()/mSimulation->getSimulationDuration();
+    /*
     const float specular=3;
     const float minZoom=0.25;
     const float maxZoom=2.0;
     float w=pow(cos(2*(t-0.5f)*M_PI)*0.5f+0.5f,specular);
     float zoom=w*(maxZoom-minZoom)+minZoom;
     if(mSimulation->isRunning())mCamera->setDistance(zoom);
+     */
     CameraAndSceneConfig p=mCamera->getConfig();
     p.mDistanceToObject=0.8f;
     p.mModelTranslation=Vec3d(0);
     p.mWorldTranslation=Vec3d(0);
 
     mMiniCamera->setConfig(p);
+
     mMiniCamera->setPose(miniPose.transpose());
 
     glEnable(GL_DEPTH_TEST);

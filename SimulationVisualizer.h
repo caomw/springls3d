@@ -29,6 +29,7 @@
 #include "GLSpringlShader.h"
 #include "GLRenderUI.h"
 #include <memory>
+#include <string>
 namespace imagesci {
 class SimulationVisualizer {
 private:
@@ -47,6 +48,7 @@ private:
     GLFWwindow* mWin;
 	GLRenderUI mUI;
 	std::string mOutputDirectory;
+
 	Simulation* mSimulation;
 	static SimulationVisualizer* mSimVis;
 	SimulationVisualizer();
@@ -55,6 +57,9 @@ public:
 	static void deleteInstance();
 	static void run(Simulation* simulation,int width,int height,const std::string outputDirectory);
 	void stash();
+	inline void setOutputDirectory(std::string outputDirectory){
+		mOutputDirectory=outputDirectory;
+	}
 	void setSimulation(Simulation* simulation){
 		this->mSimulation=simulation;
 	}

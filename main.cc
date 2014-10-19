@@ -54,35 +54,48 @@
 #include "SimulationVisualizer.h"
 #include "EnrightSimulation.h"
 #include "SimulationPlayback.h"
+#include "ArmadilloTwist.h"
 #include <iostream>
 using namespace openvdb;
 using namespace imagesci;
 using namespace std;
 int main(int argc, char *argv[]) {
-	int status = EXIT_SUCCESS;
+	int status = EXIT_FAILURE;
 	try {
 		if (argc > 3){
-			if(std::string(argv[1]) == "-playback") {
+			std::string task=std::string(argv[1]);
+			if( task== "-playback") {
 				std::string dirName=std::string(argv[2]);
 				SimulationPlayback sim(dirName);
-
 				SimulationVisualizer::run(static_cast<Simulation*>(&sim),1024,768,dirName);
-			} else if(std::string(argv[1]) == "-simulate"){
+				status=EXIT_SUCCESS;
+			} else if("-enright"){
 				std::string dirName=std::string(argv[2]);
 				int dim = 256;
-				if(argc>4){
+				if(argc>3){
 					dim=atoi(argv[3]);
 				}
 				EnrightSimulation sim(dim);
 				SimulationVisualizer::run(static_cast<Simulation*>(&sim),1024,768,dirName);
+				status=EXIT_SUCCESS;
+			} else if("-twist"){
+				std::string dirName=std::string(argv[2]);
+				std::string sourceFileName="armadillo.ply";
+				if(argc>3){
+					sourceFileName=std::string(argv[3]);
+				}
+				ArmadilloTwist sim(sourceFileName);
+				SimulationVisualizer::run(static_cast<Simulation*>(&sim),1024,768,dirName);
+				status=EXIT_SUCCESS;
 			}
-		} else {
-			std::cout<<"Usage: "<<argv[0]<<" -playback INPUT_DIRECTORY"<<endl;
-			std::cout<<"Usage: "<<argv[0]<<" -simulate OUTPUT_DIRECTORY INTEGER_GRID_SIZE"<<endl;
 		}
 	} catch (imagesci::Exception& e) {
 		std::cout << e.what() << std::endl;
-		status = EXIT_FAILURE;
+	}
+	if(status==EXIT_FAILURE){
+		std::cout<<"Usage: "<<argv[0]<<" -playback <INPUT_DIRECTORY>"<<endl;
+		std::cout<<"Usage: "<<argv[0]<<" -enright <OUTPUT_DIRECTORY> <INTEGER_GRID_SIZE>"<<endl;
+		std::cout<<"Usage: "<<argv[0]<<" -twist <OUTPUT_DIRECTORY> <MESH_FILE>"<<endl;
 	}
 	return status;
 }

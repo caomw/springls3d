@@ -117,7 +117,7 @@ SimulationVisualizer::SimulationVisualizer()
 void SimulationVisualizer::run(Simulation* simulation,int width,int height,const std::string outputDirectory){
 	getInstance()->setSimulation(simulation);
 	getInstance()->init(width,height);
-	mOutputDirectory=outputDirectory;
+	getInstance()->setOutputDirectory(outputDirectory);
 	deleteInstance();
 }
 void SimulationVisualizer::start(){

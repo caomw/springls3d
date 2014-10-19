@@ -23,12 +23,22 @@
 
 namespace imagesci {
 
-ArmadilloTwist::ArmadilloTwist(const std::string& fileName):Simulation() {
-	if(!setSource(fileName))throw Exception("Could not open "+fileName);
+ArmadilloTwist::ArmadilloTwist(const std::string& fileName):Simulation(),mSourceFileName(fileName) {
+	//if(!setSource(fileName))throw Exception("Could not open "+fileName);
 }
 
 ArmadilloTwist::~ArmadilloTwist() {
 	// TODO Auto-generated destructor stub
 }
 
+bool ArmadilloTwist::init(){
+	setSource(mSourceFileName);
+	return false;
+}
+bool ArmadilloTwist::step(){
+	return false;
+}
+void ArmadilloTwist::cleanup(){
+
+}
 } /* namespace imagesci */

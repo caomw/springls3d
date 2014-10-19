@@ -29,7 +29,12 @@ namespace imagesci {
  *
  */
 class ArmadilloTwist : public Simulation{
+private:
+	std::string mSourceFileName;
 public:
+	virtual bool init();
+	virtual bool step();
+	virtual void cleanup();
 	ArmadilloTwist(const std::string& fileName);
 	virtual ~ArmadilloTwist();
 };

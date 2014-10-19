@@ -461,14 +461,17 @@ void SpringLevelSet::create(Mesh* mesh,
 	mIsoSurface.create(mSignedLevelSet);
 	mConstellation.create(&mIsoSurface);
 	updateIsoSurface();
-	updateUnSignedLevelSet();
-	updateNearestNeighbors();
-	relax(10);
-	updateUnSignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
-	clean();
-	updateIsoSurface();
-	fill();
+	for(int iter=0;iter<2;iter++){
+		updateUnSignedLevelSet();
+		updateNearestNeighbors();
+		relax(10);
+		updateUnSignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
+		clean();
+		updateUnSignedLevelSet();
+		fill();
+	}
 	updateGradient();
+
 }
 void SpringLevelSet::create(FloatGrid& grid) {
 	this->mTransform = grid.transformPtr();

@@ -32,14 +32,10 @@ ArmadilloTwist::~ArmadilloTwist() {
 }
 
 bool ArmadilloTwist::init(){
-	std::cout<<"SOURCE FILE "<<mSourceFileName<<std::endl;
-	//if(mSourceFileName.length()>0)setSource(mSourceFileName);
 	Mesh mesh;
 	if(!mesh.openMesh(mSourceFileName))return false;
-
 	mesh.mapIntoBoundingBox(2*mesh.estimateVoxelSize());
 	mesh.updateBoundingBox();
-	std::cout<<"Bounding Box "<<mesh.getBoundingBox()<<" "<<mesh.mVertexes.size()<<std::endl;
     openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     mSource.create(&mesh);
     BBoxd bbox=mSource.mIsoSurface.updateBoundingBox();

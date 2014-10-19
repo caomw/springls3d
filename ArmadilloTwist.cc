@@ -32,10 +32,33 @@ ArmadilloTwist::~ArmadilloTwist() {
 }
 
 bool ArmadilloTwist::init(){
-	if(mSourceFileName.length()>0)setSource(mSourceFileName);
-	return false;
+	std::cout<<"SOURCE FILE "<<mSourceFileName<<std::endl;
+	//if(mSourceFileName.length()>0)setSource(mSourceFileName);
+	Mesh mesh;
+	if(!mesh.openMesh(mSourceFileName))return false;
+
+	mesh.mapIntoBoundingBox(2*mesh.estimateVoxelSize());
+	mesh.updateBoundingBox();
+	std::cout<<"Bounding Box "<<mesh.getBoundingBox()<<" "<<mesh.mVertexes.size()<<std::endl;
+    openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
+    mSource.create(&mesh);
+    BBoxd bbox=mSource.mIsoSurface.updateBoundingBox();
+	trans=mSource.mSignedLevelSet->transformPtr();
+    Vec3d extents=bbox.extents();
+	double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
+	double scale=1.0/max_extent;
+	const float radius = 0.15f;
+    const openvdb::Vec3f center(0.35f,0.35f,0.35f);
+	Vec3s t=-0.5f*(bbox.min()+bbox.max());
+	trans=mSource.transformPtr();
+	trans->postTranslate(t);
+	trans->postScale(scale*2*radius);
+	trans->postTranslate(center);
+	mIsMeshDirty=true;
+	return true;
 }
 bool ArmadilloTwist::step(){
+	mSimulationIteration++;
 	return false;
 }
 void ArmadilloTwist::cleanup(){

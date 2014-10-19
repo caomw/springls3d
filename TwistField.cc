@@ -19,26 +19,17 @@
  * THE SOFTWARE.
  */
 
-#ifndef ARMADILLOTWIST_H_
-#define ARMADILLOTWIST_H_
+#include "TwistField.h"
 
-#include "Simulation.h"
 namespace imagesci {
 
-/*
- *
- */
-class ArmadilloTwist : public Simulation{
-private:
-	std::string mSourceFileName;
-public:
-	bool init();
-	bool step();
-	void cleanup();
-	ArmadilloTwist(const std::string& fileName="");
-	virtual ~ArmadilloTwist();
-};
+TwistField::TwistField() {
+	// TODO Auto-generated constructor stub
+
+}
+
+TwistField::~TwistField() {
+	// TODO Auto-generated destructor stub
+}
 
 } /* namespace imagesci */
-
-#endif /* ARMADILLOTWIST_H_ */

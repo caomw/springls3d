@@ -82,8 +82,8 @@ class Mesh{
 		std::vector<openvdb::Vec4I> mFaces;
 		Mesh();
 		void create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr grid);
-		inline openvdb::BBoxd GetBBox(){return mBoundingBox;}
-		openvdb::math::BBox<openvdb::Vec3d>& updateBBox();
+		inline openvdb::BBoxd getBoundingBox(){return mBoundingBox;}
+		openvdb::math::BBox<openvdb::Vec3d>& updateBoundingBox();
 		void draw();
 		void scale(float sc);
 		inline void setPose(openvdb::Mat4s& pose){

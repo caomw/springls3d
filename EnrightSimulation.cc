@@ -34,7 +34,7 @@ bool EnrightSimulation::init(){
 	float voxelSize = 1 / (float) (mGridSize - 1);
 	FloatGrid::Ptr mSignedLevelSet =openvdb::tools::createLevelSetSphere<FloatGrid>(radius,center, voxelSize);
 	mSource.create(*mSignedLevelSet);
-    mSource.mIsoSurface.updateBBox();
+    mSource.mIsoSurface.updateBoundingBox();
 	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,mField));
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mSimulationDuration=3.0f;

@@ -219,7 +219,7 @@ bool SimulationVisualizer::init(int width,int height){
     start();
     do {
     	if(mSimulation->updateGL()){
-    		mSimulation->getSource().mConstellation.updateBBox();
+    		mSimulation->getSource().mConstellation.updateBoundingBox();
 			render();
         } else {
     		if(needsDisplay()){
@@ -263,7 +263,7 @@ SimulationVisualizer::render()
 {
 
     const openvdb::BBoxd renderBBox=BBoxd(Vec3s(-0.5,-0.5,-0.5),Vec3s(0.5,0.5,0.5));
-    openvdb::BBoxd bbox=mSimulation->getSource().mIsoSurface.GetBBox();
+    openvdb::BBoxd bbox=mSimulation->getSource().mIsoSurface.getBoundingBox();
     openvdb::Vec3d extents = bbox.extents();
     openvdb::Vec3d rextents=renderBBox.extents();
     double scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));
@@ -274,7 +274,7 @@ SimulationVisualizer::render()
     Pose.postTranslate(-minPt);
 	Pose.postScale(Vec3s(scale,scale,scale));
 	Pose.postTranslate(rminPt);
-	bbox=mSimulation->getSource().mConstellation.GetBBox();
+	bbox=mSimulation->getSource().mConstellation.getBoundingBox();
     extents = bbox.extents();
     scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));
     minPt=bbox.getCenter();

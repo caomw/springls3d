@@ -463,8 +463,12 @@ void SpringLevelSet::create(Mesh* mesh,
 	updateIsoSurface();
 	updateUnSignedLevelSet();
 	updateNearestNeighbors();
-	updateGradient();
 	relax(10);
+	updateUnSignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
+	clean();
+	updateIsoSurface();
+	fill();
+	updateGradient();
 }
 void SpringLevelSet::create(FloatGrid& grid) {
 	this->mTransform = grid.transformPtr();
@@ -817,7 +821,7 @@ void Constellation::create(Mesh* mesh) {
 		}
 		pcounter++;
 	}
-	updateBBox();
+	updateBoundingBox();
 }
 
 int SpringLevelSet::clean() {

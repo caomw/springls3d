@@ -361,7 +361,7 @@ bool Mesh::openMesh(const std::string& file) {
 	close_ply(ply);
 	free_ply(ply);
 	if (this->mVertexes.size() > 0) {
-		this->updateBBox();
+		this->updateBoundingBox();
 		return true;
 	} else {
 		return false;
@@ -402,7 +402,7 @@ void Mesh::create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr g
 		}
 	}
 	updateVertexNormals(16);
-	updateBBox();
+	updateBoundingBox();
 }
 void Mesh::create(FloatGrid::Ptr grid) {
 	openvdb::tools::VolumeToMesh mesher(0.0);
@@ -441,7 +441,7 @@ void Mesh::create(FloatGrid::Ptr grid) {
 		}
 	}
 	updateVertexNormals(16);
-	updateBBox();
+	updateBoundingBox();
 }
 void Mesh::updateVertexNormals(int SMOOTH_ITERATIONS,float DOT_TOLERANCE){
 
@@ -557,7 +557,7 @@ float Mesh::estimateVoxelSize(int stride) {
 			<< maxLength << std::endl;
 	return avg;
 }
-openvdb::math::BBox<openvdb::Vec3d>& Mesh::updateBBox() {
+openvdb::math::BBox<openvdb::Vec3d>& Mesh::updateBoundingBox() {
 	Vec3s minPt(std::numeric_limits<float>::max(),
 			std::numeric_limits<float>::max(),
 			std::numeric_limits<float>::max());

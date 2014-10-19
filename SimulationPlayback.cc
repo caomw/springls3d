@@ -23,7 +23,7 @@
 #include "ImageSciUtil.h"
 namespace imagesci {
 
-SimulationPlayback::SimulationPlayback(const std::string& directory):Simulation(),mDirectory(directory) {
+SimulationPlayback::SimulationPlayback(const std::string& directory):Simulation("Recording"),mDirectory(directory) {
 	// TODO Auto-generated constructor stub
 
 }
@@ -62,7 +62,7 @@ bool SimulationPlayback::step(){
 	mSource.transform()=mSignedLevelSet->transform();
 	mSignedLevelSet->setTransform(openvdb::math::Transform::createLinearTransform(1.0));
 	mSource.mSignedLevelSet=mSignedLevelSet;
-	mSource.mConstellation.updateBBox();
+	mSource.mConstellation.updateBoundingBox();
 	mSimulationIteration++;
 	mSimulationTime=mTimeStep*mSimulationIteration;
 

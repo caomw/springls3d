@@ -19,26 +19,20 @@
  * THE SOFTWARE.
  */
 
-#ifndef ARMADILLOTWIST_H_
-#define ARMADILLOTWIST_H_
+#ifndef TWISTFIELD_H_
+#define TWISTFIELD_H_
 
-#include "Simulation.h"
 namespace imagesci {
 
 /*
  *
  */
-class ArmadilloTwist : public Simulation{
-private:
-	std::string mSourceFileName;
+class TwistField {
 public:
-	bool init();
-	bool step();
-	void cleanup();
-	ArmadilloTwist(const std::string& fileName="");
-	virtual ~ArmadilloTwist();
+	TwistField();
+	virtual ~TwistField();
 };
 
 } /* namespace imagesci */
 
-#endif /* ARMADILLOTWIST_H_ */
+#endif /* TWISTFIELD_H_ */

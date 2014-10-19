@@ -65,6 +65,8 @@ int main(int argc, char *argv[]) {
 		cout<<argv[i]<<" ";
 	}
 	cout<<endl;
+	const int WIN_WIDTH=1280;
+	const int WIN_HEIGHT=720;
 	try {
 		openvdb::initialize();
 		if (argc > 2){
@@ -72,25 +74,25 @@ int main(int argc, char *argv[]) {
 			if( task== "-playback") {
 				std::string dirName=std::string(argv[2]);
 				SimulationPlayback sim(dirName);
-				SimulationVisualizer::run(static_cast<Simulation*>(&sim),1024,768,dirName);
+				SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
 				status=EXIT_SUCCESS;
-			} else if("-enright"){
+			} else if(task== "-enright"){
 				std::string dirName=std::string(argv[2]);
 				int dim = 256;
 				if(argc>3){
 					dim=atoi(argv[3]);
 				}
 				EnrightSimulation sim(dim);
-				SimulationVisualizer::run(static_cast<Simulation*>(&sim),1024,768,dirName);
+				SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
 				status=EXIT_SUCCESS;
-			} else if("-twist"){
+			} else if(task=="-twist"){
 				std::string dirName=std::string(argv[2]);
 				std::string sourceFileName="armadillo.ply";
 				if(argc>3){
 					sourceFileName=std::string(argv[3]);
 				}
 				ArmadilloTwist sim(sourceFileName);
-				SimulationVisualizer::run(static_cast<Simulation*>(&sim),1024,768,dirName);
+				SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
 				status=EXIT_SUCCESS;
 			}
 		}

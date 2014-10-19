@@ -59,7 +59,7 @@ bool Simulation::setSource(const std::string& fileName){
 		}
 		//Normalize mesh to lie within unit cube, centered at (0.5f,0.5f,0.5f)
 		mesh->mapIntoBoundingBox(mesh->estimateVoxelSize());
-		BBoxd bbox=mesh->updateBBox();
+		BBoxd bbox=mesh->updateBoundingBox();
 		mSource.create(mesh);
 		openvdb::math::Transform::Ptr trans=mSource.transformPtr();
 		Vec3d extents=bbox.extents();
@@ -84,7 +84,7 @@ bool Simulation::setSource(const std::string& fileName){
 		FloatGrid::Ptr mSignedLevelSet=boost::static_pointer_cast<FloatGrid>(ptr);
 	    openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
 	    mSource.create(*mSignedLevelSet);
-	    mSource.mIsoSurface.updateBBox();
+	    mSource.mIsoSurface.updateBoundingBox();
 	    mSource.transform()=mSource.mSignedLevelSet->transform();
 	    mSource.mSignedLevelSet->transform()=*trans;
 	    mIsMeshDirty=true;
@@ -123,7 +123,10 @@ bool Simulation::stop(){
 bool Simulation::start(){
 	if(mRunning)return false;
 	if(!mIsInitialized){
-		init();
+		if(!init()){
+			std::cerr<<"Simulation init() failed."<<std::endl;
+			return false;
+		}
 		mIsInitialized=true;
 	}
 	mRunning=true;

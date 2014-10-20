@@ -54,6 +54,8 @@ bool EnrightSimulation::step(){
 	if(mSimulationTime<=mSimulationDuration&&mRunning){
 		return true;
 	} else {
+		mSimulationIteration--;
+		mSimulationTime=mSimulationDuration;
 		return false;
 	}
 }

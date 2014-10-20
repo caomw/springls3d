@@ -40,7 +40,10 @@ enum TemporalIntegrationScheme {
 	RK4a,
 	RK4b
 };
-
+enum MotionScheme {
+	IMPLICIT,
+	EXPLICIT
+};
 struct Springl {
 private:
 	Mesh* mesh;
@@ -121,11 +124,23 @@ typedef std::vector<std::list<SpringlNeighbor>> NearestNeighborMap;
 typedef openvdb::FloatGrid::Ptr SLevelSetPtr;
 typedef openvdb::VectorGrid::Ptr SGradientPtr;
 typedef openvdb::Int32Grid::Ptr SIndexPtr;
-
+class SpringLevelSetDescription: public JsonSerializable{
+	public:
+		std::string mConstellationFile;
+		std::string mIsoSurfaceFile;
+		std::string mSignedLevelSetFile;
+		static std::vector<std::string> mMetricNames;
+		std::map<std::string,double> mMetricValues;
+		SpringLevelSetDescription();
+		void serialize(Json::Value& root_in);
+		void deserialize(Json::Value& root_in);
+};
 class SpringLevelSet {
 protected:
 	openvdb::tools::VolumeToMesh mVolToMesh;
 	openvdb::math::Transform::Ptr mTransform;
+	int mFillCount;
+	int mCleanCount;
 public:
 	static const float NEAREST_NEIGHBOR_RANGE; //voxel units
 	static const int MAX_NEAREST_NEIGHBORS;
@@ -161,6 +176,12 @@ public:
 	openvdb::Vec3s& getSpringlVertex(const openvdb::Index32 gid);
 	std::list<SpringlNeighbor>& getNearestNeighbors(openvdb::Index32 id,
 			int8_t e);
+	inline int getLastFillCount() const {
+		return mFillCount;
+	}
+	inline int getLastCleanCount() const {
+		return mCleanCount;
+	}
 	void draw();
 	int clean();
 	int fill();
@@ -181,7 +202,7 @@ public:
 	void create(FloatGrid& grid);
 
 	SpringLevelSet() :
-			mVolToMesh(0.0), mTransform(
+			mCleanCount(0),mFillCount(0),mVolToMesh(0.0), mTransform(
 					openvdb::math::Transform::createLinearTransform(1.0)) {
 	}
 
@@ -299,17 +320,7 @@ private:
 	}
 };
 
-class SpringLevelSetDescription: public JsonSerializable{
-	public:
-		std::string mConstellationFile;
-		std::string mIsoSurfaceFile;
-		std::string mSignedLevelSetFile;
-		static std::vector<std::string> mMetricNames;
-		std::vector<double> mMetricValues;
-		SpringLevelSetDescription();
-		void serialize(Json::Value& root_in);
-		void deserialize(Json::Value& root_in);
-};
+
 }
 
 #endif

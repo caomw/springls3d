@@ -53,7 +53,7 @@ void SpringLevelSetDescription::serialize(Json::Value& root_in)
 		root["IsoSurfaceFile"]=mIsoSurfaceFile;
 		root["SignedLevelSetFile"]=mSignedLevelSetFile;
 		for(int i=0;i<mMetricNames.size();i++){
-			root[mMetricNames[i]]=mMetricValues[i];
+			root[mMetricNames[i]]=mMetricValues[mMetricNames[i]];
 		}
 	}
 void SpringLevelSetDescription::deserialize(Json::Value& root_in)
@@ -63,11 +63,13 @@ void SpringLevelSetDescription::deserialize(Json::Value& root_in)
 		mIsoSurfaceFile=root.get("IsoSurfaceFile","").asString();
 		mSignedLevelSetFile=root.get("SignedLevelSetFile","").asString();
 		for(int i=0;i<mMetricNames.size();i++){
-			mMetricValues[i]=root.get(mMetricNames[i],0.0).asDouble();
+			mMetricValues[mMetricNames[i]]=root.get(mMetricNames[i],0.0).asDouble();
 		}
 	}
-std::vector<std::string> SpringLevelSetDescription::mMetricNames={"Added","Removed"};
-SpringLevelSetDescription::SpringLevelSetDescription():mMetricValues(mMetricNames.size(),0.0){
+
+
+std::vector<std::string> SpringLevelSetDescription::mMetricNames={"Elements","Added","Removed"};
+SpringLevelSetDescription::SpringLevelSetDescription(){
 }
 std::ostream& operator<<(std::ostream& ostr, const SpringlNeighbor& classname) {
 	ostr << "{" << classname.springlId << "|"
@@ -643,6 +645,7 @@ int SpringLevelSet::fill() {
 			}
 		}
 	}
+	mFillCount=added;
 	return added;
 }
 void SpringLevelSet::computeStatistics(Mesh& mesh) {
@@ -961,6 +964,7 @@ int SpringLevelSet::clean() {
 			mConstellation.mVertexNormals.end());
 	mConstellation.mVertexes.erase(mConstellation.mVertexes.begin() + vertexOffset,
 			mConstellation.mVertexes.end());
+	mCleanCount=(N - newSpringlCount);
 	return (N - newSpringlCount);
 }
 

@@ -41,6 +41,12 @@ public:
 	static bool load(const std::string& file, SimulationTimeStepDescription* out);
 	bool save(const std::string& file);
 };
+class Simulation;
+class SimulationListener{
+public:
+	virtual void SimulationEvent(Simulation* simulation,int mSimulationIteration,double time)=0;
+	virtual ~SimulationListener();
+};
 class Simulation {
 protected:
 	SpringLevelSet mSource;
@@ -53,9 +59,18 @@ protected:
 	bool mIsMeshDirty;
 	bool mIsInitialized;
 	std::thread mSimulationThread;
+	std::list<SimulationListener*> mListeners;
 public:
 	SimulationTimeStepDescription getDescription();
 
+	inline void addListener(SimulationListener* listener){
+		mListeners.push_back(listener);
+	}
+	inline void fireUpdateEvent(){
+		for(SimulationListener* listender:mListeners){
+			listender->SimulationEvent(this,mSimulationIteration,mSimulationTime);
+		}
+	}
 	Simulation(const std::string& name="");
 	void loadParameters(const std::string& paramFile);
 	void saveParameters(const std::string& paramFile);
@@ -74,6 +89,7 @@ public:
 	void reset();
 	bool start();
 	bool stop();
+	bool stash(const std::string& directory);
 	virtual ~Simulation();
 };
 

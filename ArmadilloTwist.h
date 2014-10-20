@@ -21,7 +21,9 @@
 
 #ifndef ARMADILLOTWIST_H_
 #define ARMADILLOTWIST_H_
-
+#include <openvdb/openvdb.h>
+#include "SpringLevelSetAdvection.h"
+#include "TwistField.h"
 #include "Simulation.h"
 namespace imagesci {
 
@@ -29,7 +31,11 @@ namespace imagesci {
  *
  */
 class ArmadilloTwist : public Simulation{
+	typedef TwistField<float> FieldT;
+	typedef SpringLevelSetAdvection<FieldT> AdvectT;
 private:
+	std::unique_ptr<FieldT> mField;
+	std::unique_ptr<AdvectT> mAdvect;
 	std::string mSourceFileName;
 public:
 	bool init();

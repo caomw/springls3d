@@ -23,41 +23,55 @@
 
 namespace imagesci {
 
-ArmadilloTwist::ArmadilloTwist(const std::string& fileName):Simulation(),mSourceFileName(fileName) {
-	//if(!setSource(fileName))throw Exception("Could not open "+fileName);
+ArmadilloTwist::ArmadilloTwist(const std::string& fileName):Simulation("Twist"),mSourceFileName(fileName) {
 }
 
 ArmadilloTwist::~ArmadilloTwist() {
-	// TODO Auto-generated destructor stub
 }
-
 bool ArmadilloTwist::init(){
 	Mesh mesh;
+	std::cout<<"Open "<<mSourceFileName<<std::endl;
 	if(!mesh.openMesh(mSourceFileName))return false;
 	mesh.mapIntoBoundingBox(2*mesh.estimateVoxelSize());
 	mesh.updateBoundingBox();
     openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     mSource.create(&mesh);
     BBoxd bbox=mSource.mIsoSurface.updateBoundingBox();
+    std::cout<<"Bounding Box "<<bbox<<std::endl;
 	trans=mSource.mSignedLevelSet->transformPtr();
     Vec3d extents=bbox.extents();
 	double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
 	double scale=1.0/max_extent;
-	const float radius = 0.15f;
-    const openvdb::Vec3f center(0.35f,0.35f,0.35f);
+    const openvdb::Vec3f center(0.0f,0.0f,0.0f);
 	Vec3s t=-0.5f*(bbox.min()+bbox.max());
 	trans=mSource.transformPtr();
 	trans->postTranslate(t);
-	trans->postScale(scale*2*radius);
+	trans->postScale(scale);
 	trans->postTranslate(center);
+	std::cout<<"Transform "<<*trans<<std::endl;
+	mField=std::unique_ptr<FieldT>(new TwistField<float>(Mat4s::identity(),0.0));
+	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField));
+	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
+	mAdvect->setMotionScheme(MotionScheme::EXPLICIT);
+	mSimulationDuration=2*M_PI;
+	mTimeStep=mSimulationDuration/180.0f;
 	mIsMeshDirty=true;
 	return true;
 }
 bool ArmadilloTwist::step(){
+	mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
+	mIsMeshDirty=true;
 	mSimulationIteration++;
-	return false;
+	mSimulationTime=mTimeStep*mSimulationIteration;
+	if(mSimulationTime<=mSimulationDuration&&mRunning){
+		return true;
+	} else {
+		mSimulationIteration--;
+		mSimulationTime=mSimulationDuration;
+		return false;
+	}
 }
 void ArmadilloTwist::cleanup(){
-
+	mAdvect.reset();
 }
 } /* namespace imagesci */

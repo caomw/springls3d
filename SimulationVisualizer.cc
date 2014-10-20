@@ -116,8 +116,8 @@ SimulationVisualizer::SimulationVisualizer()
 }
 void SimulationVisualizer::run(Simulation* simulation,int width,int height,const std::string outputDirectory){
 	getInstance()->setSimulation(simulation);
-	getInstance()->init(width,height);
 	getInstance()->setOutputDirectory(outputDirectory);
+	getInstance()->init(width,height);
 	deleteInstance();
 }
 void SimulationVisualizer::start(){
@@ -141,8 +141,8 @@ SimulationVisualizer::~SimulationVisualizer(){
 void SimulationVisualizer::stop(){
 	if(mSimulation!=NULL)mSimulation->stop();
 }
-void SimulationVisualizer::stash(){
-
+void SimulationVisualizer::SimulationEvent(Simulation* simulation,int mSimulationIteration,double time){
+	simulation->stash(mOutputDirectory);
 }
 bool SimulationVisualizer::init(int width,int height){
     if (glfwInit() != GL_TRUE) {
@@ -216,6 +216,7 @@ bool SimulationVisualizer::init(int width,int height){
     size_t frame = 0;
     double time = glfwGetTime();
     glfwSwapInterval(1);
+    mSimulation->addListener(this);
     start();
     do {
     	if(mSimulation->updateGL()){
@@ -263,7 +264,8 @@ SimulationVisualizer::render()
 {
 
     const openvdb::BBoxd renderBBox=BBoxd(Vec3s(-0.5,-0.5,-0.5),Vec3s(0.5,0.5,0.5));
-    openvdb::BBoxd bbox=mSimulation->getSource().mIsoSurface.getBoundingBox();
+    if(mSimulation->getSimulationIteration()==0)mOriginalBoundingBox=mSimulation->getSource().mIsoSurface.getBoundingBox();
+    openvdb::BBoxd bbox=mOriginalBoundingBox;
     openvdb::Vec3d extents = bbox.extents();
     openvdb::Vec3d rextents=renderBBox.extents();
     double scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));

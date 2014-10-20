@@ -31,7 +31,7 @@
 #include <memory>
 #include <string>
 namespace imagesci {
-class SimulationVisualizer {
+class SimulationVisualizer: public SimulationListener {
 private:
 
 	int mUpdates;
@@ -48,15 +48,15 @@ private:
     GLFWwindow* mWin;
 	GLRenderUI mUI;
 	std::string mOutputDirectory;
-
+	openvdb::BBoxd mOriginalBoundingBox;
 	Simulation* mSimulation;
 	static SimulationVisualizer* mSimVis;
 	SimulationVisualizer();
 public:
+	void SimulationEvent(Simulation* simulation,int mSimulationIteration,double time);
 	static SimulationVisualizer* getInstance();
 	static void deleteInstance();
 	static void run(Simulation* simulation,int width,int height,const std::string outputDirectory);
-	void stash();
 	inline void setOutputDirectory(std::string outputDirectory){
 		mOutputDirectory=outputDirectory;
 	}
@@ -77,7 +77,7 @@ public:
 	void windowRefreshCallback();
 	void start();
 	void stop();
-	virtual ~SimulationVisualizer();
+	~SimulationVisualizer();
 };
 
 } /* namespace imagesci */

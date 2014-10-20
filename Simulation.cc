@@ -22,11 +22,16 @@
 #include "Simulation.h"
 #include <boost/filesystem.hpp>
 #include <openvdb/openvdb.h>
+#include <sstream>
+#include <fstream>
+#include <ostream>
 #include "json/JsonUtil.h"
 namespace imagesci {
 void ExecuteSimulation(Simulation* sim){
 	try {
+		sim->fireUpdateEvent();
 		while(sim->step()){
+			sim->fireUpdateEvent();
 			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		}
 	} catch (imagesci::Exception& e) {
@@ -35,10 +40,54 @@ void ExecuteSimulation(Simulation* sim){
 		std::cout << "OpenVDB Error:: "<< e.what() << std::endl;
 	}
 }
+SimulationListener::~SimulationListener(){
 
+}
 Simulation::Simulation(const std::string& name):mName(name),mIsInitialized(false),mIsMeshDirty(false),mRunning(false),mTimeStep(0),mSimulationDuration(0),mSimulationTime(0),mSimulationIteration(0) {
 	// TODO Auto-generated constructor stub
 
+}
+bool Simulation::stash(const std::string& directory){
+	SimulationTimeStepDescription simDesc=getDescription();
+	SpringLevelSetDescription springlDesc;
+	std::stringstream constFile,isoFile,signedFile,descFile;
+	constFile<< directory<<mName<<"_sls" <<std::setw(4)<<std::setfill('0')<< mSimulationIteration << ".ply";
+	isoFile<< directory<<mName<<"_iso" <<std::setw(4)<<std::setfill('0')<< mSimulationIteration << ".ply";
+	signedFile<< directory<<mName<<"_signed"<<std::setw(4)<<std::setfill('0')<< mSimulationIteration << ".vdb";
+	descFile<< directory<<mName<<std::setw(4)<<std::setfill('0')<< mSimulationIteration << ".json";
+	springlDesc.mConstellationFile=constFile.str();
+	springlDesc.mIsoSurfaceFile=isoFile.str();
+	springlDesc.mSignedLevelSetFile=signedFile.str();
+	springlDesc.mMetricValues["Elements"]=mSource.mConstellation.getNumSpringls();
+	springlDesc.mMetricValues["Removed"]=mSource.getLastCleanCount();
+	springlDesc.mMetricValues["Added"]=mSource.getLastFillCount();
+	if(!mSource.mConstellation.save(springlDesc.mConstellationFile))return false;
+	if(!mSource.mIsoSurface.save(springlDesc.mIsoSurfaceFile))return false;
+	openvdb::io::File file(springlDesc.mSignedLevelSetFile);
+	openvdb::GridPtrVec grids;
+	FloatGrid::Ptr mSignedLevelSet=boost::static_pointer_cast<FloatGrid>(mSource.mSignedLevelSet->copyGrid(CopyPolicy::CP_COPY));
+	mSignedLevelSet->transform()=mSource.transform();
+	grids.push_back(mSignedLevelSet);
+	try {
+		file.write(grids);
+	}catch(openvdb::Exception& e){
+		std::cerr<<e.what()<<std::endl;
+		return false;
+	}
+	std::ofstream ofs;
+	ofs.open(descFile.str(), std::ofstream::out);
+	if (ofs.is_open()){
+		std::cout << "Saving " << descFile.str() << " ... ";
+		std::string output;
+		bool ret = JsonUtil::Serialize(&springlDesc, output);
+		if (ret)ofs << output;
+		ret = JsonUtil::Serialize(&simDesc, output);
+		if (ret)ofs << output;
+		ofs.close();
+		std::cout << "Done." << std::endl;
+		return ret;
+	}
+	return true;
 }
 bool Simulation::updateGL(){
 	if(mIsMeshDirty){

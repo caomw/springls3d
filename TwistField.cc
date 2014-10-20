@@ -21,15 +21,9 @@
 
 #include "TwistField.h"
 
+using namespace openvdb;
 namespace imagesci {
 
-TwistField::TwistField() {
-	// TODO Auto-generated constructor stub
 
-}
-
-TwistField::~TwistField() {
-	// TODO Auto-generated destructor stub
-}
 
 } /* namespace imagesci */

@@ -29,6 +29,7 @@ class SpringLevelSetAdvection {
 private:
 	SpringLevelSet& mGrid;
 	const FieldT& mField;
+	bool mResample;
 public:
 	typedef FloatGrid GridType;
 	typedef LevelSetTracker<FloatGrid, InterruptT> TrackerT;
@@ -44,7 +45,7 @@ public:
 	// disallow copy by assignment
 	void operator=(const SpringLevelSetAdvection& other){}
 	/// Main constructor
-	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,InterruptT* interrupt = NULL) :mMotionScheme(MotionScheme::IMPLICIT),mGrid(grid), mField(field), mInterrupt(interrupt), mTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b) {
+	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,InterruptT* interrupt = NULL) :mMotionScheme(MotionScheme::IMPLICIT),mGrid(grid), mField(field), mInterrupt(interrupt), mTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b),mResample(true) {
 	}
 	/// @return the temporal integration scheme
 	imagesci::TemporalIntegrationScheme getTemporalScheme() const {
@@ -54,10 +55,15 @@ public:
 	void setTemporalScheme(imagesci::TemporalIntegrationScheme scheme) {
 		mTemporalScheme = scheme;
 	}
-	/// @brief Set the spatial finite difference scheme
+	/// @brief Set the movement scheme
 	void setMotionScheme(imagesci::MotionScheme scheme) {
 		mMotionScheme = scheme;
 	}
+	/// @brief Set enable resampling
+	void setResampleEnabled(bool resample) {
+		mResample=resample;
+	}
+
 	size_t advect(double  startTime, double endTime) {
 	    const math::Transform& trans = mGrid.mSignedLevelSet->transform();
 		if (trans.mapType() == math::UniformScaleMap::mapType()) {
@@ -89,16 +95,24 @@ public:
 			SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,32);
 			evolve.process();
 		} else if(mMotionScheme==MotionScheme::EXPLICIT){
+			mGrid.updateSignedLevelSet();
 			mGrid.updateUnSignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
+			mGrid.updateGradient();
+			TrackerT mTracker(*mGrid.mSignedLevelSet,mInterrupt);
+			SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,32);
+			evolve.process();
 		}
-		if(clean){
-			int cleaned=mGrid.clean();
-			mGrid.updateUnSignedLevelSet();
-			//std::cout<<"Cleaned "<<cleaned<<" "<<100*cleaned/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
+		if(mResample){
+			if(clean){
+				int cleaned=mGrid.clean();
+				mGrid.updateUnSignedLevelSet();
+				//std::cout<<"Cleaned "<<cleaned<<" "<<100*cleaned/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
+			}
+			mGrid.updateIsoSurface();
+			mGrid.fill();
+		} else {
+			mGrid.updateIsoSurface();
 		}
-
-		mGrid.updateIsoSurface();
-		int added=mGrid.fill();
 		//std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
 	}
 	template<typename MapT> size_t advect1(double  mStartTime, double mEndTime) {
@@ -111,6 +125,7 @@ public:
 		double voxelDistance=0;
 		double time;
 		const double MAX_TIME_STEP=SpringLevelSet::MAX_VEXT;
+		mGrid.resetMetrics();
 		for (time = mStartTime; time < mEndTime; time += dt) {
 			MaxVelocityOperator<OpT, FieldT, InterruptT> op2(mGrid,mField,time, mInterrupt);
 			double maxV = std::max(EPS, std::sqrt(op2.process()));
@@ -124,10 +139,9 @@ public:
 				AdvectMeshVertexOperator<OpT2,FieldT,InterruptT> op3(mGrid, mField,mTemporalScheme, time,dt,mInterrupt);
 				op3.process();
 			}
-
-			track<MapT>(time,true);
+			if(mMotionScheme==MotionScheme::IMPLICIT)track<MapT>(time,true);
 		}
-
+		if(mMotionScheme==MotionScheme::EXPLICIT)track<MapT>(time,true);
 		mGrid.mConstellation.updateVertexNormals();
 		return 0;
 	}

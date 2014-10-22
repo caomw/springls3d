@@ -30,14 +30,12 @@ ArmadilloTwist::~ArmadilloTwist() {
 }
 bool ArmadilloTwist::init(){
 	Mesh mesh;
-	std::cout<<"Open "<<mSourceFileName<<std::endl;
 	if(!mesh.openMesh(mSourceFileName))return false;
 	mesh.mapIntoBoundingBox(2*mesh.estimateVoxelSize());
 	mesh.updateBoundingBox();
     openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     mSource.create(&mesh);
     BBoxd bbox=mSource.mIsoSurface.updateBoundingBox();
-    std::cout<<"Bounding Box "<<bbox<<std::endl;
 	trans=mSource.mSignedLevelSet->transformPtr();
     Vec3d extents=bbox.extents();
 	double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
@@ -48,11 +46,12 @@ bool ArmadilloTwist::init(){
 	trans->postTranslate(t);
 	trans->postScale(scale);
 	trans->postTranslate(center);
-	std::cout<<"Transform "<<*trans<<std::endl;
+	//trans->indexToWorld()
 	mField=std::unique_ptr<FieldT>(new TwistField<float>(Mat4s::identity(),0.0));
 	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField));
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mAdvect->setMotionScheme(MotionScheme::EXPLICIT);
+	//mAdvect->setResampleEnabled(false);
 	mSimulationDuration=2*M_PI;
 	mTimeStep=mSimulationDuration/180.0f;
 	mIsMeshDirty=true;

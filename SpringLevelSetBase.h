@@ -182,6 +182,10 @@ public:
 	inline int getLastCleanCount() const {
 		return mCleanCount;
 	}
+	void resetMetrics(){
+		mCleanCount=0;
+		mFillCount=0;
+	}
 	void draw();
 	int clean();
 	int fill();

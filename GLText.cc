@@ -91,9 +91,10 @@ void GLText::CreateBitmapString(FT_Face face, const char* message, int fontHeigh
 		FT_Bitmap& bitmap = bitmap_glyph->bitmap;
 		FT_GlyphSlot slot = face->glyph;
 		int down = 2 * padding + fontHeight - (slot->metrics.horiBearingY >> 6);
+		int left= (slot->metrics.horiBearingX>>6);
 		for (int j = 0; j < bitmap.rows; j++) {
 			for (int i = 0; i < bitmap.width; i++) {
-				int ii = std::max(std::min(xOffset + i, mWidth - 1), 0);
+				int ii = std::max(std::min(xOffset + i+left, mWidth - 1), 0);
 				int jj = std::max(std::min(yOffset + down + j, mHeight - 1), 0);
 				int offset = (ii + jj * mWidth);
 				if (offset > sz) {
@@ -105,7 +106,7 @@ void GLText::CreateBitmapString(FT_Face face, const char* message, int fontHeigh
 				txtImage[2 * offset] = txtImage[2 * offset + 1] = val;
 			}
 		}
-		xOffset += spaceBonus + padding + (slot->metrics.width >> 6);
+		xOffset += spaceBonus + (slot->metrics.horiAdvance >> 6);
 		if (xOffset + bitmap.width >= mWidth) {
 			yOffset += 2 * padding + fontHeight;
 			xOffset = padding;

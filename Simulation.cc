@@ -54,7 +54,7 @@ bool Simulation::stash(const std::string& directory){
 	constFile<< directory<<mName<<"_sls" <<std::setw(4)<<std::setfill('0')<< mSimulationIteration << ".ply";
 	isoFile<< directory<<mName<<"_iso" <<std::setw(4)<<std::setfill('0')<< mSimulationIteration << ".ply";
 	signedFile<< directory<<mName<<"_signed"<<std::setw(4)<<std::setfill('0')<< mSimulationIteration << ".vdb";
-	descFile<< directory<<mName<<std::setw(4)<<std::setfill('0')<< mSimulationIteration << ".json";
+	descFile<< directory<<mName<<std::setw(4)<<std::setfill('0')<< mSimulationIteration << ".sim";
 	springlDesc.mConstellationFile=constFile.str();
 	springlDesc.mIsoSurfaceFile=isoFile.str();
 	springlDesc.mSignedLevelSetFile=signedFile.str();
@@ -79,14 +79,16 @@ bool Simulation::stash(const std::string& directory){
 	if (ofs.is_open()){
 		std::cout << "Saving " << descFile.str() << " ... ";
 		std::string output;
-		bool ret = JsonUtil::Serialize(&springlDesc, output);
-		if (ret)ofs << output;
-		ret = JsonUtil::Serialize(&simDesc, output);
-		if (ret)ofs << output;
+		Json::Value serializeRoot;
+		Json::Value &root = serializeRoot["Simulation Record"];
+		springlDesc.serialize(root);
+		simDesc.serialize(root);
+		Json::StyledWriter writer;
+		ofs<<writer.write( serializeRoot );
 		ofs.close();
 		std::cout << "Done." << std::endl;
-		return ret;
-	}
+		return true;
+	} else return false;
 	return true;
 }
 bool Simulation::updateGL(){
@@ -198,7 +200,7 @@ void SimulationTimeStepDescription::serialize(Json::Value& root_in)
 void SimulationTimeStepDescription::deserialize(Json::Value& root_in)
 {
 	Json::Value &root = root_in["SimulationTimeStep"];
-	mSimulationName=root.get("SimulationTimeStep","").asString();
+	mSimulationName=root.get("Name","").asString();
 	mSimulationIteration=root.get("Iteration",0).asInt();
 	mSimulationTime=root.get("Time",0.0).asDouble();
 	mTimeStep=root.get("TimeStep",0.0).asDouble();

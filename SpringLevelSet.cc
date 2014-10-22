@@ -645,7 +645,7 @@ int SpringLevelSet::fill() {
 			}
 		}
 	}
-	mFillCount=added;
+	mFillCount+=added;
 	return added;
 }
 void SpringLevelSet::computeStatistics(Mesh& mesh) {
@@ -964,7 +964,7 @@ int SpringLevelSet::clean() {
 			mConstellation.mVertexNormals.end());
 	mConstellation.mVertexes.erase(mConstellation.mVertexes.begin() + vertexOffset,
 			mConstellation.mVertexes.end());
-	mCleanCount=(N - newSpringlCount);
+	mCleanCount+=(N - newSpringlCount);
 	return (N - newSpringlCount);
 }
 

@@ -28,31 +28,51 @@ SimulationPlayback::SimulationPlayback(const std::string& directory):Simulation(
 
 }
 bool SimulationPlayback::init(){
-	isoSurfaceFiles.clear();
-	constellationFiles.clear();
-	signedDistanceFiles.clear();
-	int n1=GetDirectoryListing(mDirectory,isoSurfaceFiles,"_iso",".ply");
-	int n2=GetDirectoryListing(mDirectory,constellationFiles,"_sls",".ply");
-	int n3=GetDirectoryListing(mDirectory,signedDistanceFiles,"",".vdb");
-	mSimulationDuration=3.0f;
-	mTimeStep=0.005;
+	mIsoSurfaceFiles.clear();
+	mConstellationFiles.clear();
+	mSignedDistanceFiles.clear();
+	std::vector<std::string> jsonFiles;
+	int n=GetDirectoryListing(mDirectory,jsonFiles,"",".sim");
+
+	Json::Reader reader;
+	SpringLevelSetDescription springlDesc;
+	SimulationTimeStepDescription simDesc;
+	std::ifstream ifs;
+	if(n==0)return false;
+	for(std::string& file:jsonFiles){
+		Json::Value deserializeRoot;
+		ifs.open(file, std::ifstream::in);
+		if (!ifs.is_open()) return false;
+		std::string input((std::istreambuf_iterator<char>(ifs)),
+		std::istreambuf_iterator<char>());
+		ifs.close();
+		if ( !reader.parse(input, deserializeRoot) )return false;
+		springlDesc.deserialize(deserializeRoot["Simulation Record"]);
+		simDesc.deserialize(deserializeRoot["Simulation Record"]);
+		mIsoSurfaceFiles.push_back(springlDesc.mIsoSurfaceFile);
+		mConstellationFiles.push_back(springlDesc.mConstellationFile);
+		mSignedDistanceFiles.push_back(springlDesc.mSignedLevelSetFile);
+		mSimulationDuration=simDesc.mSimulationDuration;
+		mTimeStep=simDesc.mTimeStep;
+		mTimeSteps.push_back(simDesc);
+	}
+
 	mSimulationIteration=0;
-	if(!(n1==n2&&n2==n3)||n1==0)return false;
 	Mesh c;
-	c.openMesh(constellationFiles[mSimulationIteration]);
+	c.openMesh(mConstellationFiles[mSimulationIteration]);
 	mSource.mConstellation.create(&c);
-	mSource.mIsoSurface.openMesh(isoSurfaceFiles[mSimulationIteration]);
+	mSource.mIsoSurface.openMesh(mIsoSurfaceFiles[mSimulationIteration]);
 	mSource.mIsoSurface.updateVertexNormals(16);
 	mSource.mConstellation.updateVertexNormals();
 	return true;
 }
 bool SimulationPlayback::step(){
-	mTemporaryMesh.openMesh(constellationFiles[mSimulationIteration]);
+	mTemporaryMesh.openMesh(mConstellationFiles[mSimulationIteration]);
 	mSource.mConstellation.create(&mTemporaryMesh);
 	mSource.mConstellation.updateVertexNormals();
-	mSource.mIsoSurface.openMesh(isoSurfaceFiles[mSimulationIteration]);
+	mSource.mIsoSurface.openMesh(mIsoSurfaceFiles[mSimulationIteration]);
 	mSource.mIsoSurface.updateVertexNormals(16);
-	openvdb::io::File file(signedDistanceFiles[mSimulationIteration]);
+	openvdb::io::File file(mSignedDistanceFiles[mSimulationIteration]);
 	file.open();
 	openvdb::GridPtrVecPtr grids =file.getGrids();
 	openvdb::GridPtrVec allGrids;
@@ -63,21 +83,26 @@ bool SimulationPlayback::step(){
 	mSignedLevelSet->setTransform(openvdb::math::Transform::createLinearTransform(1.0));
 	mSource.mSignedLevelSet=mSignedLevelSet;
 	mSource.mConstellation.updateBoundingBox();
-	mSimulationIteration++;
-	mSimulationTime=mTimeStep*mSimulationIteration;
+	SimulationTimeStepDescription& simDesc=mTimeSteps[mSimulationIteration];
 
+	mSimulationTime=simDesc.mSimulationTime;
+	mTimeStep=simDesc.mTimeStep;
+	mSimulationDuration=simDesc.mSimulationDuration;
+	mName=simDesc.mSimulationName;
+
+	mSimulationIteration++;
 	mIsMeshDirty=true;
 
-	if(mSimulationTime<=mSimulationDuration&&mRunning){
+	if(mSimulationTime<=mSimulationDuration&&mSimulationIteration<mTimeSteps.size()&&mRunning){
 		return true;
 	} else {
 		return false;
 	}
 }
 void SimulationPlayback::cleanup(){
-	isoSurfaceFiles.clear();
-	constellationFiles.clear();
-	signedDistanceFiles.clear();
+	mIsoSurfaceFiles.clear();
+	mConstellationFiles.clear();
+	mSignedDistanceFiles.clear();
 }
 SimulationPlayback::~SimulationPlayback() {
 	// TODO Auto-generated destructor stub

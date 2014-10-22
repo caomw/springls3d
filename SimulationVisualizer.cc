@@ -216,7 +216,7 @@ bool SimulationVisualizer::init(int width,int height){
     size_t frame = 0;
     double time = glfwGetTime();
     glfwSwapInterval(1);
-    mSimulation->addListener(this);
+    if(mSimulation->getName()!="Recording")mSimulation->addListener(this);
     start();
     do {
     	if(mSimulation->updateGL()){

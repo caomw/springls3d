@@ -29,9 +29,10 @@ namespace imagesci {
  */
 class SimulationPlayback:public Simulation {
 protected:
-	std::vector<std::string> isoSurfaceFiles;
-	std::vector<std::string> constellationFiles;
-	std::vector<std::string> signedDistanceFiles;
+	std::vector<std::string> mIsoSurfaceFiles;
+	std::vector<std::string> mConstellationFiles;
+	std::vector<std::string> mSignedDistanceFiles;
+	std::vector<SimulationTimeStepDescription> mTimeSteps;
 	std::string mDirectory;
 	Mesh mTemporaryMesh;
 public:

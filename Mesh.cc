@@ -443,6 +443,14 @@ void Mesh::create(FloatGrid::Ptr grid) {
 	updateVertexNormals(16);
 	updateBoundingBox();
 }
+void Mesh::dilate(float distance){
+	int vertCount=mVertexes.size();
+	Vec3s norm;
+	for(int i=0;i<vertCount;i++){
+		norm=mVertexNormals[i];
+		mVertexes[i]+=norm*distance;
+	}
+}
 void Mesh::updateVertexNormals(int SMOOTH_ITERATIONS,float DOT_TOLERANCE){
 
 	Index32 sz=mTriIndexes.size();

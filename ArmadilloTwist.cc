@@ -31,7 +31,7 @@ ArmadilloTwist::~ArmadilloTwist() {
 bool ArmadilloTwist::init(){
 	Mesh mesh;
 	if(!mesh.openMesh(mSourceFileName))return false;
-	mesh.mapIntoBoundingBox(2*mesh.estimateVoxelSize());
+	mesh.mapIntoBoundingBox(mesh.estimateVoxelSize());
 	mesh.updateBoundingBox();
     openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     mSource.create(&mesh);
@@ -51,7 +51,7 @@ bool ArmadilloTwist::init(){
 	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField));
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mAdvect->setMotionScheme(MotionScheme::EXPLICIT);
-	//mAdvect->setResampleEnabled(false);
+	mAdvect->setResampleEnabled(true);
 	mSimulationDuration=2*M_PI;
 	mTimeStep=mSimulationDuration/180.0f;
 	mIsMeshDirty=true;

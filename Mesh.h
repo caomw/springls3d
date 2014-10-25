@@ -92,6 +92,7 @@ class Mesh{
 		inline openvdb::Mat4s& getPose(){
 			return mPose;
 		}
+		void dilate(float distance);
 		void updateGL();
 		void updateVertexNormals(int SMOOTH_ITERATIONS=0,float DOT_TOLERANCE=0.75f);
 		void mapIntoBoundingBox(float voxelSize);

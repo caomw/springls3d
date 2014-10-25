@@ -79,7 +79,7 @@ public:
 	        return 0;
 	    }
 	}
-	template<typename MapT> void track(double time,bool clean){
+	template<typename MapT> void track(double time,bool resample){
 		const int RELAX_OUTER_ITERS=1;
 		const int RELAX_INNER_ITERS=5;
 		mGrid.updateUnSignedLevelSet();
@@ -95,23 +95,29 @@ public:
 			SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,32);
 			evolve.process();
 		} else if(mMotionScheme==MotionScheme::EXPLICIT){
-			mGrid.updateSignedLevelSet();
-			mGrid.updateUnSignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
-			mGrid.updateGradient();
-			TrackerT mTracker(*mGrid.mSignedLevelSet,mInterrupt);
-			SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,32);
-			evolve.process();
+			if(resample){
+				mGrid.mIsoSurface.updateVertexNormals(0);
+				mGrid.mIsoSurface.dilate(0.5f);
+				mGrid.updateSignedLevelSet();
+				mGrid.updateUnSignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
+				mGrid.updateGradient();
+				TrackerT mTracker(*mGrid.mSignedLevelSet,mInterrupt);
+				SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,128);
+				evolve.process();
+			}
 		}
 		if(mResample){
-			if(clean){
+			//if(clean){
 				int cleaned=mGrid.clean();
 				mGrid.updateUnSignedLevelSet();
 				//std::cout<<"Cleaned "<<cleaned<<" "<<100*cleaned/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
-			}
+			//}
 			mGrid.updateIsoSurface();
 			mGrid.fill();
 		} else {
-			mGrid.updateIsoSurface();
+			if(resample){
+				mGrid.updateIsoSurface();
+			}
 		}
 		//std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
 	}

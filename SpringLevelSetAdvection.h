@@ -42,10 +42,11 @@ public:
 	imagesci::TemporalIntegrationScheme mTemporalScheme;
 	imagesci::MotionScheme mMotionScheme;
 	InterruptT* mInterrupt;
+	double mMaxDelta;
 	// disallow copy by assignment
 	void operator=(const SpringLevelSetAdvection& other){}
 	/// Main constructor
-	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,InterruptT* interrupt = NULL) :mMotionScheme(MotionScheme::IMPLICIT),mGrid(grid), mField(field), mInterrupt(interrupt), mTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b),mResample(true) {
+	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,InterruptT* interrupt = NULL) :mMaxDelta(0.0),mMotionScheme(MotionScheme::IMPLICIT),mGrid(grid), mField(field), mInterrupt(interrupt), mTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b),mResample(true) {
 	}
 	/// @return the temporal integration scheme
 	imagesci::TemporalIntegrationScheme getTemporalScheme() const {
@@ -92,7 +93,7 @@ public:
 			mGrid.updateUnSignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
 			mGrid.updateGradient();
 			TrackerT mTracker(*mGrid.mSignedLevelSet,mInterrupt);
-			SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,32);
+			SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,32,0.3);
 			evolve.process();
 		} else if(mMotionScheme==MotionScheme::EXPLICIT){
 			if(resample){
@@ -102,16 +103,13 @@ public:
 				mGrid.updateUnSignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
 				mGrid.updateGradient();
 				TrackerT mTracker(*mGrid.mSignedLevelSet,mInterrupt);
-				SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,128);
+				SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,128,0.3);
 				evolve.process();
 			}
 		}
 		if(mResample){
-			//if(clean){
-				int cleaned=mGrid.clean();
-				mGrid.updateUnSignedLevelSet();
-				//std::cout<<"Cleaned "<<cleaned<<" "<<100*cleaned/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
-			//}
+			int cleaned=mGrid.clean();
+			mGrid.updateUnSignedLevelSet();
 			mGrid.updateIsoSurface();
 			mGrid.fill();
 		} else {
@@ -157,18 +155,19 @@ public:
 		SpringLevelSetAdvection& mParent;
 		typename TrackerT::LeafManagerType& leafs;
 		const MapT* mMap;
-		double mDt;
+		ScalarType mDt;
 		double mTime;
+		double mTolerance;
 		int mIterations;
 		TrackerT& mTracker;
 		DiscreteField<openvdb::VectorGrid> mField;
-		SpringLevelSetEvolve(SpringLevelSetAdvection& parent,TrackerT& tracker,double time, double dt,int iterations) :
+		SpringLevelSetEvolve(SpringLevelSetAdvection& parent,TrackerT& tracker,double time, double dt,int iterations,double tolerance) :
 				mMap(NULL),
 				mParent(parent),
 				mTracker(tracker),
 				mIterations(iterations),
 				mField(DiscreteField<openvdb::VectorGrid>(*(mParent.mGrid.mGradient))),
-				mTime(time), mDt(dt),leafs(tracker.leafs()) {
+				mTime(time), mDt(dt),mTolerance(tolerance),leafs(tracker.leafs()) {
 
 		}
 		void process(bool threaded=true) {
@@ -177,6 +176,7 @@ public:
 				mParent.mInterrupt->start("Processing voxels");
 			for(int iter=0;iter<mIterations;iter++){
 				leafs.rebuildAuxBuffers(1);
+				mParent.mMaxDelta=0;
 				if (threaded) {
 					tbb::parallel_for(leafs.getRange(mTracker.getGrainSize()), *this);
 				} else {
@@ -185,6 +185,8 @@ public:
 				leafs.swapLeafBuffer(1, mTracker.getGrainSize()==0);
 				leafs.removeAuxBuffers();
 				mTracker.track();
+				//std::cout<<"Track "<<iter<<":: "<<mParent.mMaxDelta<<std::endl;
+				//if(mParent.mMaxDelta<mTolerance)break;
 			}
 
 			if (mParent.mInterrupt){
@@ -199,15 +201,26 @@ public:
 			typedef typename LeafType::ValueOnCIter VoxelIterT;
 			const MapT& map = *mMap;
 			Stencil stencil(mTracker.grid());
+			double maxChange=0.0;
+			int count=0;
 			for (size_t n=range.begin(), e=range.end(); n != e; ++n) {
 				BufferType& result = leafs.getBuffer(n, 1);
 				for (VoxelIterT iter = leafs.leaf(n).cbeginValueOn(); iter;++iter) {
 					stencil.moveTo(iter);
 					const VectorType V = mField(map.applyMap(iter.getCoord().asVec3d()), mTime);
 					const VectorType G = math::GradientBiased<MapT,BiasedGradientScheme::FIRST_BIAS>::result(map, stencil, V);
-					result.setValue(iter.pos(), *iter - mDt * V.dot(G));
+					ScalarType delta=mDt * V.dot(G);
+					ScalarType old=*iter;
+					//if(fabs(old)<1.5){
+						//maxChange+=delta;
+						//count++;
+					//}
+					result.setValue(iter.pos(), old -  delta);
 				}
 			}
+			if(count>0)maxChange/=count;
+			//This is thread unsafe! Don't care that much though since we're only using it to check convergence.
+			mParent.mMaxDelta=std::max(fabs(maxChange),mParent.mMaxDelta);
 		}
 	};
 

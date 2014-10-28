@@ -30,20 +30,15 @@ template <typename ScalarT = float>
 class TwistField
 {
 protected:
-	openvdb::Mat4s mPose;
-	openvdb::Mat4s mPoseInverse;
-	ScalarT mTwistPosition;
+	openvdb::Vec3d mTwistPosition;
 public:
     typedef ScalarT             ScalarType;
     typedef openvdb::math::Vec3<ScalarT> VectorType;
-   TwistField(void):mPose(openvdb::Mat4s::identity()),mPoseInverse(openvdb::Mat4s::identity()),mTwistPosition(0.0){
+   TwistField(void):mTwistPosition(0.0,0.0,0.0){
 
     }
 
-    TwistField(const openvdb::Mat4s& pose,float twistPosition):mPose(pose),mPoseInverse(pose.inverse()),mTwistPosition(twistPosition){
-    	mPoseInverse.setCol(3,openvdb::Vec4s(0.0,0.0,0.0,1.0));
-    	std::cout<<"Forward Pose "<<mPose<<std::endl;
-    	std::cout<<"Inverse Pose "<<mPoseInverse<<std::endl;
+    TwistField(const openvdb::Vec3d& twistPosition):mTwistPosition(twistPosition){
     }
 
     /// @return const reference to the identity transfrom between world and index space
@@ -54,13 +49,11 @@ public:
     /// @return the velocity in world units, evaluated at the world
     /// position xyz and at the specified time
     inline VectorType operator()(const openvdb::Vec3d& pt, ScalarType time) const{
-       openvdb::Vec3d lt=mPose*pt;
        openvdb::Vec3d vel(0.0);
-       if(lt[1]>mTwistPosition){
-    	  vel[0]=-lt[2];
+       if(pt[1]>mTwistPosition[1]){
+    	  vel[0]=-(pt[2]-mTwistPosition[2]);
     	  vel[1]=0.0;
-    	  vel[2]=lt[0];
-    	  vel=mPoseInverse*vel;
+    	  vel[2]=pt[0]-mTwistPosition[0];
        }
        return vel;
     }

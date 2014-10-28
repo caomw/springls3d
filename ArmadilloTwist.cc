@@ -36,7 +36,22 @@ bool ArmadilloTwist::init(){
     openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     mSource.create(&mesh);
     BBoxd bbox=mSource.mIsoSurface.updateBoundingBox();
-	trans=mSource.mSignedLevelSet->transformPtr();
+	Vec3s twistPoint=0.5f*(bbox.min()+bbox.max());
+	twistPoint[0]=0;
+	twistPoint[2]=0;
+	const float DIST_TOLERANCE=2.5f;
+	int count=0;
+    for(Vec3s pt: mSource.mIsoSurface.mVertexes){
+    	if(fabs(pt[1]-twistPoint[1])<DIST_TOLERANCE){
+    		twistPoint[0]+=pt[0];
+    		twistPoint[2]+=pt[2];
+    		count++;
+    	}
+	}
+    twistPoint[0]/=count;
+    twistPoint[2]/=count;
+
+    trans=mSource.mSignedLevelSet->transformPtr();
     Vec3d extents=bbox.extents();
 	double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
 	double scale=1.0/max_extent;
@@ -46,8 +61,8 @@ bool ArmadilloTwist::init(){
 	trans->postTranslate(t);
 	trans->postScale(scale);
 	trans->postTranslate(center);
-	//trans->indexToWorld()
-	mField=std::unique_ptr<FieldT>(new TwistField<float>(Mat4s::identity(),0.0));
+	twistPoint=trans->indexToWorld(twistPoint);
+	mField=std::unique_ptr<FieldT>(new TwistField<float>(twistPoint));
 	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField));
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mAdvect->setMotionScheme(MotionScheme::EXPLICIT);
@@ -73,4 +88,4 @@ bool ArmadilloTwist::step(){
 void ArmadilloTwist::cleanup(){
 	mAdvect.reset();
 }
-} /* namespace imagesci */
+}

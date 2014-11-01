@@ -48,6 +48,7 @@ bool ArmadilloTwist::init(){
     		count++;
     	}
 	}
+
     twistPoint[0]/=count;
     twistPoint[2]/=count;
     trans=mSource.mSignedLevelSet->transformPtr();
@@ -66,7 +67,7 @@ bool ArmadilloTwist::init(){
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mAdvect->setResampleEnabled(true);
 	mSimulationDuration=2*M_PI;
-	mTimeStep=mSimulationDuration/180.0f;
+	mTimeStep=0.2f*mSimulationDuration/180.0f;
 	mIsMeshDirty=true;
 
 

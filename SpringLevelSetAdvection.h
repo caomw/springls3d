@@ -55,6 +55,7 @@ public:
 			mImplicitAdvection->setTemporalScheme(openvdb::math::TVD_RK2);
 			mImplicitAdvection->setTrackerSpatialScheme(openvdb::math::HJWENO5_BIAS);
 			mImplicitAdvection->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
+
 			grid.mConstellation.reset();
 		}
 	}

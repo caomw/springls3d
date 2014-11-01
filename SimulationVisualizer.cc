@@ -276,7 +276,9 @@ SimulationVisualizer::render()
     Pose.postTranslate(-minPt);
 	Pose.postScale(Vec3s(scale,scale,scale));
 	Pose.postTranslate(rminPt);
-	bbox=mSimulation->getSource().mConstellation.getBoundingBox();
+	if(mSimulation->getSource().mConstellation.mVertexes.size()>0){
+		bbox=mSimulation->getSource().mConstellation.getBoundingBox();
+	}
     extents = bbox.extents();
     scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));
     minPt=bbox.getCenter();

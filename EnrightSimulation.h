@@ -37,7 +37,7 @@ protected:
 	bool step();
 	void cleanup();
 public:
-	EnrightSimulation(int gridSize=256);
+	EnrightSimulation(int gridSize=256,MotionScheme motionScheme=SEMI_IMPLICIT);
 };
 
 } /* namespace imagesci */

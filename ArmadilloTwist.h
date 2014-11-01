@@ -41,7 +41,7 @@ public:
 	bool init();
 	bool step();
 	void cleanup();
-	ArmadilloTwist(const std::string& fileName="");
+	ArmadilloTwist(const std::string& fileName="",MotionScheme motionScheme=EXPLICIT);
 	virtual ~ArmadilloTwist();
 };
 

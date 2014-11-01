@@ -43,7 +43,7 @@ void ExecuteSimulation(Simulation* sim){
 SimulationListener::~SimulationListener(){
 
 }
-Simulation::Simulation(const std::string& name):mName(name),mIsInitialized(false),mIsMeshDirty(false),mRunning(false),mTimeStep(0),mSimulationDuration(0),mSimulationTime(0),mSimulationIteration(0) {
+Simulation::Simulation(const std::string& name,MotionScheme scheme):mName(name),mMotionScheme(scheme),mIsInitialized(false),mIsMeshDirty(false),mRunning(false),mTimeStep(0),mSimulationDuration(0),mSimulationTime(0),mSimulationIteration(0) {
 	// TODO Auto-generated constructor stub
 
 }

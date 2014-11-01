@@ -94,6 +94,7 @@ class Mesh{
 		}
 		void dilate(float distance);
 		void updateGL();
+		void reset();
 		void updateVertexNormals(int SMOOTH_ITERATIONS=0,float DOT_TOLERANCE=0.75f);
 		void mapIntoBoundingBox(float voxelSize);
 		void mapOutOfBoundingBox(float voxelSize);

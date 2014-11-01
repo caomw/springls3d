@@ -33,12 +33,14 @@ private:
 public:
 	typedef FloatGrid GridType;
 	typedef LevelSetTracker<FloatGrid, InterruptT> TrackerT;
+	typedef openvdb::tools::LevelSetAdvection<openvdb::FloatGrid, FieldT> ImplicitAdvectionT;
 	typedef typename TrackerT::RangeType RangeType;
 	typedef typename TrackerT::LeafType LeafType;
 	typedef typename TrackerT::BufferType BufferType;
 	typedef typename TrackerT::ValueType ScalarType;
 	typedef typename FieldT::VectorType VectorType;
 
+	std::unique_ptr<ImplicitAdvectionT> mImplicitAdvection;
 	imagesci::TemporalIntegrationScheme mTemporalScheme;
 	imagesci::MotionScheme mMotionScheme;
 	InterruptT* mInterrupt;
@@ -46,7 +48,15 @@ public:
 	// disallow copy by assignment
 	void operator=(const SpringLevelSetAdvection& other){}
 	/// Main constructor
-	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,InterruptT* interrupt = NULL) :mMaxDelta(0.0),mMotionScheme(MotionScheme::IMPLICIT),mGrid(grid), mField(field), mInterrupt(interrupt), mTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b),mResample(true) {
+	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,imagesci::MotionScheme scheme=imagesci::MotionScheme::SEMI_IMPLICIT,InterruptT* interrupt = NULL) :mMotionScheme(scheme),mMaxDelta(0.0),mGrid(grid), mField(field), mInterrupt(interrupt), mTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b),mResample(true) {
+		if(scheme==IMPLICIT){
+			mImplicitAdvection=std::unique_ptr<ImplicitAdvectionT>(new ImplicitAdvectionT(*grid.mSignedLevelSet,field,interrupt));
+			mImplicitAdvection->setSpatialScheme(openvdb::math::HJWENO5_BIAS);
+			mImplicitAdvection->setTemporalScheme(openvdb::math::TVD_RK2);
+			mImplicitAdvection->setTrackerSpatialScheme(openvdb::math::HJWENO5_BIAS);
+			mImplicitAdvection->setTrackerTemporalScheme(openvdb::math::TVD_RK1);
+			grid.mConstellation.reset();
+		}
 	}
 	/// @return the temporal integration scheme
 	imagesci::TemporalIntegrationScheme getTemporalScheme() const {
@@ -56,29 +66,34 @@ public:
 	void setTemporalScheme(imagesci::TemporalIntegrationScheme scheme) {
 		mTemporalScheme = scheme;
 	}
-	/// @brief Set the movement scheme
-	void setMotionScheme(imagesci::MotionScheme scheme) {
-		mMotionScheme = scheme;
-	}
+
 	/// @brief Set enable resampling
 	void setResampleEnabled(bool resample) {
 		mResample=resample;
 	}
 
 	size_t advect(double  startTime, double endTime) {
-	    const math::Transform& trans = mGrid.mSignedLevelSet->transform();
-		if (trans.mapType() == math::UniformScaleMap::mapType()) {
-	        return advect1<math::UniformScaleMap>(startTime,endTime);
-	    } else if (trans.mapType() == math::UniformScaleTranslateMap::mapType()) {
-	        return advect1<math::UniformScaleTranslateMap>(startTime,endTime);
-	    } else if (trans.mapType() == math::UnitaryMap::mapType()) {
-	        return advect1<math::UnitaryMap>(startTime,endTime);
-	    } else if (trans.mapType() == math::TranslationMap::mapType()) {
-	        return advect1<math::TranslationMap>(startTime,endTime);
-	    } else {
-	        OPENVDB_THROW(ValueError, "MapType not supported!");
-	        return 0;
-	    }
+		if(mMotionScheme==IMPLICIT){
+			mGrid.mSignedLevelSet->setTransform(mGrid.transformPtr());
+			mImplicitAdvection->advect(startTime,endTime);
+			mGrid.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0f));
+			mGrid.updateIsoSurface();
+			mGrid.mConstellation.updateVertexNormals();
+		} else {
+			const math::Transform& trans = mGrid.mSignedLevelSet->transform();
+			if (trans.mapType() == math::UniformScaleMap::mapType()) {
+				return advect1<math::UniformScaleMap>(startTime,endTime);
+			} else if (trans.mapType() == math::UniformScaleTranslateMap::mapType()) {
+				return advect1<math::UniformScaleTranslateMap>(startTime,endTime);
+			} else if (trans.mapType() == math::UnitaryMap::mapType()) {
+				return advect1<math::UnitaryMap>(startTime,endTime);
+			} else if (trans.mapType() == math::TranslationMap::mapType()) {
+				return advect1<math::TranslationMap>(startTime,endTime);
+			} else {
+				OPENVDB_THROW(ValueError, "MapType not supported!");
+				return 0;
+			}
+		}
 	}
 	template<typename MapT> void track(double time,bool resample){
 		const int RELAX_OUTER_ITERS=1;
@@ -143,7 +158,7 @@ public:
 				AdvectMeshVertexOperator<OpT2,FieldT,InterruptT> op3(mGrid, mField,mTemporalScheme, time,dt,mInterrupt);
 				op3.process();
 			}
-			if(mMotionScheme==MotionScheme::IMPLICIT)track<MapT>(time,true);
+			if(mMotionScheme==MotionScheme::SEMI_IMPLICIT)track<MapT>(time,true);
 		}
 		if(mMotionScheme==MotionScheme::EXPLICIT)track<MapT>(time,true);
 		mGrid.mConstellation.updateVertexNormals();

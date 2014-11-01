@@ -26,7 +26,7 @@
 
 namespace imagesci {
 
-EnrightSimulation::EnrightSimulation(int gridSize):Simulation("Enright"),mGridSize(gridSize) {
+EnrightSimulation::EnrightSimulation(int gridSize,MotionScheme scheme):Simulation("Enright",scheme),mGridSize(gridSize) {
 }
 bool EnrightSimulation::init(){
 	const float radius = 0.15f;
@@ -35,7 +35,7 @@ bool EnrightSimulation::init(){
 	FloatGrid::Ptr mSignedLevelSet =openvdb::tools::createLevelSetSphere<FloatGrid>(radius,center, voxelSize);
 	mSource.create(*mSignedLevelSet);
     mSource.mIsoSurface.updateBoundingBox();
-	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,mField));
+	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,mField,mMotionScheme));
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mSimulationDuration=3.0f;
 	mTimeStep=0.005;

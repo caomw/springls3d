@@ -23,7 +23,7 @@
 
 namespace imagesci {
 
-ArmadilloTwist::ArmadilloTwist(const std::string& fileName):Simulation("Twist"),mSourceFileName(fileName) {
+ArmadilloTwist::ArmadilloTwist(const std::string& fileName,MotionScheme scheme):Simulation("Twist",scheme),mSourceFileName(fileName) {
 }
 
 ArmadilloTwist::~ArmadilloTwist() {
@@ -50,7 +50,6 @@ bool ArmadilloTwist::init(){
 	}
     twistPoint[0]/=count;
     twistPoint[2]/=count;
-
     trans=mSource.mSignedLevelSet->transformPtr();
     Vec3d extents=bbox.extents();
 	double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
@@ -63,13 +62,14 @@ bool ArmadilloTwist::init(){
 	trans->postTranslate(center);
 	twistPoint=trans->indexToWorld(twistPoint);
 	mField=std::unique_ptr<FieldT>(new TwistField<float>(twistPoint));
-	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField));
+	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField,mMotionScheme));
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
-	mAdvect->setMotionScheme(MotionScheme::EXPLICIT);
 	mAdvect->setResampleEnabled(true);
 	mSimulationDuration=2*M_PI;
 	mTimeStep=mSimulationDuration/180.0f;
 	mIsMeshDirty=true;
+
+
 	return true;
 }
 bool ArmadilloTwist::step(){

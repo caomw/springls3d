@@ -41,9 +41,12 @@ enum TemporalIntegrationScheme {
 	RK4b
 };
 enum MotionScheme {
+	UNDEFINED,
 	IMPLICIT,
+	SEMI_IMPLICIT,
 	EXPLICIT
 };
+MotionScheme DecodeMotionScheme(std::string name);
 struct Springl {
 private:
 	Mesh* mesh;

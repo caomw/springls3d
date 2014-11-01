@@ -99,6 +99,16 @@ Mesh::Mesh() :
 		mPose(openvdb::math::Mat4f::identity()),
 		mQuadCount(0),mTriangleCount(0) {
 }
+void Mesh::reset(){
+	mVertexes.clear();
+	mVertexNormals.clear();
+	mParticleNormals.clear();
+	mParticles.clear();
+	mQuadIndexes.clear();
+	mTriIndexes.clear();
+	mFaces.clear();
+	mVertexAuxBuffer.clear();
+}
 bool Mesh::save(const std::string& f) {
 	std::cout<<"Saving "<<f<<" ... ";
 	int i, j, idx;

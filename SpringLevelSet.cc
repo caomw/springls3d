@@ -46,6 +46,17 @@ const float SpringLevelSet::RELAX_TIMESTEP = 0.1f;
 const float SpringLevelSet::MIN_AREA = 0.05f;
 const float SpringLevelSet::MAX_AREA = 2.0 * 2.0f;
 const float SpringLevelSet::MIN_ASPECT_RATIO = 0.1f;
+MotionScheme DecodeMotionScheme(std::string name){
+	if(name=="implicit"||name=="IMPLICIT"){
+		return MotionScheme::IMPLICIT;
+	} else if(name=="semi-implicit"||name=="SEMI_IMPLICIT"){
+		return MotionScheme::SEMI_IMPLICIT;
+	} else if(name=="explicit"||name=="EXPLICIT"){
+		return MotionScheme::EXPLICIT;
+	} else {
+		return MotionScheme::UNDEFINED;
+	}
+}
 void SpringLevelSetDescription::serialize(Json::Value& root_in)
 	{
 		Json::Value &root = root_in["SpringLevelSet"];

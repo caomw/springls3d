@@ -23,7 +23,7 @@
 #include "ImageSciUtil.h"
 namespace imagesci {
 
-SimulationPlayback::SimulationPlayback(const std::string& directory):Simulation("Recording"),mDirectory(directory) {
+SimulationPlayback::SimulationPlayback(const std::string& directory):Simulation("Recording",MotionScheme::UNDEFINED),mDirectory(directory) {
 	// TODO Auto-generated constructor stub
 
 }

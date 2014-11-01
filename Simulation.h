@@ -58,6 +58,7 @@ protected:
 	bool mRunning;
 	bool mIsMeshDirty;
 	bool mIsInitialized;
+	MotionScheme mMotionScheme;
 	std::thread mSimulationThread;
 	std::list<SimulationListener*> mListeners;
 public:
@@ -71,7 +72,7 @@ public:
 			listender->SimulationEvent(this,mSimulationIteration,mSimulationTime);
 		}
 	}
-	Simulation(const std::string& name="");
+	Simulation(const std::string& name,MotionScheme motionScheme);
 	void loadParameters(const std::string& paramFile);
 	void saveParameters(const std::string& paramFile);
 	bool setSource(const std::string& sourceFileName);

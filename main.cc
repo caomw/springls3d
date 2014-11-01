@@ -61,7 +61,9 @@ using namespace imagesci;
 using namespace std;
 int main(int argc, char *argv[]) {
 	int status = EXIT_FAILURE;
+	std::vector<std::string> args;
 	for(int i=0;i<argc;i++){
+		args.push_back(argv[i]);
 		cout<<argv[i]<<" ";
 	}
 	cout<<endl;
@@ -69,29 +71,30 @@ int main(int argc, char *argv[]) {
 	const int WIN_HEIGHT=720;
 	try {
 		openvdb::initialize();
-		if (argc > 2){
-			std::string task=std::string(argv[1]);
-			if( task== "-playback") {
-				std::string dirName=std::string(argv[2]);
+		for(int i=0;i<args.size();i++){
+			if( args[i]== "-playback") {
+				std::string dirName=std::string(args[++i]);
 				SimulationPlayback sim(dirName);
 				SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
 				status=EXIT_SUCCESS;
-			} else if(task== "-enright"){
-				std::string dirName=std::string(argv[2]);
+			} else if(args[i]== "-enright"){
+				std::string dirName=std::string(argv[++i]);
 				int dim = 256;
+				MotionScheme scheme=DecodeMotionScheme(args[++i]);
 				if(argc>3){
-					dim=atoi(argv[3]);
+					dim=atoi(argv[++i]);
 				}
-				EnrightSimulation sim(dim);
+				EnrightSimulation sim(dim,scheme);
 				SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
 				status=EXIT_SUCCESS;
-			} else if(task=="-twist"){
-				std::string dirName=std::string(argv[2]);
+			} else if(args[i]=="-twist"){
+				std::string dirName=std::string(argv[++i]);
 				std::string sourceFileName="armadillo.ply";
+				MotionScheme scheme=DecodeMotionScheme(args[++i]);
 				if(argc>3){
-					sourceFileName=std::string(argv[3]);
+					sourceFileName=std::string(argv[++i]);
 				}
-				ArmadilloTwist sim(sourceFileName);
+				ArmadilloTwist sim(sourceFileName,scheme);
 				SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
 				status=EXIT_SUCCESS;
 			}
@@ -103,8 +106,8 @@ int main(int argc, char *argv[]) {
 	}
 	if(status==EXIT_FAILURE){
 		cout<<"Usage: "<<argv[0]<<" -playback <INPUT_DIRECTORY>"<<endl;
-		cout<<"Usage: "<<argv[0]<<" -enright <OUTPUT_DIRECTORY> <INTEGER_GRID_SIZE>"<<endl;
-		cout<<"Usage: "<<argv[0]<<" -twist <OUTPUT_DIRECTORY> <MESH_FILE>"<<endl;
+		cout<<"Usage: "<<argv[0]<<" -enright <OUTPUT_DIRECTORY> <implicit|semi-implicit|explicit> <INTEGER_GRID_SIZE>"<<endl;
+		cout<<"Usage: "<<argv[0]<<" -twist <OUTPUT_DIRECTORY> <implicit|semi-implicit|explicit> <MESH_FILE>"<<endl;
 	}
 	return status;
 }

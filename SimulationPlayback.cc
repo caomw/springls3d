@@ -54,6 +54,7 @@ bool SimulationPlayback::init(){
 		mSimulationDuration=simDesc.mSimulationDuration;
 		mName=simDesc.mSimulationName;
 		mTimeStep=simDesc.mTimeStep;
+		mMotionScheme=simDesc.mMotionScheme;
 		mTimeSteps.push_back(simDesc);
 	}
 

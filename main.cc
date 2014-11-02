@@ -77,9 +77,10 @@ int main(int argc, char *argv[]) {
 			if( args[i]== "-compare") {
 				std::string dirName1=std::string(args[++i]);
 				std::string dirName2=std::string(args[++i]);
+				std::string outputDir=std::string(args[++i]);
 				SimulationPlayback sim1(dirName1);
 				SimulationPlayback sim2(dirName2);
-				SimulationComparisonVisualizer::run(&sim1,&sim2,WIN_WIDTH,WIN_HEIGHT);
+				SimulationComparisonVisualizer::run(&sim1,&sim2,WIN_WIDTH,WIN_HEIGHT,outputDir);
 				status=EXIT_SUCCESS;
 			} else if( args[i]== "-playback") {
 				std::string dirName=std::string(args[++i]);
@@ -114,9 +115,11 @@ int main(int argc, char *argv[]) {
 		cout << "OpenVDB Error:: "<< e.what() << endl;
 	}
 	if(status==EXIT_FAILURE){
+
 		cout<<"Usage: "<<argv[0]<<" -playback <INPUT_DIRECTORY>"<<endl;
 		cout<<"Usage: "<<argv[0]<<" -enright <OUTPUT_DIRECTORY> <implicit|semi-implicit|explicit> <INTEGER_GRID_SIZE>"<<endl;
 		cout<<"Usage: "<<argv[0]<<" -twist <OUTPUT_DIRECTORY> <implicit|semi-implicit|explicit> <MESH_FILE>"<<endl;
+		cout<<"Usage: "<<argv[0]<<" -compare <RECORDING_ONE_DIRECTORY> <RECORDING_TWO_DIRECTORY> <OUTPUT_DIRECTORY>"<<endl;
 	}
 	return status;
 }

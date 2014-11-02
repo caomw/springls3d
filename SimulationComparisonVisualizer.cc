@@ -139,8 +139,9 @@ SimulationComparisonVisualizer::SimulationComparisonVisualizer()
 	, mRunning(false)
 {
 }
-void SimulationComparisonVisualizer::run(SimulationPlayback* simulation1,SimulationPlayback* simulation2,int width,int height){
+void SimulationComparisonVisualizer::run(SimulationPlayback* simulation1,SimulationPlayback* simulation2,int width,int height,const std::string& outputDir){
 	getInstance()->setSimulations(simulation1,simulation2);
+	getInstance()->setOutputDirectory(outputDir);
 	getInstance()->init(width,height);
 	deleteInstance();
 }
@@ -163,6 +164,7 @@ void SimulationComparisonVisualizer::resume(){
 	render();
 }
 SimulationComparisonVisualizer::~SimulationComparisonVisualizer(){
+	stop();
 	if(mSimulation1!=NULL)mSimulation1->stop();
 	if(mSimulation2!=NULL)mSimulation2->stop();
 
@@ -174,7 +176,11 @@ void SimulationComparisonVisualizer::stop(){
 	}
 }
 void SimulationComparisonVisualizer::SimulationEvent(Simulation* simulation,int mSimulationIteration,double time){
-
+	std::cout<<"Simulation Event "<<mSimulationIteration<<" "<<time<<" ...";
+	while(this->needsDisplay()){
+		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	}
+	std::cout<<" Done."<<std::endl;
 }
 bool SimulationComparisonVisualizer::init(int width,int height){
     if (glfwInit() != GL_TRUE) {
@@ -235,6 +241,11 @@ bool SimulationComparisonVisualizer::init(int width,int height){
 	mIsoTexture2->setShader(isoShader.get());
 	mIsoTexture2->updateGL();
 
+	mSubtitle1=std::unique_ptr<GLText>(new GLText(0,height-80,width/2,80));
+	mSubtitle1->setText("Spring Level Set",30,true);
+
+	mSubtitle2=std::unique_ptr<GLText>(new GLText(width/2,height-80,width/2,80));
+	mSubtitle2->setText("Level Set",30,true);
 
 	std::vector<RGBA> imgBuffer;
 	int imgW,imgH;
@@ -254,8 +265,7 @@ bool SimulationComparisonVisualizer::init(int width,int height){
     size_t frame = 0;
     double time = glfwGetTime();
     glfwSwapInterval(1);
-    if(mSimulation1->getName()!="Recording")mSimulation1->addListener(this);
-
+    mSimulation1->addListener(this);
     start();
     do {
 
@@ -374,11 +384,12 @@ SimulationComparisonVisualizer::render()
 	glDisable(GL_DEPTH_TEST);
 	mIsoTexture1->render(mWin);
 	mIsoTexture2->render(mWin);
+	mSubtitle1->render(mWin);
+	mSubtitle2->render(mWin);
 
-	/*
-	if(mSimulation->isRunning()){
+	if(isRunning()){
 		std::stringstream ostr1,ostr2,ostr3;
-		ostr1 <<  rootFile<<std::setw(4)<<std::setfill('0')<< (simulationIteration+1) << "_composite.png";
+		ostr1 << mOutputDirectory<<"sim_screenshot_"<<std::setw(4)<<std::setfill('0')<< mSimulation1->getSimulationIteration() << ".png";
 		std::vector<RGBA> tmp1(width*height);
 		std::vector<RGBA> tmp2(width*height);
 		glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &tmp1[0]);
@@ -391,7 +402,7 @@ SimulationComparisonVisualizer::render()
 		}
 		WriteImageToFile(ostr1.str(),tmp2,width,height);
 	}
-	*/
+
 }
 
 

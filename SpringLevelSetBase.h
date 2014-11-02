@@ -46,7 +46,9 @@ enum MotionScheme {
 	SEMI_IMPLICIT,
 	EXPLICIT
 };
-MotionScheme DecodeMotionScheme(std::string name);
+MotionScheme DecodeMotionScheme(const std::string& name);
+std::string EncodeMotionScheme(MotionScheme name);
+
 struct Springl {
 private:
 	Mesh* mesh;

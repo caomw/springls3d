@@ -140,6 +140,7 @@ void GLText::CreateBitmapString(FT_Face face, const char* message, int fontHeigh
 }
 void GLText::setText(const std::string& message, int fontHeight, bool center) {
 	if (message != mText) {
+		updateGL();
 		CreateBitmapString(m_face, message.c_str(), fontHeight, mTextureId,
 				center);
 		mText = message;

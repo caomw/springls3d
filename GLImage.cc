@@ -40,7 +40,6 @@ GLShader* GLImage::getShader(){
 			std::vector<std::string> attrib={"vp","uv"};
 			defaultShader=std::unique_ptr<GLShader>(new GLShader(ReadTextFile("image_shader.vert"),ReadTextFile("image_shader.frag"),"",attrib));
 		}
-		std::cout<<"ASSIN IMAGE SHADER "<<imageShader<<" "<<defaultShader.get()<<std::endl;
 		imageShader=defaultShader.get();
 	}
 	return imageShader;

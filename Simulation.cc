@@ -191,6 +191,7 @@ void SimulationTimeStepDescription::serialize(Json::Value& root_in)
 {
 	Json::Value &root = root_in["SimulationTimeStep"];
 	root["Name"] = mSimulationName;
+	root["MotionScheme"] = EncodeMotionScheme(mMotionScheme);
 	root["Iteration"] = (int)mSimulationIteration;
 	root["Time"] = mSimulationTime;
 	root["TimeStep"] = mTimeStep;
@@ -201,6 +202,7 @@ void SimulationTimeStepDescription::deserialize(Json::Value& root_in)
 {
 	Json::Value &root = root_in["SimulationTimeStep"];
 	mSimulationName=root.get("Name","").asString();
+	mMotionScheme=DecodeMotionScheme(root.get("MotionScheme","undefined").asString());
 	mSimulationIteration=root.get("Iteration",0).asInt();
 	mSimulationTime=root.get("Time",0.0).asDouble();
 	mTimeStep=root.get("TimeStep",0.0).asDouble();

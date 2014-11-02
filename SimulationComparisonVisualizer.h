@@ -27,6 +27,7 @@
 #include "GLEnvironmentalShader.h"
 #include "GLFrameBuffer.h"
 #include "GLImage.h"
+#include "GLText.h"
 #include "GLSpringlShader.h"
 #include "GLRenderUI.h"
 #include <memory>
@@ -40,7 +41,8 @@ private:
     GLEnvironmentalShader mSpringlShader;
     std::unique_ptr<GLFrameBuffer> mIsoTexture1;
     std::unique_ptr<GLFrameBuffer> mIsoTexture2;
-
+    std::unique_ptr<GLText> mSubtitle1;
+    std::unique_ptr<GLText> mSubtitle2;
 	std::unique_ptr<GLShader> isoShader;
 
 	std::unique_ptr<Camera> mCamera;
@@ -55,6 +57,7 @@ private:
 	std::thread mComparisonThread;
 	std::mutex mLock;
 	bool mRunning;
+	std::string mOutputDirectory;
 	SimulationComparisonVisualizer();
 public:
 	std::mutex& getLock(){return mLock;}
@@ -68,10 +71,13 @@ public:
 	void SimulationEvent(Simulation* sim,int mSimulationIteration,double time);
 	static SimulationComparisonVisualizer* getInstance();
 	static void deleteInstance();
-	static void run(SimulationPlayback* simulation1,SimulationPlayback* simulation2,int width,int height);
+	static void run(SimulationPlayback* simulation1,SimulationPlayback* simulation2,int width,int height,const std::string& outputDir);
 	void setSimulations(SimulationPlayback* simulation1,SimulationPlayback* simulation2){
 		mSimulation1=simulation1;
 		mSimulation2=simulation2;
+	}
+	void setOutputDirectory(const std::string& outputDir){
+		mOutputDirectory=outputDir;
 	}
 	bool isRunning(){return mRunning;}
 	bool needsDisplay();

@@ -52,6 +52,7 @@
 #endif
 #include "Util.h"
 #include "SimulationVisualizer.h"
+#include "SimulationComparisonVisualizer.h"
 #include "EnrightSimulation.h"
 #include "SimulationPlayback.h"
 #include "ArmadilloTwist.h"
@@ -72,7 +73,14 @@ int main(int argc, char *argv[]) {
 	try {
 		openvdb::initialize();
 		for(int i=0;i<args.size();i++){
-			if( args[i]== "-playback") {
+			if( args[i]== "-compare") {
+				std::string dirName1=std::string(args[++i]);
+				std::string dirName2=std::string(args[++i]);
+				SimulationPlayback sim1(dirName1);
+				SimulationPlayback sim2(dirName2);
+				SimulationComparisonVisualizer::run(&sim1,&sim2,WIN_WIDTH,WIN_HEIGHT);
+				status=EXIT_SUCCESS;
+			} else if( args[i]== "-playback") {
 				std::string dirName=std::string(args[++i]);
 				SimulationPlayback sim(dirName);
 				SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);

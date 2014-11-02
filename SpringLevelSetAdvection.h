@@ -72,12 +72,17 @@ public:
 	void setResampleEnabled(bool resample) {
 		mResample=resample;
 	}
-
 	size_t advect(double  startTime, double endTime) {
 		if(mMotionScheme==IMPLICIT){
-			mGrid.mSignedLevelSet->setTransform(mGrid.transformPtr());
-			mImplicitAdvection->advect(startTime,endTime);
-			mGrid.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0f));
+			const double MAX_TIME_STEP=0.005;
+			double dt=std::min(endTime-startTime,MAX_TIME_STEP);
+			for(double time=startTime;time<endTime;time+=dt){
+				mGrid.mSignedLevelSet->setTransform(mGrid.transformPtr());
+				double et=std::min(time+dt,endTime);
+				mImplicitAdvection->advect(time,et);
+				//std::cout<<"Implicit Advect ["<<time<<","<<et<<"]"<<std::endl;
+				mGrid.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0f));
+			}
 			mGrid.updateIsoSurface();
 			mGrid.mConstellation.updateVertexNormals();
 		} else {

@@ -67,10 +67,8 @@ bool ArmadilloTwist::init(){
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mAdvect->setResampleEnabled(true);
 	mSimulationDuration=2*M_PI;
-	mTimeStep=0.2f*mSimulationDuration/180.0f;
+	mTimeStep=mSimulationDuration/180.0f;
 	mIsMeshDirty=true;
-
-
 	return true;
 }
 bool ArmadilloTwist::step(){

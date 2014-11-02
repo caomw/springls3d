@@ -52,8 +52,20 @@ SimulationComparisonVisualizer* SimulationComparisonVisualizer::getInstance(){
 void ExecuteSimulationComparison(SimulationComparisonVisualizer* sim){
 	try {
 		sim->getSimulation1()->fireUpdateEvent();
-		while(sim->getSimulation1()->step()&&sim->getSimulation2()->step()){
+		sim->getSimulation2()->fireUpdateEvent();
+		bool ret1,ret2;
+		sim->getLock().lock();
+		ret1=sim->getSimulation1()->forceStep();
+		ret2=sim->getSimulation2()->forceStep();
+		sim->getLock().unlock();
+		while(sim->isRunning()&&ret1&&ret2){
 			sim->getSimulation1()->fireUpdateEvent();
+			sim->getSimulation2()->fireUpdateEvent();
+
+			sim->getLock().lock();
+			ret1=sim->getSimulation1()->forceStep();
+			ret2=sim->getSimulation2()->forceStep();
+			sim->getLock().unlock();
 			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		}
 	} catch (imagesci::Exception& e) {
@@ -139,7 +151,6 @@ void SimulationComparisonVisualizer::start(){
     mSimulation2->init();
 	mMiniCamera->loadConfig();
 	mRunning=true;
-
 	mComparisonThread=std::thread(ExecuteSimulationComparison,this);
 	render();
 }
@@ -163,6 +174,7 @@ void SimulationComparisonVisualizer::stop(){
 	}
 }
 void SimulationComparisonVisualizer::SimulationEvent(Simulation* simulation,int mSimulationIteration,double time){
+
 }
 bool SimulationComparisonVisualizer::init(int width,int height){
     if (glfwInit() != GL_TRUE) {
@@ -188,6 +200,7 @@ bool SimulationComparisonVisualizer::init(int width,int height){
     glfwMakeContextCurrent(mWin);
     glfwSwapBuffers(mWin);
 
+    std::cout<<"Draw "<<std::endl;
     mCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.2);
     mCamera->setNearFarPlanes(0.01f,1000.0f);
     mCamera->lookAt(Vec3d(0,0,0),1.0);
@@ -205,21 +218,24 @@ bool SimulationComparisonVisualizer::init(int width,int height){
 
 	mSpringlShader.Init("./matcap/JG_Silver.png");
 	int mainW=1200;
-	/*
-	mPrettySpringlShader=std::unique_ptr<GLSpringlShader>(new GLSpringlShader(0,0,width,height));
-	mPrettySpringlShader->setMesh(mCamera.get(),&mSimulation->getSource(),"./matcap/JG_Red.png","./matcap/JG_Silver.png");
-	mPrettySpringlShader->updateGL();
-*/
-	int miniW=256;
-	int miniH=256;
-	mIsoTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(width-miniW,0,miniW,miniH,miniW,miniH));
+
+	mIsoTexture1=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(0,0,width/2,height,width/2,height));
+	mIsoTexture2=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(width/2,0,width/2,height,width/2,height));
+
 	std::vector<std::string> args;
 	args.push_back("vp");
 	args.push_back("uv");
+
 	isoShader=std::unique_ptr<GLShader>(new GLShader());
-	isoShader->Initialize(ReadTextFile("silhouette_shader.vert"),ReadTextFile("silhouette_shader.frag"),"",args);
-	mIsoTexture->setShader(isoShader.get());
-	mIsoTexture->updateGL();
+	isoShader->Initialize(ReadTextFile("silhouette_shader.vert"),ReadTextFile("fade_shader.frag"),"",args);
+
+	mIsoTexture1->setShader(isoShader.get());
+	mIsoTexture1->updateGL();
+
+	mIsoTexture2->setShader(isoShader.get());
+	mIsoTexture2->updateGL();
+
+
 	std::vector<RGBA> imgBuffer;
 	int imgW,imgH;
     glfwSetKeyCallback(mWin,keyCB2);
@@ -239,14 +255,15 @@ bool SimulationComparisonVisualizer::init(int width,int height){
     double time = glfwGetTime();
     glfwSwapInterval(1);
     if(mSimulation1->getName()!="Recording")mSimulation1->addListener(this);
-    if(mSimulation2->getName()!="Recording")mSimulation2->addListener(this);
 
     start();
     do {
-    	if(mSimulation1->updateGL()||mSimulation2->updateGL()){
-    		mSimulation1->getSource().mConstellation.updateBoundingBox();
-    		mSimulation2->getSource().mConstellation.updateBoundingBox();
 
+    	mLock.lock();
+    	bool ret1=mSimulation1->updateGL();
+    	bool ret2=mSimulation2->updateGL();
+    	mLock.unlock();
+    	if(ret1||ret2){
     		render();
         } else {
     		if(needsDisplay()){
@@ -290,7 +307,9 @@ SimulationComparisonVisualizer::render()
 {
 
     const openvdb::BBoxd renderBBox=BBoxd(Vec3s(-0.5,-0.5,-0.5),Vec3s(0.5,0.5,0.5));
-    if(mSimulation1->getSimulationIteration()==0)mOriginalBoundingBox=mSimulation1->getSource().mIsoSurface.getBoundingBox();
+    if(mSimulation1->getSimulationIteration()==0){
+    	mOriginalBoundingBox=mSimulation1->getSource().mIsoSurface.getBoundingBox();
+    }
     openvdb::BBoxd bbox=mOriginalBoundingBox;
     openvdb::Vec3d extents = bbox.extents();
     openvdb::Vec3d rextents=renderBBox.extents();
@@ -302,9 +321,6 @@ SimulationComparisonVisualizer::render()
     Pose.postTranslate(-minPt);
 	Pose.postScale(Vec3s(scale,scale,scale));
 	Pose.postTranslate(rminPt);
-	if(mSimulation1->getSource().mConstellation.mVertexes.size()>0){
-		bbox=mSimulation1->getSource().mConstellation.getBoundingBox();
-	}
     extents = bbox.extents();
     scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));
     minPt=bbox.getCenter();
@@ -328,14 +344,7 @@ SimulationComparisonVisualizer::render()
 
     mCamera->setPose(Pose.transpose());
     float t=mSimulation1->getSimulationTime()/mSimulation1->getSimulationDuration();
-    /*
-    const float specular=3;
-    const float minZoom=0.25;
-    const float maxZoom=2.0;
-    float w=pow(cos(2*(t-0.5f)*M_PI)*0.5f+0.5f,specular);
-    float zoom=w*(maxZoom-minZoom)+minZoom;
-    if(mSimulation->isRunning())mCamera->setDistance(zoom);
-     */
+
     CameraAndSceneConfig p=mCamera->getConfig();
     p.mDistanceToObject=0.8f;
     p.mModelTranslation=Vec3d(0);
@@ -346,19 +355,25 @@ SimulationComparisonVisualizer::render()
     mMiniCamera->setPose(miniPose.transpose());
 
     glEnable(GL_DEPTH_TEST);
-	mIsoTexture->begin();
+	mIsoTexture1->begin();
 	mIsoShader.begin();
-	mMiniCamera->aim(0,0,mIsoTexture->w,mIsoTexture->h,mIsoShader);
+	mMiniCamera->aim(0,0,mIsoTexture1->w,mIsoTexture1->h,mIsoShader);
 	mSimulation1->getSource().mIsoSurface.draw();
 	mIsoShader.end();
-	mIsoTexture->end();
-	mPrettySpringlShader->compute(mWin);
-	glViewport(0,0,width,height);
+	mIsoTexture1->end();
 
+	mIsoTexture2->begin();
+	mIsoShader.begin();
+	mMiniCamera->aim(0,0,mIsoTexture2->w,mIsoTexture2->h,mIsoShader);
+	mSimulation2->getSource().mIsoSurface.draw();
+	mIsoShader.end();
+	mIsoTexture2->end();
+
+	glViewport(0,0,width,height);
 	glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
-	mPrettySpringlShader->render(mWin);
-	mIsoTexture->render(mWin);
+	mIsoTexture1->render(mWin);
+	mIsoTexture2->render(mWin);
 
 	/*
 	if(mSimulation->isRunning()){

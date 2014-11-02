@@ -33,13 +33,11 @@
 namespace imagesci {
 class SimulationVisualizer: public SimulationListener {
 private:
-
 	int mUpdates;
     GLEnvironmentalShader mIsoShader;
     GLEnvironmentalShader mSpringlShader;
     std::unique_ptr<GLFrameBuffer> mIsoTexture;
     std::unique_ptr<GLFrameBuffer> mSpringlTexture;
-	std::unique_ptr<GLImage> bgImage;
 	std::unique_ptr<GLShader> isoShader;
 	std::unique_ptr<GLSpringlShader> mPrettySpringlShader;
 	std::unique_ptr<Camera> mCamera;

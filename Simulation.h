@@ -38,6 +38,7 @@ public:
 	double mSimulationTime;
 	double mTimeStep;
 	double mSimulationDuration;
+	MotionScheme mMotionScheme;
 	static bool load(const std::string& file, SimulationTimeStepDescription* out);
 	bool save(const std::string& file);
 };

@@ -49,7 +49,9 @@ public:
 };
 std::string GetFileWithoutExtension(const std::string& file);
 std::string GetFileNameWithoutExtension(const std::string& file);
-std::string GetFileDirectoryPath(const std::string* file);
+std::string GetFileDirectoryPath(const std::string& file);
+std::string GetFileName(const std::string& file);
+
 int GetDirectoryListing(const std::string& dirName,
 		std::vector<std::string>& files, const std::string& mask,
 		const std::string& ext);

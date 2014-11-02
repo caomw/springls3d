@@ -38,11 +38,11 @@ private:
 	int mUpdates;
     GLEnvironmentalShader mIsoShader;
     GLEnvironmentalShader mSpringlShader;
-    std::unique_ptr<GLFrameBuffer> mIsoTexture;
-    std::unique_ptr<GLFrameBuffer> mSpringlTexture;
-	std::unique_ptr<GLImage> bgImage;
+    std::unique_ptr<GLFrameBuffer> mIsoTexture1;
+    std::unique_ptr<GLFrameBuffer> mIsoTexture2;
+
 	std::unique_ptr<GLShader> isoShader;
-	std::unique_ptr<GLSpringlShader> mPrettySpringlShader;
+
 	std::unique_ptr<Camera> mCamera;
 	std::unique_ptr<Camera> mMiniCamera;
 
@@ -53,9 +53,11 @@ private:
 	SimulationPlayback* mSimulation2;
 	static SimulationComparisonVisualizer* mSimVis;
 	std::thread mComparisonThread;
+	std::mutex mLock;
 	bool mRunning;
 	SimulationComparisonVisualizer();
 public:
+	std::mutex& getLock(){return mLock;}
 	SimulationPlayback* getSimulation1(){
 		return mSimulation1;
 	}

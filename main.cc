@@ -67,6 +67,7 @@ int main(int argc, char *argv[]) {
 		args.push_back(argv[i]);
 		cout<<argv[i]<<" ";
 	}
+
 	cout<<endl;
 	const int WIN_WIDTH=1280;
 	const int WIN_HEIGHT=720;

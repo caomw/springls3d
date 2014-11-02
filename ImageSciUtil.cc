@@ -55,12 +55,25 @@ std::string GetFileNameWithoutExtension(const std::string& file) {
 	 }
 	 */
 }
-std::string GetFileDirectoryPath(std::string FileName)
+std::string GetFileDirectoryPath(const std::string& FileName)
 {
 	if (FileName.find_last_of(PATH_SEPARATOR) != std::string::npos)
 	{
 		size_t end = FileName.find_last_of(PATH_SEPARATOR);
 		return FileName.substr(0, end);
+	}
+	return FileName;
+}
+std::string GetFileName(const std::string& FileName)
+{
+	if (FileName.find_last_of(PATH_SEPARATOR) != std::string::npos)
+	{
+		size_t start = FileName.find_last_of(PATH_SEPARATOR);
+		if(start>0&&start<FileName.length()){
+			return FileName.substr(start,FileName.length());
+		} else {
+			return FileName;
+		}
 	}
 	return FileName;
 }

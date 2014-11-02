@@ -39,6 +39,10 @@ public:
 	SimulationPlayback(const std::string& directory);
 	virtual bool init();
 	virtual bool step();
+	inline bool forceStep(){
+		mRunning=true;
+		return step();
+	}
 	virtual void cleanup();
 	virtual ~SimulationPlayback();
 };

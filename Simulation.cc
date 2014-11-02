@@ -51,10 +51,10 @@ bool Simulation::stash(const std::string& directory){
 	SimulationTimeStepDescription simDesc=getDescription();
 	SpringLevelSetDescription springlDesc;
 	std::stringstream constFile,isoFile,signedFile,descFile;
-	constFile<< directory<<mName<<"_sls" <<std::setw(4)<<std::setfill('0')<< mSimulationIteration << ".ply";
-	isoFile<< directory<<mName<<"_iso" <<std::setw(4)<<std::setfill('0')<< mSimulationIteration << ".ply";
-	signedFile<< directory<<mName<<"_signed"<<std::setw(4)<<std::setfill('0')<< mSimulationIteration << ".vdb";
-	descFile<< directory<<mName<<std::setw(4)<<std::setfill('0')<< mSimulationIteration << ".sim";
+	constFile<< directory<<mName<<"_sls_" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".ply";
+	isoFile<< directory<<mName<<"_iso_" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".ply";
+	signedFile<< directory<<mName<<"_signed_"<<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".vdb";
+	descFile<< directory<<mName<<"_"<<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".sim";
 	springlDesc.mConstellationFile=constFile.str();
 	springlDesc.mIsoSurfaceFile=isoFile.str();
 	springlDesc.mSignedLevelSetFile=signedFile.str();

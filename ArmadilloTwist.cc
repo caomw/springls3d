@@ -23,7 +23,7 @@
 
 namespace imagesci {
 
-ArmadilloTwist::ArmadilloTwist(const std::string& fileName,MotionScheme scheme):Simulation("Twist",scheme),mSourceFileName(fileName) {
+ArmadilloTwist::ArmadilloTwist(const std::string& fileName,double cycles,MotionScheme scheme):Simulation("Twist",scheme),mCycles(cycles),mSourceFileName(fileName) {
 }
 
 ArmadilloTwist::~ArmadilloTwist() {
@@ -66,7 +66,7 @@ bool ArmadilloTwist::init(){
 	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField,mMotionScheme));
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mAdvect->setResampleEnabled(true);
-	mSimulationDuration=2*M_PI;
+	mSimulationDuration=2*M_PI*mCycles;
 	mTimeStep=mSimulationDuration/180.0f;
 	mIsMeshDirty=true;
 	return true;

@@ -75,36 +75,46 @@ int main(int argc, char *argv[]) {
 		openvdb::initialize();
 		for(int i=0;i<args.size();i++){
 			if( args[i]== "-compare") {
-				std::string dirName1=std::string(args[++i]);
-				std::string dirName2=std::string(args[++i]);
-				std::string outputDir=std::string(args[++i]);
-				SimulationPlayback sim1(dirName1);
-				SimulationPlayback sim2(dirName2);
-				SimulationComparisonVisualizer::run(&sim1,&sim2,WIN_WIDTH,WIN_HEIGHT,outputDir);
-				status=EXIT_SUCCESS;
-			} else if( args[i]== "-playback") {
-				std::string dirName=std::string(args[++i]);
-				SimulationPlayback sim(dirName);
-				SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
-				status=EXIT_SUCCESS;
-			} else if(args[i]== "-enright"){
-				std::string dirName=std::string(argv[++i]);
-				int dim = 256;
-				MotionScheme scheme=DecodeMotionScheme(args[++i]);
-				if(argc>3){
-					dim=atoi(argv[++i]);
+				if(i+3<args.size()){
+					std::string dirName1=std::string(args[++i]);
+					std::string dirName2=std::string(args[++i]);
+					std::string outputDir=std::string(args[++i]);
+					SimulationPlayback sim1(dirName1);
+					SimulationPlayback sim2(dirName2);
+					SimulationComparisonVisualizer::run(&sim1,&sim2,WIN_WIDTH,WIN_HEIGHT,outputDir);
+					status=EXIT_SUCCESS;
 				}
-				EnrightSimulation sim(dim,scheme);
-				SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
-				status=EXIT_SUCCESS;
+			} else if( args[i]== "-playback") {
+				if(i+1<args.size()){
+					std::string dirName=std::string(args[++i]);
+					SimulationPlayback sim(dirName);
+					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
+					status=EXIT_SUCCESS;
+				}
+			} else if(args[i]== "-enright"){
+				if(i+1<args.size()){
+					std::string dirName=std::string(args[++i]);
+					int dim = 256;
+					MotionScheme scheme=DecodeMotionScheme(args[++i]);
+					if(i+1<args.size()){
+						dim=atoi(args[++i].c_str());
+					}
+					EnrightSimulation sim(dim,scheme);
+					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
+					status=EXIT_SUCCESS;
+				}
 			} else if(args[i]=="-twist"){
 				std::string dirName=std::string(argv[++i]);
 				std::string sourceFileName="armadillo.ply";
 				MotionScheme scheme=DecodeMotionScheme(args[++i]);
-				if(argc>3){
-					sourceFileName=std::string(argv[++i]);
+				double cycles=1.0f;
+				if(i+1<args.size()){
+					cycles=atof(args[++i].c_str());
+					if(i+1<args.size()){
+						sourceFileName=args[++i];
+					}
 				}
-				ArmadilloTwist sim(sourceFileName,scheme);
+				ArmadilloTwist sim(sourceFileName,cycles,scheme);
 				SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
 				status=EXIT_SUCCESS;
 			}
@@ -117,8 +127,8 @@ int main(int argc, char *argv[]) {
 	if(status==EXIT_FAILURE){
 
 		cout<<"Usage: "<<argv[0]<<" -playback <INPUT_DIRECTORY>"<<endl;
-		cout<<"Usage: "<<argv[0]<<" -enright <OUTPUT_DIRECTORY> <implicit|semi-implicit|explicit> <INTEGER_GRID_SIZE>"<<endl;
-		cout<<"Usage: "<<argv[0]<<" -twist <OUTPUT_DIRECTORY> <implicit|semi-implicit|explicit> <MESH_FILE>"<<endl;
+		cout<<"Usage: "<<argv[0]<<" -enright <OUTPUT_DIRECTORY> <implicit|semi-implicit|explicit> <INTEGER_GRID_SIZE=256>"<<endl;
+		cout<<"Usage: "<<argv[0]<<" -twist <OUTPUT_DIRECTORY> <implicit|semi-implicit|explicit> <FLOAT_CYCLES=1.0> <MESH_FILE=\"armadillo.ply\">"<<endl;
 		cout<<"Usage: "<<argv[0]<<" -compare <RECORDING_ONE_DIRECTORY> <RECORDING_TWO_DIRECTORY> <OUTPUT_DIRECTORY>"<<endl;
 	}
 	return status;

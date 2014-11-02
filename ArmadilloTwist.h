@@ -37,11 +37,12 @@ private:
 	std::unique_ptr<FieldT> mField;
 	std::unique_ptr<AdvectT> mAdvect;
 	std::string mSourceFileName;
+	double mCycles;
 public:
 	bool init();
 	bool step();
 	void cleanup();
-	ArmadilloTwist(const std::string& fileName="",MotionScheme motionScheme=EXPLICIT);
+	ArmadilloTwist(const std::string& fileName="",double cycles=1.0f,MotionScheme motionScheme=EXPLICIT);
 	virtual ~ArmadilloTwist();
 };
 

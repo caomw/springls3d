@@ -219,6 +219,7 @@ const std::string ReadTextFile(const std::string& str){
 		}
 		return buffer.str();
 	} else {
+		std::cerr<<"Could not open "<<str<<std::endl;
 		return "";
 	}
 }

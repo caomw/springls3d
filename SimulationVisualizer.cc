@@ -193,7 +193,7 @@ bool SimulationVisualizer::init(int width,int height){
 	args.push_back("vp");
 	args.push_back("uv");
 	isoShader=std::unique_ptr<GLShader>(new GLShader());
-	isoShader->Initialize(ReadTextFile("silhouette_shader.vert"),ReadTextFile("silhouette_shader.frag"),"",args);
+	isoShader->Initialize(ReadTextFile("shaders/silhouette_shader.vert"),ReadTextFile("shaders/silhouette_shader.frag"),"",args);
 	mIsoTexture->setShader(isoShader.get());
 	mIsoTexture->updateGL();
 	std::vector<RGBA> imgBuffer;

@@ -53,7 +53,7 @@ bool GLEnvironmentalShader::Init(const std::string& matcapFile){
 	std::vector<std::string> attrib;
 	attrib.push_back("vp");
 	attrib.push_back("vn");
-	return Initialize(ReadTextFile("env_shader.vert"),ReadTextFile("env_shader.frag"),"",attrib);
+	return Initialize(ReadTextFile("shaders/env_shader.vert"),ReadTextFile("shaders/env_shader.frag"),"",attrib);
 }
 void GLEnvironmentalShader::begin(){
 	glUseProgram(GetProgramHandle());

@@ -59,15 +59,15 @@ void GLSpringlShader::updateGL() {
 		attrib.push_back("vp");
 		attrib.push_back("vn");
 
-		if (!mWireframeProgram.Initialize(ReadTextFile("wireframe_depth_shader.vert"),ReadTextFile("wireframe_depth_shader.frag"),ReadTextFile("wireframe_depth_shader.geom"),
+		if (!mWireframeProgram.Initialize(ReadTextFile("shaders/wireframe_depth_shader.vert"),ReadTextFile("shaders/wireframe_depth_shader.frag"),ReadTextFile("shaders/wireframe_depth_shader.geom"),
 				attrib)) {
 			throw Exception("Wireframe depth shader compilation failed.");
 		}
-		if (!mNormalsAndDepthProgram.Initialize(ReadTextFile("depth_shader.vert"),ReadTextFile("depth_shader.frag"),"",
+		if (!mNormalsAndDepthProgram.Initialize(ReadTextFile("shaders/depth_shader.vert"),ReadTextFile("shaders/depth_shader.frag"),"",
 				attrib)) {
 			throw Exception("depth shader compilation failed.");
 		}
-		if (!mMixerProgram.Initialize(ReadTextFile("springls.vert"),ReadTextFile("springls.frag"),"",attrib)) {
+		if (!mMixerProgram.Initialize(ReadTextFile("shaders/springls.vert"),ReadTextFile("shaders/springls.frag"),"",attrib)) {
 			throw("Mixer shader compilation failed.");
 		}
 		mData.resize(w * h);

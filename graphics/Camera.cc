@@ -30,7 +30,7 @@
 
 #include "Camera.h"
 
-#include "ImageSciUtil.h"
+#include "../ImageSciUtil.h"
 #include <cmath>
 #include <string>
 #include <list>

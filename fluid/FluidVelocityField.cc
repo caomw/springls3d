@@ -19,33 +19,10 @@
  * THE SOFTWARE.
  */
 
-#ifndef ARMADILLOTWIST_H_
-#define ARMADILLOTWIST_H_
-#include <openvdb/openvdb.h>
-#include "SpringLevelSetAdvection.h"
-#include "TwistField.h"
-#include "Simulation.h"
+#include "FluidVelocityField.h"
+
 namespace imagesci {
 
-/*
- *
- */
-class ArmadilloTwist : public Simulation{
-	typedef TwistField<float> FieldT;
-	typedef SpringLevelSetAdvection<FieldT> AdvectT;
-private:
-	std::unique_ptr<FieldT> mField;
-	std::unique_ptr<AdvectT> mAdvect;
-	std::string mSourceFileName;
-	double mCycles;
-public:
-	bool init();
-	bool step();
-	void cleanup();
-	ArmadilloTwist(const std::string& fileName,double cycles=1.0f,MotionScheme motionScheme=EXPLICIT);
-	virtual ~ArmadilloTwist();
-};
+
 
 } /* namespace imagesci */
-
-#endif /* ARMADILLOTWIST_H_ */

@@ -19,7 +19,7 @@
  * THE SOFTWARE.
  */
 #include "GLEnvironmentalShader.h"
-#include "ImageSciUtil.h"
+#include "../ImageSciUtil.h"
 #define GLFW_INCLUDE_GLU
 #include <GL/glx.h>
 #include <GL/glxext.h>

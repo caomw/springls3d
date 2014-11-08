@@ -22,12 +22,13 @@
 #ifndef SIMULATIONVISUALIZER_H_
 #define SIMULATIONVISUALIZER_H_
 #include "Simulation.h"
-#include "Camera.h"
-#include "GLEnvironmentalShader.h"
-#include "GLFrameBuffer.h"
-#include "GLImage.h"
-#include "GLSpringlShader.h"
-#include "GLRenderUI.h"
+#include "graphics/Camera.h"
+#include "graphics/GLEnvironmentalShader.h"
+#include "graphics/GLFrameBuffer.h"
+#include "graphics/GLImage.h"
+#include "graphics/GLSpringlShader.h"
+#include "graphics/GLRenderUI.h"
+#include "graphics/GLText.h"
 #include <memory>
 #include <string>
 namespace imagesci {

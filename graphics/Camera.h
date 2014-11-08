@@ -41,8 +41,8 @@
 #include <GL/glxext.h>
 #include <GLFW/glfw3.h>
 #include "GLShader.h"
-#include "json/JsonSerializable.h"
-#include "json/JsonUtil.h"
+#include "../json/JsonSerializable.h"
+#include "../json/JsonUtil.h"
 #include <fstream>
 namespace imagesci{
 class CameraAndSceneConfig:public JsonSerializable{

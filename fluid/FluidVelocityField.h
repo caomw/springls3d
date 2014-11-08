@@ -19,26 +19,27 @@
  * THE SOFTWARE.
  */
 
-#ifndef TWISTFIELD_H_
-#define TWISTFIELD_H_
+#ifndef FLUIDVELOCITYFIELD_H_
+#define FLUIDVELOCITYFIELD_H_
+
 #include <openvdb/openvdb.h>
 
 #undef OPENVDB_REQUIRE_VERSION_NAME
 namespace imagesci {
 
 template <typename ScalarT = float>
-class TwistField
+class FluidVelocityField
 {
 protected:
 	openvdb::Vec3d mTwistPosition;
 public:
     typedef ScalarT             ScalarType;
     typedef openvdb::math::Vec3<ScalarT> VectorType;
-   TwistField(void):mTwistPosition(0.0,0.0,0.0){
+   FluidVelocityField(void):mTwistPosition(0.0,0.0,0.0){
 
     }
 
-    TwistField(const openvdb::Vec3d& twistPosition):mTwistPosition(twistPosition){
+    FluidVelocityField(const openvdb::Vec3d& twistPosition):mTwistPosition(twistPosition){
     }
 
     /// @return const reference to the identity transfrom between world and index space
@@ -62,8 +63,7 @@ public:
     {
         return (*this)(ijk.asVec3d(), time);
     }
-}; // end of TwistField
+}; // end of FluidVelocityField
 
 } /* namespace imagesci */
-
-#endif /* TWISTFIELD_H_ */
+#endif /* FLUIDVELOCITYFIELD_H_ */

@@ -39,8 +39,7 @@
 #include <chrono>
 #include <thread>
 
-#include "GLImage.h"
-#include "GLText.h"
+
 namespace imagesci{
 
 using namespace imagesci;

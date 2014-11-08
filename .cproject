@@ -194,8 +194,10 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
+					<fileInfo id="cdt.managedbuild.config.gnu.exe.release.377508156.1634014589" name="RenderModules.h" rcbsApplicability="disable" resourcePath="RenderModules.h" toolsToInvoke=""/>
+					<fileInfo id="cdt.managedbuild.config.gnu.exe.release.377508156.1133244161" name="EnrightSpringls.h" rcbsApplicability="disable" resourcePath="EnrightSpringls.h" toolsToInvoke=""/>
 					<sourceEntries>
-						<entry excluding="EnrightSpringls.cc" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="EnrightSpringls.h|RenderModules.cc|RenderModules.h|EnrightSpringls.cc" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

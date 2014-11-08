@@ -18,48 +18,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef GLSHADERSPRINGLS_H_
-#define GLSHADERSPRINGLS_H_
-#include "ImageSciUtil.h"
-#include "GLShader.h"
-#include "GLComponent.h"
-#include "Mesh.h"
-#include "Camera.h"
-#include "SpringLevelSet.h"
-#include "GLImage.h"
-#include "GLFrameBuffer.h"
 
+#ifndef FLUIDSIMULATION_H_
+#define FLUIDSIMULATION_H_
+#include "Simulation.h"
+#include "fluid/FluidVelocityField.h"
+#include "SpringLevelSetAdvection.h"
 namespace imagesci {
 
-class GLSpringlShader: public GLComponent {
-private:
-	GLShader mNormalsAndDepthProgram;
-	GLShader mWireframeProgram;
-	GLShader mMixerProgram;
-
-	std::unique_ptr<GLFrameBuffer> springlImage;
-	std::unique_ptr<GLFrameBuffer> isoImage;
-	std::unique_ptr<GLFrameBuffer> wireImage;
-	std::unique_ptr<GLImage> renderImage;
-
-	unsigned int mMatCapId1;
-	unsigned int mMatCapId2;
-	Camera* mCamera;
-	SpringLevelSet* mSpringLS;
-	std::vector<openvdb::Vec4f> mData;
-	std::string mSpringlMatcap;
-	std::string mIsoMatcap;
+/*
+ *
+ */
+class FluidSimulation : public Simulation{
+	typedef FluidVelocityField<float> FieldT;
+	typedef SpringLevelSetAdvection<FieldT> AdvectT;
+protected:
+	std::unique_ptr<FieldT> mField;
+	std::unique_ptr<AdvectT> mAdvect;
+	int mGridSize;
+	std::string mSourceFileName;
+	bool init();
+	bool step();
+	void cleanup();
 public:
-	GLSpringlShader(int x,int y,int w,int h);
-	void setMesh(Camera* camera,SpringLevelSet* mesh,const std::string& springlMatcap,const std::string& isoMatcap);
-	void updateGL();
-	void render(GLFWwindow* win);
-	void compute(GLFWwindow* win);
-
-	bool save(const std::string& file);
-	virtual ~GLSpringlShader();
+	FluidSimulation(const std::string& mSourceFileName,int gridSize=256,MotionScheme motionScheme=SEMI_IMPLICIT);
 };
-
 } /* namespace imagesci */
 
-#endif /* GLSHADERSPRINGLS_H_ */
+#endif /* FLUIDSIMULATION_H_ */

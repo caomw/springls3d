@@ -22,7 +22,7 @@
 #include "GLImage.h"
 #define GLFW_INCLUDE_GLU
 #include <GLFW/glfw3.h>
-#include "ImageSciUtil.h"
+#include "../ImageSciUtil.h"
 namespace imagesci {
 GLuint GLImage::vao=0;
 GLuint GLImage::mPositionBuffer=0;

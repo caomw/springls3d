@@ -18,34 +18,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#ifndef GLSHADERSPRINGLS_H_
+#define GLSHADERSPRINGLS_H_
 
-#ifndef ARMADILLOTWIST_H_
-#define ARMADILLOTWIST_H_
-#include <openvdb/openvdb.h>
-#include "SpringLevelSetAdvection.h"
-#include "TwistField.h"
-#include "Simulation.h"
+#include "GLShader.h"
+#include "GLComponent.h"
+
+#include "Camera.h"
+#include "../SpringLevelSet.h"
+#include "../ImageSciUtil.h"
+#include "../Mesh.h"
+#include "GLImage.h"
+#include "GLFrameBuffer.h"
+
 namespace imagesci {
 
-/*
- *
- */
-class ArmadilloTwist : public Simulation{
-	typedef TwistField<float> FieldT;
-	typedef SpringLevelSetAdvection<FieldT> AdvectT;
+class GLSpringlShader: public GLComponent {
 private:
-	std::unique_ptr<FieldT> mField;
-	std::unique_ptr<AdvectT> mAdvect;
-	std::string mSourceFileName;
-	double mCycles;
+	GLShader mNormalsAndDepthProgram;
+	GLShader mWireframeProgram;
+	GLShader mMixerProgram;
+
+	std::unique_ptr<GLFrameBuffer> springlImage;
+	std::unique_ptr<GLFrameBuffer> isoImage;
+	std::unique_ptr<GLFrameBuffer> wireImage;
+	std::unique_ptr<GLImage> renderImage;
+
+	unsigned int mMatCapId1;
+	unsigned int mMatCapId2;
+	Camera* mCamera;
+	SpringLevelSet* mSpringLS;
+	std::vector<openvdb::Vec4f> mData;
+	std::string mSpringlMatcap;
+	std::string mIsoMatcap;
 public:
-	bool init();
-	bool step();
-	void cleanup();
-	ArmadilloTwist(const std::string& fileName,double cycles=1.0f,MotionScheme motionScheme=EXPLICIT);
-	virtual ~ArmadilloTwist();
+	GLSpringlShader(int x,int y,int w,int h);
+	void setMesh(Camera* camera,SpringLevelSet* mesh,const std::string& springlMatcap,const std::string& isoMatcap);
+	void updateGL();
+	void render(GLFWwindow* win);
+	void compute(GLFWwindow* win);
+
+	bool save(const std::string& file);
+	virtual ~GLSpringlShader();
 };
 
 } /* namespace imagesci */
 
-#endif /* ARMADILLOTWIST_H_ */
+#endif /* GLSHADERSPRINGLS_H_ */

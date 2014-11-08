@@ -19,7 +19,7 @@
  * THE SOFTWARE.
  */
 #include "GLShader.h"
-#include "ImageSciUtil.h"
+#include "../ImageSciUtil.h"
 #include <iostream>
 
 

@@ -56,6 +56,7 @@
 #include "EnrightSimulation.h"
 #include "SimulationPlayback.h"
 #include "ArmadilloTwist.h"
+#include "FluidSimulation.h"
 #include <iostream>
 using namespace openvdb;
 using namespace imagesci;
@@ -103,6 +104,22 @@ int main(int argc, char *argv[]) {
 					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
 					status=EXIT_SUCCESS;
 				}
+			} else if(args[i]== "-splash"){
+				if(i+1<args.size()){
+					std::string dirName=std::string(args[++i]);
+					std::string sourceFileName="armadillo.ply";
+					int dim = 64;
+					MotionScheme scheme=DecodeMotionScheme(args[++i]);
+					if(i+1<args.size()){
+						dim=atoi(args[++i].c_str());
+						if(i+1<args.size()){
+							sourceFileName=args[++i];
+						}
+					}
+					FluidSimulation sim(sourceFileName,dim,scheme);
+					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
+					status=EXIT_SUCCESS;
+				}
 			} else if(args[i]=="-twist"){
 				std::string dirName=std::string(argv[++i]);
 				std::string sourceFileName="armadillo.ply";
@@ -128,6 +145,7 @@ int main(int argc, char *argv[]) {
 
 		cout<<"Usage: "<<argv[0]<<" -playback <INPUT_DIRECTORY>"<<endl;
 		cout<<"Usage: "<<argv[0]<<" -enright <OUTPUT_DIRECTORY> <implicit|semi-implicit|explicit> <INTEGER_GRID_SIZE=256>"<<endl;
+		cout<<"Usage: "<<argv[0]<<" -splash <OUTPUT_DIRECTORY> <implicit|semi-implicit|explicit> <INTEGER_GRID_SIZE=64> <MESH_FILE=\"armadillo.ply\">"<<endl;
 		cout<<"Usage: "<<argv[0]<<" -twist <OUTPUT_DIRECTORY> <implicit|semi-implicit|explicit> <FLOAT_CYCLES=1.0> <MESH_FILE=\"armadillo.ply\">"<<endl;
 		cout<<"Usage: "<<argv[0]<<" -compare <RECORDING_ONE_DIRECTORY> <RECORDING_TWO_DIRECTORY> <OUTPUT_DIRECTORY>"<<endl;
 	}

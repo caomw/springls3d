@@ -21,7 +21,7 @@
 
 #ifndef IMAGE_H_
 #define IMAGE_H_
-#include "ImageSciUtil.h"
+#include "../ImageSciUtil.h"
 #include "GLComponent.h"
 #define GLFW_INCLUDE_GLU
 #include <GL/glx.h>

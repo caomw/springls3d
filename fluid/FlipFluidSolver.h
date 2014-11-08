@@ -34,18 +34,28 @@ namespace openvdb {
 				typedef DenseBase<ValueT, Layout> BaseT;
 			private:
 				ValueT* mPtr;
+				size_t mStrideX;
+				size_t mStrideY;
 			public:
 				RegularGrid(const Coord& dim, const Coord& min,ValueT value)
 			        : Dense<ValueT, Layout>(dim,min)
 			    {
 					this->fill(value);
 					mPtr=this->data();
+					mStrideX=this->xStride();
+					mStrideY=this->yStride();
 			    }
 				ValueT& operator()(size_t i,size_t j,size_t k){
-					return mPtr[this->coordToOffset(Coord(i,j,k))];
+					return mPtr[i*mStrideX + j*mStrideY + k];
 				}
 				const ValueT& operator()(size_t i,size_t j,size_t k) const{
-					return mPtr[this->coordToOffset(Coord(i,j,k))];
+					return mPtr[i*mStrideX + j*mStrideY + k];
+				}
+				ValueT& operator[](size_t i){
+					return mPtr[i];
+				}
+				const ValueT& operator[](size_t i)const{
+					return mPtr[i];
 				}
 			};
 			template<typename ValueT, MemoryLayout Layout = LayoutZYX> struct MACGrid{

@@ -37,7 +37,12 @@ namespace fluid{
 class FlipFluidSolver {
 
 	protected:
+		int pourTime = -1;
+		openvdb::Vec2f pourPos;
+		float pourRad;
 		double max_dens;
+		int step;
+		int MAX_STEP;
 		const static float ALPHA ;
 		const static float DT   ;
 		const static float DENSITY;
@@ -47,15 +52,27 @@ class FlipFluidSolver {
 		RegularGrid<char> mA;
 		RegularGrid<float> mL;
 		RegularGrid<float> mPress;
-		RegularGrid<openvdb::Vec4f> mWallNormal;
+		RegularGrid<openvdb::Vec3f> mWallNormal;
+		RegularGrid<float> mHalfWall;
 		int mGridSize;
+		int gNumStuck;
 		float WALL_THICK;
 		std::unique_ptr<sorter> sort;
 		std::vector<Object> objects;
+		void save_grid();
+		void subtract_grid();
 		void placeObjects();
 		void placeWalls();
 		void damBreakTest();
 		void computeDensity();
+		void compute_wall_normal();
+		void simulateStep();
+		void advect_particle();
+		void solve_picflip();
+		void add_ExtForce();
+		void pourWater(int limit);
+		void reposition(std::vector<int>& indices, std::vector<particlePtr> particles ) ;
+		void pushParticle( double x, double y, double z, char type );
 	public:
 		std::vector<particlePtr> particles;
 		FlipFluidSolver(int gridSize);

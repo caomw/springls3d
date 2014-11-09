@@ -21,7 +21,7 @@ public:
 	
 	int	 getCellSize(){ return gn; }
 	int	 getNumParticleAt( int i, int j, int k );
-	void markWater( char ***A, FLOAT ***halfwall, FLOAT density );
+	void markWater(RegularGrid<char>& A, RegularGrid<float>& halfwall, FLOAT density );
 	void deleteAllParticles();
 	
 protected:

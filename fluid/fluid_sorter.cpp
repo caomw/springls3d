@@ -80,7 +80,7 @@ FLOAT sorter::levelset( int i, int j, int k, FLOAT ***halfwall, FLOAT density ) 
 	return 0.2*n0-accm;
 }
 
-void sorter::markWater( char ***A, FLOAT ***halfwall, FLOAT density ) {
+void sorter::markWater(RegularGrid<char>& A, RegularGrid<float> halfwall, FLOAT density ) {
 	FOR_EVERY_CELL(gn) {
 		A[i][j][k] = AIR;
 		for( int a=0; a<cells[i][j][k].size(); a++ ) { 

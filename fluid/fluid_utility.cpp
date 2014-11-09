@@ -10,10 +10,11 @@
 #include <stdlib.h>
 #include <math.h>
 #include <sys/time.h>
+#define RE			1.4
+
 using namespace std;
 namespace imagesci{
 namespace fluid{
-
 FLOAT hypot2( FLOAT a, FLOAT b, FLOAT c ) {
     return a*a + b*b + c*c;
 }
@@ -50,20 +51,18 @@ double dumptime() {
 }
 
 
-#define RE			1.4
-#define FOR_EVERY_PARTICLE for( int n=0; n<particles.size(); n++ ) { particle *p = particles[n];
 
-void mapP2G( sorter *sort, vector<particlePtr>& particles, MACGrid<float>& grid, int gn ) {
+void mapP2G( sorter *sort, std::vector<particlePtr>& particles, MACGrid<float>& grid, int gn ) {
 
 	// Compute Mapping
 	OPENMP_FOR FOR_EVERY_CELL(gn+1) {
 
 		// Variales for Particle Sorter
-		vector<particlePtr> neighbors;
+		vector<particle*> neighbors;
 
 		// Map X Grids
 		if( j < gn && k < gn) {
-			FLOAT px[3] = { i, j+0.5, k+0.5 };
+			openvdb::Vec3f px(i, j+0.5, k+0.5);
 			FLOAT sumw = 0.0;
 			FLOAT sumx = 0.0;
 			neighbors = sort->getNeigboringParticles_wall(i,j,k,1,2,2);
@@ -84,7 +83,7 @@ void mapP2G( sorter *sort, vector<particlePtr>& particles, MACGrid<float>& grid,
 
 		// Map Y Grids
 		if( i < gn && k < gn ) {
-			FLOAT py[3] = { i+0.5, j, k+0.5 };
+			openvdb::Vec3f py( i+0.5, j, k+0.5);
 			FLOAT sumw = 0.0;
 			FLOAT sumy = 0.0;
 			neighbors = sort->getNeigboringParticles_wall(i,j,k,2,1,2);
@@ -105,7 +104,7 @@ void mapP2G( sorter *sort, vector<particlePtr>& particles, MACGrid<float>& grid,
 
 		// Map Z Grids
 		if( i < gn && j < gn ) {
-			FLOAT pz[3] = { i+0.5, j+0.5, k };
+			openvdb::Vec3f pz(i+0.5, j+0.5, k);
 			FLOAT sumw = 0.0;
 			FLOAT sumz = 0.0;
 			neighbors = sort->getNeigboringParticles_wall(i,j,k,2,2,1);
@@ -126,10 +125,10 @@ void mapP2G( sorter *sort, vector<particlePtr>& particles, MACGrid<float>& grid,
 	} END_FOR
 }
 
-void mapG2P(std::vector<particlePtr>& particles,MACGrid<float> grid, int gn ) {
-	OPENMP_FOR FOR_EVERY_PARTICLE {
+void mapG2P(std::vector<particlePtr>& particles,MACGrid<float>& grid, int gn ) {
+	OPENMP_FOR for(particlePtr& p:particles){
 		fetchVelocity( p->p, p->u, grid, gn );
-	} END_FOR;
+	} OPENMP_END;
 }
 FLOAT linear ( RegularGrid<float>& q, FLOAT x, FLOAT y, FLOAT z, int w, int h, int d ) {
 	x = fmax(0.0,fmin(w,x));
@@ -151,7 +150,7 @@ void fetchVelocity(openvdb::Vec3f& p,openvdb::Vec3f& u, MACGrid<float>& grid, in
 
 void resample( sorter *sort, openvdb::Vec3f& p,openvdb::Vec3f& u, FLOAT re ) {
 	// Variables for Neighboring Particles
-	std::vector<particle *> neighbors;
+	std::vector<particle*> neighbors;
 	int cell_size = sort->getCellSize();
 	FLOAT wsum = 0.0;
 	openvdb::Vec3f save(u);
@@ -185,12 +184,12 @@ void correct( sorter *sort, std::vector<particlePtr>& particles, FLOAT dt, FLOAT
 	// Compute Pseudo Moved Point
 	OPENMP_FOR for( int n=0; n<particles.size(); n++ ) {
 		if( particles[n]->type == FLUID ) {
-			particle *p = particles[n];
+			particle *p = particles[n].get();
 			openvdb::Vec3f spring(0.0);
 			FLOAT x = max(0.0f,min((float)cell_size,cell_size*p->p[0]));
 			FLOAT y = max(0.0f,min((float)cell_size,cell_size*p->p[1]));
 			FLOAT z = max(0.0f,min((float)cell_size,cell_size*p->p[2]));
-			std::vector<particle *> neighbors = sort->getNeigboringParticles_cell(x,y,z,1,1,1);
+			std::vector<particle*> neighbors = sort->getNeigboringParticles_cell(x,y,z,1,1,1);
 			for( int n=0; n<neighbors.size(); n++ ) {
 				particle *np = neighbors[n];
 				if( p != np ) {
@@ -213,7 +212,7 @@ void correct( sorter *sort, std::vector<particlePtr>& particles, FLOAT dt, FLOAT
 	// Resample New Velocity
 	OPENMP_FOR for( int n=0; n<particles.size(); n++ ) {
 		if( particles[n]->type == FLUID ) {
-			particle *p = particles[n];
+			particle *p = particles[n].get();
 			p->tmp[1] = p->u;
 			resample( sort, p->tmp[0], p->tmp[1], re );
 
@@ -223,13 +222,37 @@ void correct( sorter *sort, std::vector<particlePtr>& particles, FLOAT dt, FLOAT
 	// Update
 	OPENMP_FOR for( int n=0; n<particles.size(); n++ ) {
 		if( particles[n]->type == FLUID ) {
-			particle *p = particles[n];
+			particle *p = particles[n].get();
 			p->p = p->tmp[0];
 			p->u = p->tmp[1];
 		}
 	}
 }
 
+static double implicit_func( vector<particle *> &neighbors,openvdb::Vec3f& p, FLOAT density, int gn) {
+	double phi = 8.0*density/gn;
+	for( int m=0; m<neighbors.size(); m++ ) {
+		particle &np = *neighbors[m];
+		if( np.type == WALL ) {
+			if( length(np.p,p) < density/gn ) return 4.5*density/gn;
+			continue;
+		}
+		double d = length(np.p,p);
+		if( d < phi ) {
+			phi = d;
+		}
+	}
+	return phi - density/gn;
+}
 
+double implicit_func( sorter *sort, openvdb::Vec3f& p, FLOAT density ) {
+	int gn = sort->getCellSize();
+	vector<particle *> neighbors = sort->getNeigboringParticles_cell(
+			fmax(0,fmin(gn-1,gn*p[0])),
+			fmax(0,fmin(gn-1,gn*p[1])),
+			fmax(0,fmin(gn-1,gn*p[2])),2,2,2
+			);
+	return implicit_func( neighbors, p, density, gn );
+}
 }
 }

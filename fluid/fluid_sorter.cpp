@@ -39,25 +39,25 @@ void sorter::sort( std::vector<particlePtr > &particles ) {
 	}
 }
 
-std::vector<particlePtr> sorter::getNeigboringParticles_wall( int i, int j, int k, int w, int h, int d ) {
-	std::vector<particlePtr> res;
+std::vector<particle*> sorter::getNeigboringParticles_wall( int i, int j, int k, int w, int h, int d ) {
+	std::vector<particle*> res;
 	for( int si=i-w; si<=i+w-1; si++ ) for( int sj=j-h; sj<=j+h-1; sj++ ) for( int sk=k-d; sk<=k+d-1; sk++ ) {
 		if( si < 0 || si > gn-1 || sj < 0 || sj > gn-1 || sk < 0 || sk > gn-1 ) continue;
 		for( int a=0; a<cells[si][sj][sk].size(); a++ ) { 
 			particlePtr p = cells[si][sj][sk][a];
-			res.push_back(p);
+			res.push_back(p.get());
 		}
 	}
 	return res;
 }
 
-std::vector<particlePtr> sorter::getNeigboringParticles_cell( int i, int j, int k, int w, int h, int d ) {
-	std::vector<particlePtr> res;
+std::vector<particle*> sorter::getNeigboringParticles_cell( int i, int j, int k, int w, int h, int d ) {
+	std::vector<particle*> res;
 	for( int si=i-w; si<=i+w; si++ ) for( int sj=j-h; sj<=j+h; sj++ ) for( int sk=k-d; sk<=k+d; sk++ ) {
 		if( si < 0 || si > gn-1 || sj < 0 || sj > gn-1 || sk < 0 || sk > gn-1 ) continue;
 		for( int a=0; a<cells[si][sj][sk].size(); a++ ) { 
 			particlePtr p = cells[si][sj][sk][a];
-			res.push_back(p);
+			res.push_back(p.get());
 		}
 	}
 	return res;
@@ -67,7 +67,7 @@ int	 sorter::getNumParticleAt( int i, int j, int k ) {
 	return cells[i][j][k].size();
 }
 
-FLOAT sorter::levelset( int i, int j, int k, FLOAT ***halfwall, FLOAT density ) {
+FLOAT sorter::levelset( int i, int j, int k, RegularGrid<float>& halfwall, FLOAT density ) {
 	FLOAT accm = 0.0;
 	for( int a=0; a<cells[i][j][k].size(); a++ ) { 
 		if( cells[i][j][k][a]->type == FLUID ) {
@@ -80,7 +80,7 @@ FLOAT sorter::levelset( int i, int j, int k, FLOAT ***halfwall, FLOAT density ) 
 	return 0.2*n0-accm;
 }
 
-void sorter::markWater(RegularGrid<char>& A, RegularGrid<float> halfwall, FLOAT density ) {
+void sorter::markWater(RegularGrid<char>& A, RegularGrid<float>& halfwall, FLOAT density ) {
 	FOR_EVERY_CELL(gn) {
 		A[i][j][k] = AIR;
 		for( int a=0; a<cells[i][j][k].size(); a++ ) { 

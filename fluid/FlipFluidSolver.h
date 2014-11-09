@@ -51,9 +51,11 @@ class FlipFluidSolver {
 		MACGrid<float> mVolSave;
 		RegularGrid<char> mA;
 		RegularGrid<float> mL;
+		RegularGrid<float> div;
 		RegularGrid<float> mPress;
 		RegularGrid<openvdb::Vec3f> mWallNormal;
 		RegularGrid<float> mHalfWall;
+		RegularGrid<float> mLevelSet;
 		int mGridSize;
 		int gNumStuck;
 		float WALL_THICK;
@@ -71,8 +73,16 @@ class FlipFluidSolver {
 		void solve_picflip();
 		void add_ExtForce();
 		void pourWater(int limit);
+		void extrapolate_velocity();
 		void reposition(std::vector<int>& indices, std::vector<particlePtr> particles ) ;
 		void pushParticle( double x, double y, double z, char type );
+		void project();
+		void createLevelSet();
+		void enforce_boundary();
+		inline char wall_chk( char a ) {
+			return a == WALL ? 1.0 : -1.0;
+		}
+
 	public:
 		std::vector<particlePtr> particles;
 		FlipFluidSolver(int gridSize);

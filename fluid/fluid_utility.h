@@ -5,6 +5,7 @@
  */
 
 #include "fluid_common.h"
+#include "fluid_sorter.h"
 #include <vector>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,6 +53,7 @@ FLOAT linear( RegularGrid<float>& q, FLOAT x, FLOAT y, FLOAT z, int w, int h, in
 void fetchVelocity(openvdb::Vec3f& p,openvdb::Vec3f& u,MACGrid<float>& grid, int gn );
 void resample( sorter *sort, openvdb::Vec3f& p, openvdb::Vec3f& u, FLOAT re );
 void correct( sorter *sort, std::vector<particlePtr>& particle, FLOAT dt, FLOAT re);
+double implicit_func( sorter *sort, openvdb::Vec3f& p, FLOAT density );
 static void dump(const char *format, ...) {
 	va_list args;
     

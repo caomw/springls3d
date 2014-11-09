@@ -21,6 +21,7 @@
 
 #include "FlipFluidSolver.h"
 #include "fluid_utility.h"
+#include "laplace_solver.h"
 #include <openvdb/openvdb.h>
 using namespace openvdb;
 using namespace openvdb::tools;
@@ -34,7 +35,8 @@ const float FlipFluidSolver::GRAVITY = 9.8f;
 FlipFluidSolver::FlipFluidSolver(int gridSize) :
 		gNumStuck(0),
 		step(0), pourTime(-1),pourPos(0.0),pourRad(0.12),MAX_STEP(600),
-		mGridSize(gridSize), mA(Coord(gridSize), Coord(0), 0.0f), mL(
+		mGridSize(gridSize),mLevelSet(Coord(gridSize),Coord(0),0),
+		mA(Coord(gridSize), Coord(0), 0.0f),div(Coord(gridSize), Coord(0), 0.0f), mL(
 				Coord(gridSize), Coord(0), 0.0f), mPress(Coord(gridSize),
 				Coord(0), 0.0f), mVol(Coord(gridSize), Coord(0), 0.0f), mVolSave(
 				Coord(gridSize), Coord(0), 0.0f), mHalfWall(Coord(gridSize),
@@ -53,13 +55,13 @@ void FlipFluidSolver::computeDensity() {
 		}
 
 		Vec3f& p = particles[n]->p;
-		std::vector<particlePtr> neighbors = sort->getNeigboringParticles_cell(
+		std::vector<particle*> neighbors = sort->getNeigboringParticles_cell(
 				fmax(0, fmin(gn - 1, gn * p[0])),
 				fmax(0, fmin(gn - 1, gn * p[1])),
 				fmax(0, fmin(gn - 1, gn * p[2])), 1, 1, 1);
 		FLOAT wsum = 0.0;
 		for (int m = 0; m < neighbors.size(); m++) {
-			particle np = *neighbors[m];
+			particle& np = *neighbors[m];
 			if (np.type == WALL)
 				continue;
 			FLOAT d2 = length2(np.p, p);
@@ -257,8 +259,8 @@ void FlipFluidSolver::pushParticle(double x, double y, double z, char type) {
 				}
 			}
 		} else if (obj.shape == SPHERE) {
-			FLOAT p[3] = { x, y, z };
-			FLOAT c[3] = { obj.c[0], obj.c[1], obj.c[2] };
+			Vec3f p((float)x,(float)y,(float)z);
+			Vec3f c(obj.c[0], obj.c[1], obj.c[2]);
 			FLOAT len = length(p, c);
 			if (len < obj.r) {
 				if (obj.type == WALL) {
@@ -474,9 +476,9 @@ void FlipFluidSolver::advect_particle() {
 			int i = fmin(mGridSize-1,fmax(0,p->p[0]*mGridSize));
 			int j = fmin(mGridSize-1,fmax(0,p->p[1]*mGridSize));
 			int k = fmin(mGridSize-1,fmax(0,p->p[2]*mGridSize));
-			vector<particlePtr> neighbors = sort->getNeigboringParticles_cell(i,j,k,1,1,1);
+			vector<particle*> neighbors = sort->getNeigboringParticles_cell(i,j,k,1,1,1);
 			for( int n=0; n<neighbors.size(); n++ ) {
-				particle *np = neighbors[n].get();
+				particle *np = neighbors[n];
 				double re = 1.5*DENSITY/mGridSize;
 				if( np->type == WALL ) {
 					FLOAT dist = length(p->p,np->p);
@@ -625,6 +627,130 @@ void FlipFluidSolver::subtract_grid() {
 		mVolSave[2][i][j][k] = mVol[2][i][j][k] - mVolSave[2][i][j][k];
 	} END_FOR
 }
+
+
+void FlipFluidSolver::enforce_boundary() {
+	// Set Boundary Velocity Zero
+	FOR_EVERY_X_FLOW(mGridSize) {
+		if( i==0 || i==mGridSize ) mVol[0][i][j][k] = 0.0;
+		if( i<mGridSize && i>0 && wall_chk(mA[i][j][k])*wall_chk(mA[i-1][j][k]) < 0 ) {
+			mVol[0][i][j][k] = 0.0;
+		}
+	} END_FOR
+
+	FOR_EVERY_Y_FLOW(mGridSize) {
+		if( j==0 || j==mGridSize ) mVol[1][i][j][k] = 0.0;
+		if( j<mGridSize && j>0 && wall_chk(mA[i][j][k])*wall_chk(mA[i][j-1][k]) < 0 ) {
+			mVol[1][i][j][k] = 0.0;
+		}
+	} END_FOR
+
+	FOR_EVERY_Z_FLOW(mGridSize) {
+		if( k==0 || k==mGridSize ) mVol[2][i][j][k] = 0.0;
+		if( k<mGridSize && k>0 && wall_chk(mA[i][j][k])*wall_chk(mA[i][j][k-1]) < 0 ) {
+			mVol[2][i][j][k] = 0.0;
+		}
+	} END_FOR
+}
+void FlipFluidSolver::project() {
+	// Cell Width
+	FLOAT h = 1.0/mGridSize;
+	// Compute Divergence
+	FOR_EVERY_CELL(mGridSize) {
+		if( mA[i][j][k] == FLUID ) {
+			div[i][j][k] = (mVol[0][i+1][j][k]-mVol[0][i][j][k]+
+							mVol[1][i][j+1][k]-mVol[1][i][j][k]+
+							mVol[2][i][j][k+1]-mVol[2][i][j][k]) / h;
+		}
+	} END_FOR;
+
+	// Compute LevelSet
+	FOR_EVERY_CELL(mGridSize) {
+		mL[i][j][k] = sort->levelset(i,j,k,mHalfWall,DENSITY);
+	} END_FOR;
+
+	laplace_solve(mA, mL, mPress, div, mGridSize );
+
+	// Subtract Pressure Gradient
+	FOR_EVERY_X_FLOW(mGridSize) {
+		if( i>0 && i<mGridSize ) {
+			FLOAT pf = mPress[i][j][k];
+			FLOAT pb = mPress[i-1][j][k];
+			if(mL[i][j][k] * mL[i-1][j][k] < 0.0 ) {
+				pf = mL[i][j][k] < 0.0 ? mPress[i][j][k] : mL[i][j][k]/fmin(1.0e-3,mL[i-1][j][k])*mPress[i-1][j][k];
+				pb = mL[i-1][j][k] < 0.0 ? mPress[i-1][j][k] : mL[i-1][j][k]/fmin(1.0e-6,mL[i][j][k])*mPress[i][j][k];
+			}
+			mVol[0][i][j][k] -= (pf-pb)/h;
+		}
+	} END_FOR;
+
+	FOR_EVERY_Y_FLOW(mGridSize) {
+		if( j>0 && j<mGridSize ) {
+			FLOAT pf = mPress[i][j][k];
+			FLOAT pb = mPress[i][j-1][k];
+			if(mL[i][j][k] * mL[i][j-1][k] < 0.0 ) {
+				pf = mL[i][j][k] < 0.0 ? mPress[i][j][k] : mL[i][j][k]/fmin(1.0e-3,mL[i][j-1][k])*mPress[i][j-1][k];
+				pb = mL[i][j-1][k] < 0.0 ? mPress[i][j-1][k] : mL[i][j-1][k]/fmin(1.0e-6,mL[i][j][k])*mPress[i][j][k];
+			}
+			mVol[1][i][j][k] -= (pf-pb)/h;
+		}
+	} END_FOR;
+
+	FOR_EVERY_Z_FLOW(mGridSize) {
+		if( k>0 && k<mGridSize ) {
+			FLOAT pf = mPress[i][j][k];
+			FLOAT pb = mPress[i][j][k-1];
+			if(mL[i][j][k] * mL[i][j][k-1] < 0.0 ) {
+				pf = mL[i][j][k] < 0.0 ? mPress[i][j][k] : mL[i][j][k]/fmin(1.0e-3,mL[i][j][k-1])*mPress[i][j][k-1];
+				pb = mL[i][j][k-1] < 0.0 ? mPress[i][j][k-1] : mL[i][j][k-1]/fmin(1.0e-6,mL[i][j][k])*mPress[i][j][k];
+			}
+			mVol[2][i][j][k] -= (pf-pb)/h;
+		}
+	} END_FOR;
+}
+void FlipFluidSolver::extrapolate_velocity() {
+	// Mark Fluid Cell Face
+	StaggeredGrid<char> mark(Coord(mGridSize),Coord(0),0);
+	StaggeredGrid<char> wall_mark(Coord(mGridSize),Coord(0),0);
+	OPENMP_FOR FOR_EVERY_X_FLOW(mGridSize) {
+		mark[0][i][j][k] = (i>0 && mA[i-1][j][k]==FLUID) || (i<mGridSize && mA[i][j][k]==FLUID);
+		wall_mark[0][i][j][k] = (i<=0 || mA[i-1][j][k]==WALL) && (i>=mGridSize || mA[i][j][k]==WALL);
+	} END_FOR;
+
+	OPENMP_FOR FOR_EVERY_Y_FLOW(mGridSize) {
+		mark[1][i][j][k] = (j>0 && mA[i][j-1][k]==FLUID) || (j<mGridSize && mA[i][j][k]==FLUID);
+		wall_mark[1][i][j][k] = (j<=0 || mA[i][j-1][k]==WALL) && (j>=mGridSize || mA[i][j][k]==WALL);
+	} END_FOR;
+
+	OPENMP_FOR FOR_EVERY_Z_FLOW(mGridSize) {
+		mark[2][i][j][k] = (k>0 && mA[i][j][k-1]==FLUID) || (k<mGridSize && mA[i][j][k]==FLUID);
+		wall_mark[2][i][j][k] = (k<=0 || mA[i][j][k-1]==WALL) && (k>=mGridSize || mA[i][j][k]==WALL);
+	} END_FOR;
+
+	// Now Extrapolate
+	OPENMP_FOR FOR_EVERY_CELL(mGridSize+1) {
+		for( int n=0; n<3; n++ ) {
+			if( n!=0 && i>mGridSize-1 ) continue;
+			if( n!=1 && j>mGridSize-1 ) continue;
+			if( n!=2 && k>mGridSize-1 ) continue;
+
+			if( ! mark[n][i][j][k] && wall_mark[n][i][j][k] ) {
+				int wsum = 0;
+				FLOAT sum = 0.0;
+				int q[][3] = { {i-1,j,k}, {i+1,j,k}, {i,j-1,k}, {i,j+1,k}, {i,j,k-1}, {i,j,k+1} };
+				for( int qk=0; qk<6; qk++ ) {
+					if( q[qk][0]>=0 && q[qk][0]<mGridSize+(n==0) && q[qk][1]>=0 && q[qk][1]<mGridSize+(n==1) && q[qk][2]>=0 && q[qk][2]<mGridSize+(n==2) ) {
+						if( mark[n][q[qk][0]][q[qk][1]][q[qk][2]] ) {
+							wsum ++;
+							sum += mVol[n][q[qk][0]][q[qk][1]][q[qk][2]];
+						}
+					}
+				}
+				if( wsum ) mVol[n][i][j][k] = sum/wsum;
+			}
+		}
+	} END_FOR;
+}
 void FlipFluidSolver::solve_picflip() {
     // Map Particles Onto Grid
 	sort->sort(particles);
@@ -667,6 +793,21 @@ void FlipFluidSolver::solve_picflip() {
 	}
 
 }
+void FlipFluidSolver::createLevelSet() {
+	// Create Density Field
+	OPENMP_FOR FOR_EVERY_CELL(mGridSize) {
+		double h = 1.0/(double)(mGridSize-1);
+		double x = i*h;
+		double y = j*h;
+		double z = k*h;
+		Vec3f p( x, y, z);
+        double value = implicit_func( sort.get(), p, DENSITY);
+        if( i==0 || i==mGridSize-1 || j==0 || j==mGridSize-1 || k==0 || k==mGridSize-1 ) {
+            value = fmax(value,0.01);
+        }
+        mLevelSet[i][k][k] = -value;
+	} END_FOR
+}
 void FlipFluidSolver::compute_wall_normal() {
 	// Sort Particles
 	sort->sort(particles);
@@ -699,10 +840,10 @@ void FlipFluidSolver::compute_wall_normal() {
 			}
 
 			if (p->n[0] == 0.0 && p->n[1] == 0.0 && p->n[2] == 0.0) {
-				vector<particlePtr> neighbors =
+				vector<particle*> neighbors =
 						sort->getNeigboringParticles_cell(i, j, k, 3, 3, 3);
 				for (int n = 0; n < neighbors.size(); n++) {
-					particle *np = neighbors[n].get();
+					particle *np = neighbors[n];
 					if (p != np && np->type == WALL) {
 						FLOAT d = length(p->p, np->p);
 						FLOAT w = 1.0 / d;

@@ -3,8 +3,8 @@
  *  flip3D
  *
  */
-#ifndef _COMMON_H
-#define _COMMON_H
+#ifndef _FLUIDCOMMON_H
+#define _FLUIDCOMMON_H
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/Dense.h>
 #include <memory>
@@ -84,7 +84,19 @@ public:
 	}
 
 };
+template<typename ValueT> struct StaggeredGrid {
+public:
+	RegularGrid<ValueT> mX, mY, mZ;
+	StaggeredGrid(const openvdb::Coord& dim, const openvdb::Coord& min, ValueT value) :
+			mX(openvdb::Coord(dim[0]+1,dim[1],dim[2]), min, value),
+			mY(openvdb::Coord(dim[0],dim[1]+1,dim[2]), min, value),
+			mZ(openvdb::Coord(dim[0],dim[1],dim[2]+1), min, value) {
+	}
+	RegularGrid<ValueT>& operator[](size_t i) {
+		return (&mX)[i];
+	}
 
+};
 enum ObjectType {
 	AIR = 0, FLUID = 1, WALL = 2
 };

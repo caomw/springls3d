@@ -15,9 +15,9 @@ public:
 	~sorter();
 	
 	void sort( std::vector<particlePtr>& particles );
-	std::vector<particlePtr> getNeigboringParticles_wall( int i, int j, int k, int w, int h, int d );
-	std::vector<particlePtr> getNeigboringParticles_cell( int i, int j, int k, int w, int h, int d );
-	FLOAT levelset( int i, int j, int k, FLOAT ***halfwall, FLOAT density );
+	std::vector<particle*> getNeigboringParticles_wall( int i, int j, int k, int w, int h, int d );
+	std::vector<particle*> getNeigboringParticles_cell( int i, int j, int k, int w, int h, int d );
+	FLOAT levelset( int i, int j, int k, RegularGrid<float>& halfwall, FLOAT density );
 	
 	int	 getCellSize(){ return gn; }
 	int	 getNumParticleAt( int i, int j, int k );

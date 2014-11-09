@@ -19,12 +19,12 @@
  * THE SOFTWARE.
  */
 
-#include "FluidSimulation.h"
+#include "SplashSimulation.h"
 
 namespace imagesci {
-FluidSimulation::FluidSimulation(const std::string& fileName,int gridSize,MotionScheme scheme):mSourceFileName(fileName),Simulation("Enright",scheme),mGridSize(gridSize) {
+SplashSimulation::SplashSimulation(const std::string& fileName,int gridSize,MotionScheme scheme):mSourceFileName(fileName),Simulation("Enright",scheme),mGridSize(gridSize) {
 }
-bool FluidSimulation::init(){
+bool SplashSimulation::init(){
 	Mesh mesh;
 	if(!mesh.openMesh(mSourceFileName))return false;
 	mesh.mapIntoBoundingBox(mesh.estimateVoxelSize());
@@ -52,10 +52,10 @@ bool FluidSimulation::init(){
 	return true;
 
 }
-void FluidSimulation::cleanup(){
+void SplashSimulation::cleanup(){
 	mAdvect.reset();
 }
-bool FluidSimulation::step(){
+bool SplashSimulation::step(){
 	mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
 	mIsMeshDirty=true;
 	mSimulationIteration++;

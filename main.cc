@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
 							sourceFileName=args[++i];
 						}
 					}
-					FluidSimulation sim(sourceFileName,dim,scheme);
+					SplashSimulation sim(sourceFileName,dim,scheme);
 					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
 					status=EXIT_SUCCESS;
 				}

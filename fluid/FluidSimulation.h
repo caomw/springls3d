@@ -26,6 +26,7 @@
 #include <openvdb/tools/DenseSparseTools.h>
 #include "fluid_common.h"
 #include "fluid_sorter.h"
+#include "../Simulation.h"
 #undef OPENVDB_REQUIRE_VERSION_NAME
 
 
@@ -34,33 +35,32 @@ namespace fluid{
 /*
  *
  */
-class FlipFluidSolver {
+class FluidSimulation :public Simulation{
 
 	protected:
-		int pourTime = -1;
-		openvdb::Vec2f pourPos;
-		float pourRad;
-		double max_dens;
-		int step;
-		int MAX_STEP;
-		const static float ALPHA ;
-		const static float DT   ;
-		const static float DENSITY;
+		int pourTime;
+		openvdb::Vec2f mPourPosition;
+		float mPourRadius;
+		double mMaxDensity;
+		//int MAX_STEP;
+		const static float mPicFlipBlendWeight ;
+		const static float mTimeStep   ;
+		const static float mDensityIsoLevel;
 		const static float GRAVITY ;
-		MACGrid<float> mVol;
-		MACGrid<float> mVolSave;
-		RegularGrid<char> mA;
-		RegularGrid<float> mL;
-		RegularGrid<float> div;
-		RegularGrid<float> mPress;
+		MACGrid<float> mVelocity;
+		MACGrid<float> mVelocityLast;
+		RegularGrid<char> mLabel;
+		RegularGrid<float> mLaplacian;
+		RegularGrid<float> mDivergence;
+		RegularGrid<float> mPressure;
 		RegularGrid<openvdb::Vec3f> mWallNormal;
-		RegularGrid<float> mHalfWall;
+		RegularGrid<float> mWallWeight;
 		RegularGrid<float> mLevelSet;
 		int mGridSize;
-		int gNumStuck;
-		float WALL_THICK;
-		std::unique_ptr<sorter> sort;
-		std::vector<Object> objects;
+		int mStuckParticleCount;
+		float mWallThickness;
+		std::unique_ptr<sorter> mSorter;
+		std::vector<Object> mSimulationObjects;
 		void save_grid();
 		void subtract_grid();
 		void placeObjects();
@@ -68,26 +68,27 @@ class FlipFluidSolver {
 		void damBreakTest();
 		void computeDensity();
 		void compute_wall_normal();
-		void simulateStep();
+		bool step();
 		void advect_particle();
 		void solve_picflip();
 		void add_ExtForce();
 		void pourWater(int limit);
 		void extrapolate_velocity();
-		void reposition(std::vector<int>& indices, std::vector<particlePtr> particles ) ;
+		void reposition(std::vector<int>& indices, std::vector<ParticlePtr> particles ) ;
 		void pushParticle( double x, double y, double z, char type );
 		void project();
 		void createLevelSet();
 		void enforce_boundary();
-		inline char wall_chk( char a ) {
-			return a == WALL ? 1.0 : -1.0;
+		void cleanup();
+		inline float isWallIndicator( char a ) {
+			return ((a == WALL) ? 1.0f : -1.0f);
 		}
 
 	public:
-		std::vector<particlePtr> particles;
-		FlipFluidSolver(int gridSize);
-		void init();
-		virtual ~FlipFluidSolver();
+		std::vector<ParticlePtr> mParticles;
+		FluidSimulation(int gridSize,MotionScheme scheme) ;
+		bool init();
+		virtual ~FluidSimulation();
 	};
 }
 } /* namespace imagesci */

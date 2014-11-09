@@ -14,18 +14,18 @@ public:
 	sorter( int gn );
 	~sorter();
 	
-	void sort( std::vector<particlePtr>& particles );
+	void sort( std::vector<ParticlePtr>& particles );
 	std::vector<particle*> getNeigboringParticles_wall( int i, int j, int k, int w, int h, int d );
 	std::vector<particle*> getNeigboringParticles_cell( int i, int j, int k, int w, int h, int d );
-	FLOAT levelset( int i, int j, int k, RegularGrid<float>& halfwall, FLOAT density );
+	float levelset( int i, int j, int k, RegularGrid<float>& halfwall, float density );
 	
 	int	 getCellSize(){ return gn; }
 	int	 getNumParticleAt( int i, int j, int k );
-	void markWater(RegularGrid<char>& A, RegularGrid<float>& halfwall, FLOAT density );
+	void markWater(RegularGrid<char>& A, RegularGrid<float>& halfwall, float density );
 	void deleteAllParticles();
 	
 protected:
-	RegularGrid<std::vector<particlePtr> > cells;
+	RegularGrid<std::vector<ParticlePtr> > cells;
 	int gn;
 };
 }}

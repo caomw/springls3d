@@ -29,7 +29,7 @@ namespace imagesci {
 /*
  *
  */
-class FluidSimulation : public Simulation{
+class SplashSimulation : public Simulation{
 	typedef FluidVelocityField<float> FieldT;
 	typedef SpringLevelSetAdvection<FieldT> AdvectT;
 protected:
@@ -41,7 +41,7 @@ protected:
 	bool step();
 	void cleanup();
 public:
-	FluidSimulation(const std::string& mSourceFileName,int gridSize=256,MotionScheme motionScheme=SEMI_IMPLICIT);
+	SplashSimulation(const std::string& mSourceFileName,int gridSize=256,MotionScheme motionScheme=SEMI_IMPLICIT);
 };
 } /* namespace imagesci */
 

@@ -20,7 +20,7 @@ static char subcell = 1;
 #define	USE_PRECOND			1
 
 // Clamped Fetch
-static FLOAT x_ref( RegularGrid<char>& A, RegularGrid<float>& L, RegularGrid<float>& x, int fi, int fj, int fk, int i, int j, int k, int n ) {
+static float x_ref( RegularGrid<char>& A, RegularGrid<float>& L, RegularGrid<float>& x, int fi, int fj, int fk, int i, int j, int k, int n ) {
 	i = min(max(0,i),n-1);
 	j = min(max(0,j),n-1);
 	k = min(max(0,k),n-1);
@@ -31,7 +31,7 @@ static FLOAT x_ref( RegularGrid<char>& A, RegularGrid<float>& L, RegularGrid<flo
 
 // Ans = Ax
 static void compute_Ax( RegularGrid<char>& A, RegularGrid<float>& L, RegularGrid<float>& x, RegularGrid<float>& ans, int n ) {
-	FLOAT h2 = 1.0/(n*n);
+	float h2 = 1.0/(n*n);
 	OPENMP_FOR FOR_EVERY_COMP(n) {
 		if( A[i][j][k] == FLUID ) {
 			ans[i][j][k] = (6.0*x[i][j][k]
@@ -77,7 +77,7 @@ static void copy( RegularGrid<float>& x, RegularGrid<float>& y, int n ) {
 }
 
 // Ans = x + a*y
-static void op( RegularGrid<char>& A, RegularGrid<float>& x, RegularGrid<float>& y, RegularGrid<float>& ans, FLOAT a, int n ) {
+static void op( RegularGrid<char>& A, RegularGrid<float>& x, RegularGrid<float>& y, RegularGrid<float>& ans, float a, int n ) {
 	RegularGrid<float> tmp(n,n,n);
 	OPENMP_FOR FOR_EVERY_COMP(n) {
 		if( A[i][j][k] == FLUID ) tmp[i][j][k] = x[i][j][k]+a*y[i][j][k];
@@ -92,18 +92,18 @@ static void residual( RegularGrid<char>& A, RegularGrid<float>& L, RegularGrid<f
 	op( A, b, r, r, -1.0, n );
 }
 
-static inline FLOAT square( FLOAT a ) {
+static inline float square( float a ) {
 	return a*a;
 }
 
-static FLOAT A_ref( RegularGrid<char>& A, int i, int j, int k, int qi, int qj, int qk, int n ) {
+static float A_ref( RegularGrid<char>& A, int i, int j, int k, int qi, int qj, int qk, int n ) {
 	if( i<0 || i>n-1 || j<0 || j>n-1 || k<0 || k>n-1 || A[i][j][k]!=FLUID ) return 0.0;
 	if( qi<0 || qi>n-1 || qj<0 || qj>n-1 || qk<0 || qk>n-1 || A[qi][qj][qk]!=FLUID ) return 0.0;
 	return -1.0;
 }
 
-static FLOAT A_diag( RegularGrid<char>& A, RegularGrid<float>& L, int i, int j, int k, int n ) {
-	FLOAT diag = 6.0;
+static float A_diag( RegularGrid<char>& A, RegularGrid<float>& L, int i, int j, int k, int n ) {
+	float diag = 6.0;
 	if( A[i][j][k] != FLUID ) return diag;
 	int q[][3] = { {i-1,j,k}, {i+1,j,k}, {i,j-1,k}, {i,j+1,k}, {i,j,k-1}, {i,j,k+1} };
 	for( int m=0; m<6; m++ ) {
@@ -119,7 +119,7 @@ static FLOAT A_diag( RegularGrid<char>& A, RegularGrid<float>& L, int i, int j, 
 }
 
 template <class T>
-static FLOAT P_ref( RegularGrid<T>& P, int i, int j, int k, int n ) {
+static float P_ref( RegularGrid<T>& P, int i, int j, int k, int n ) {
 	if( i<0 || i>n-1 || j<0 || j>n-1 || k<0 || k>n-1 || P[i][j][k] != FLUID ) return 0.0;
 	return P[i][j][k];
 }
@@ -203,7 +203,7 @@ static void conjGrad( RegularGrid<char>& A, RegularGrid<double>& P, RegularGrid<
 		double alpha = a/product( A, z, s, n );	// alpha = a/(z . s)
 		op( A, x, s, x, alpha, n );				// x = x + alpha*s
 		op( A, r, z, r, -alpha, n );			// r = r - alpha*z;
-		FLOAT error2 = product( A, r, r, n );	// error2 = r . r
+		float error2 = product( A, r, r, n );	// error2 = r . r
         error2_0 = fmax(error2_0,error2);
         
         // Dump Progress

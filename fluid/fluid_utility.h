@@ -42,18 +42,18 @@ template<typename ValueT> RegularGrid<ValueT> alloc3D( int w, int h, int d ) {
 
 unsigned long getMicroseconds();
 double dumptime();
-FLOAT smooth_kernel( FLOAT r2, FLOAT h );
-FLOAT sharp_kernel( FLOAT r2, FLOAT h );
-FLOAT length(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1);
-FLOAT length2(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1);
-FLOAT hypot2( FLOAT a, FLOAT b, FLOAT c );
-void mapP2G( sorter *sort, std::vector<particlePtr>& particles,MACGrid<float>&  grid, int gn );
-void mapG2P( std::vector<particlePtr>& particles, MACGrid<float>& grid, int gn );
-FLOAT linear( RegularGrid<float>& q, FLOAT x, FLOAT y, FLOAT z, int w, int h, int d ) ;
+float smooth_kernel( float r2, float h );
+float sharp_kernel( float r2, float h );
+float length(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1);
+float length2(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1);
+float hypot2( float a, float b, float c );
+void mapP2G( sorter *sort, std::vector<ParticlePtr>& particles,MACGrid<float>&  grid, int gn );
+void mapG2P( std::vector<ParticlePtr>& particles, MACGrid<float>& grid, int gn );
+float linear( RegularGrid<float>& q, float x, float y, float z, int w, int h, int d ) ;
 void fetchVelocity(openvdb::Vec3f& p,openvdb::Vec3f& u,MACGrid<float>& grid, int gn );
-void resample( sorter *sort, openvdb::Vec3f& p, openvdb::Vec3f& u, FLOAT re );
-void correct( sorter *sort, std::vector<particlePtr>& particle, FLOAT dt, FLOAT re);
-double implicit_func( sorter *sort, openvdb::Vec3f& p, FLOAT density );
+void resample( sorter *sort, openvdb::Vec3f& p, openvdb::Vec3f& u, float re );
+void correct( sorter *sort, std::vector<ParticlePtr>& particle, float dt, float re);
+double implicit_func( sorter *sort, openvdb::Vec3f& p, float density );
 static void dump(const char *format, ...) {
 	va_list args;
     

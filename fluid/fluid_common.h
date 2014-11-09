@@ -128,13 +128,12 @@ struct particle {
 	float m;
 	float dens;
 };
-typedef std::shared_ptr<particle> particlePtr;
+typedef std::shared_ptr<particle> ParticlePtr;
 struct ipos {
 	int i;
 	int j;
 	int k;
 };
-typedef float FLOAT;
 }
 }
 #endif

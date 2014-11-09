@@ -24,76 +24,45 @@
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/Dense.h>
 #include <openvdb/tools/DenseSparseTools.h>
+#include "fluid_common.h"
+#include "fluid_sorter.h"
 #undef OPENVDB_REQUIRE_VERSION_NAME
 
-namespace openvdb {
-	OPENVDB_USE_VERSION_NAMESPACE
-	namespace OPENVDB_VERSION_NAME {
-		namespace tools {
-			template<typename ValueT, MemoryLayout Layout = LayoutZYX> class RegularGrid : public Dense<ValueT, Layout>{
-				typedef DenseBase<ValueT, Layout> BaseT;
-			private:
-				ValueT* mPtr;
-				size_t mStrideX;
-				size_t mStrideY;
-			public:
-				RegularGrid(const Coord& dim, const Coord& min,ValueT value)
-			        : Dense<ValueT, Layout>(dim,min)
-			    {
-					this->fill(value);
-					mPtr=this->data();
-					mStrideX=this->xStride();
-					mStrideY=this->yStride();
-			    }
-				ValueT& operator()(size_t i,size_t j,size_t k){
-					return mPtr[i*mStrideX + j*mStrideY + k];
-				}
-				const ValueT& operator()(size_t i,size_t j,size_t k) const{
-					return mPtr[i*mStrideX + j*mStrideY + k];
-				}
-				ValueT& operator[](size_t i){
-					return mPtr[i];
-				}
-				const ValueT& operator[](size_t i)const{
-					return mPtr[i];
-				}
-			};
-			template<typename ValueT, MemoryLayout Layout = LayoutZYX> struct MACGrid{
-			public:
-				RegularGrid<ValueT,Layout> mX,mY,mZ;
-				MACGrid(const Coord& dim, const Coord& min,ValueT value)
-			        : mX(dim,min,value),mY(dim,min,value),mZ(dim,min,value)
-			    {
-			    }
-				RegularGrid<ValueT,Layout>& operator[](size_t i){
-					return (&mX)[i];
-				}
 
-			};
-		}
-	}
-}
 namespace imagesci {
-
+namespace fluid{
 /*
  *
  */
 class FlipFluidSolver {
-protected:
-	openvdb::tools::MACGrid<float> mDensity;
-	openvdb::tools::MACGrid<float> mDensitySave;
-	openvdb::tools::RegularGrid<char> mA;
-	openvdb::tools::RegularGrid<float> mL;
-	openvdb::tools::RegularGrid<float> mPress;
-	openvdb::tools::RegularGrid<openvdb::Vec4f> mWallNormal;
-	int mGridSize;
-public:
-	enum MaterialType {AIR=0,FLUID=1,WALL=2};
-	FlipFluidSolver(int gridSize);
-	void init();
-	virtual ~FlipFluidSolver();
-};
 
+	protected:
+		double max_dens;
+		const static float ALPHA ;
+		const static float DT   ;
+		const static float DENSITY;
+		const static float GRAVITY ;
+		MACGrid<float> mVol;
+		MACGrid<float> mVolSave;
+		RegularGrid<char> mA;
+		RegularGrid<float> mL;
+		RegularGrid<float> mPress;
+		RegularGrid<openvdb::Vec4f> mWallNormal;
+		int mGridSize;
+		float WALL_THICK;
+		std::unique_ptr<sorter> sort;
+		std::vector<Object> objects;
+		void placeObjects();
+		void placeWalls();
+		void damBreakTest();
+		void computeDensity();
+	public:
+		std::vector<particlePtr> particles;
+		FlipFluidSolver(int gridSize);
+		void init();
+		virtual ~FlipFluidSolver();
+	};
+}
 } /* namespace imagesci */
 
 #endif /* FLIPFLUIDSOLVER_H_ */

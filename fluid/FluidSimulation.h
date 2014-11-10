@@ -39,7 +39,7 @@ class FluidSimulation :public Simulation{
 	protected:
 		float mMaxDensity;
 		float mPicFlipBlendWeight ;
-		const static float mDensityIsoLevel;
+		const static float mFluidParticleDensity;
 		const static float GRAVITY ;
 		MACGrid<float> mVelocity;
 		MACGrid<float> mVelocityLast;
@@ -60,15 +60,15 @@ class FluidSimulation :public Simulation{
 		void placeObjects();
 		void placeWalls();
 		void damBreakTest();
-		void computeParticleDensity();
+		void computeParticleDensity(float maxDensity);
 		void computeWallNormals();
 		bool step();
 		void advectParticles();
 		void solvePicFlip();
 		void addExternalForce();
-		void pourWater(int limit);
+		void pourWater(int limit,float maxDensity);
 		void extrapolateVelocity();
-		void reposition(std::vector<int>& indices, std::vector<ParticlePtr> particles ) ;
+		void repositionParticles(std::vector<int>& indices, std::vector<ParticlePtr> particles ) ;
 		void addParticle( double x, double y, double z, char type );
 		void project();
 		void createLevelSet();

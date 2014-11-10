@@ -75,6 +75,15 @@ public:
 	const size_t size() const {
 		return this->bbox().volume();
 	}
+	const size_t rows() const {
+		return this->bbox[0];
+	}
+	const size_t cols() const {
+		return this->bbox[1];
+	}
+	const size_t slices() const {
+		return this->bbox[2];
+	}
 	void copyTo(RegularGrid<ValueT>& out){
 		ValueT* src=this->data();
 		ValueT* dest=out.data();

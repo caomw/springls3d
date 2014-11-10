@@ -13,14 +13,14 @@ using namespace std;
 namespace imagesci{
 namespace fluid{
 ParticleLocator::ParticleLocator( int gn ):cells(gn,gn,gn) {
-	this->gn = gn;
+	this->mGridSize = gn;
 }
 ParticleLocator::~ParticleLocator() {
 }
 
-void ParticleLocator::sort( std::vector<ParticlePtr > &particles ) {
+void ParticleLocator::update( std::vector<ParticlePtr > &particles ) {
 	// Clear All Cells
-	FOR_EVERY_CELL(gn) {
+	FOR_EVERY_CELL(mGridSize) {
 		cells[i][j][k].clear();
 	} END_FOR
 	// Store Into The Cells
@@ -30,19 +30,19 @@ void ParticleLocator::sort( std::vector<ParticlePtr > &particles ) {
 		for( int k=0; k<3; k++ ) {
             pos[k] = p->mLocation[k];
 		}
-		int i = fmax(0,fmin(gn-1,gn*pos[0]));
-		int j = fmax(0,fmin(gn-1,gn*pos[1]));
-		int k = fmax(0,fmin(gn-1,gn*pos[2]));
+		int i = fmax(0,fmin(mGridSize-1,mGridSize*pos[0]));
+		int j = fmax(0,fmin(mGridSize-1,mGridSize*pos[1]));
+		int k = fmax(0,fmin(mGridSize-1,mGridSize*pos[2]));
 		cells[i][j][k].push_back(p);
 
 
 	}
 }
 
-std::vector<FluidParticle*> ParticleLocator::getNeigboringParticles_wall( int i, int j, int k, int w, int h, int d ) {
+std::vector<FluidParticle*> ParticleLocator::getNeigboringWallParticles( int i, int j, int k, int w, int h, int d ) {
 	std::vector<FluidParticle*> res;
 	for( int si=i-w; si<=i+w-1; si++ ) for( int sj=j-h; sj<=j+h-1; sj++ ) for( int sk=k-d; sk<=k+d-1; sk++ ) {
-		if( si < 0 || si > gn-1 || sj < 0 || sj > gn-1 || sk < 0 || sk > gn-1 ) continue;
+		if( si < 0 || si > mGridSize-1 || sj < 0 || sj > mGridSize-1 || sk < 0 || sk > mGridSize-1 ) continue;
 		for( int a=0; a<cells[si][sj][sk].size(); a++ ) { 
 			ParticlePtr p = cells[si][sj][sk][a];
 			res.push_back(p.get());
@@ -51,10 +51,10 @@ std::vector<FluidParticle*> ParticleLocator::getNeigboringParticles_wall( int i,
 	return res;
 }
 
-std::vector<FluidParticle*> ParticleLocator::getNeigboringParticles_cell( int i, int j, int k, int w, int h, int d ) {
+std::vector<FluidParticle*> ParticleLocator::getNeigboringCellParticles( int i, int j, int k, int w, int h, int d ) {
 	std::vector<FluidParticle*> res;
 	for( int si=i-w; si<=i+w; si++ ) for( int sj=j-h; sj<=j+h; sj++ ) for( int sk=k-d; sk<=k+d; sk++ ) {
-		if( si < 0 || si > gn-1 || sj < 0 || sj > gn-1 || sk < 0 || sk > gn-1 ) continue;
+		if( si < 0 || si > mGridSize-1 || sj < 0 || sj > mGridSize-1 || sk < 0 || sk > mGridSize-1 ) continue;
 		for( int a=0; a<cells[si][sj][sk].size(); a++ ) { 
 			ParticlePtr p = cells[si][sj][sk][a];
 			res.push_back(p.get());
@@ -63,11 +63,11 @@ std::vector<FluidParticle*> ParticleLocator::getNeigboringParticles_cell( int i,
 	return res;
 }
 
-int	 ParticleLocator::getNumParticleAt( int i, int j, int k ) {
+int	 ParticleLocator::getParticleCount( int i, int j, int k ) {
 	return cells[i][j][k].size();
 }
 
-float ParticleLocator::levelset( int i, int j, int k, RegularGrid<float>& halfwall, float density ) {
+float ParticleLocator::getLevelSetValue( int i, int j, int k, RegularGrid<float>& halfwall, float density ) {
 	float accm = 0.0;
 	for( int a=0; a<cells[i][j][k].size(); a++ ) { 
 		if( cells[i][j][k][a]->mObjectType == FLUID ) {
@@ -80,19 +80,19 @@ float ParticleLocator::levelset( int i, int j, int k, RegularGrid<float>& halfwa
 	return 0.2*n0-accm;
 }
 
-void ParticleLocator::markWater(RegularGrid<char>& A, RegularGrid<float>& halfwall, float density ) {
-	FOR_EVERY_CELL(gn) {
+void ParticleLocator::markAsWater(RegularGrid<char>& A, RegularGrid<float>& halfwall, float density ) {
+	FOR_EVERY_CELL(mGridSize) {
 		A[i][j][k] = AIR;
 		for( int a=0; a<cells[i][j][k].size(); a++ ) { 
 			if( cells[i][j][k][a]->mObjectType == WALL ) {
 				A[i][j][k] = WALL;
 			}
 		}
-		if( A[i][j][k] != WALL ) A[i][j][k] = levelset( i, j, k, halfwall, density ) < 0.0 ? FLUID : AIR;
+		if( A[i][j][k] != WALL ) A[i][j][k] = getLevelSetValue( i, j, k, halfwall, density ) < 0.0 ? FLUID : AIR;
 	} END_FOR
 }
 void ParticleLocator::deleteAllParticles() {
-	FOR_EVERY_CELL(gn) {
+	FOR_EVERY_CELL(mGridSize) {
 		for( int a=0; a<cells[i][j][k].size(); a++ ) { 
 			cells[i][j][k].clear();
 		}

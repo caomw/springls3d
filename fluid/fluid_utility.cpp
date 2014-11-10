@@ -65,7 +65,7 @@ void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 			openvdb::Vec3f px(i, j+0.5, k+0.5);
 			float sumw = 0.0;
 			float sumx = 0.0;
-			neighbors = sort->getNeigboringParticles_wall(i,j,k,1,2,2);
+			neighbors = sort->getNeigboringWallParticles(i,j,k,1,2,2);
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
 				if( p->mObjectType == FLUID ) {
@@ -86,7 +86,7 @@ void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 			openvdb::Vec3f py( i+0.5, j, k+0.5);
 			float sumw = 0.0;
 			float sumy = 0.0;
-			neighbors = sort->getNeigboringParticles_wall(i,j,k,2,1,2);
+			neighbors = sort->getNeigboringWallParticles(i,j,k,2,1,2);
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
 				if( p->mObjectType == FLUID ) {
@@ -107,7 +107,7 @@ void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 			openvdb::Vec3f pz(i+0.5, j+0.5, k);
 			float sumw = 0.0;
 			float sumz = 0.0;
-			neighbors = sort->getNeigboringParticles_wall(i,j,k,2,2,1);
+			neighbors = sort->getNeigboringWallParticles(i,j,k,2,2,1);
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
 				if( p->mObjectType == FLUID ) {
@@ -157,7 +157,7 @@ void resampleParticles( ParticleLocator *sort, openvdb::Vec3f& p,openvdb::Vec3f&
 	u[0] = u[1] = u[2] = 0.0;
 
 	// Gather Neighboring Particles
-	neighbors = sort->getNeigboringParticles_cell(fmax(0,fmin(cell_size-1,cell_size*p[0])),
+	neighbors = sort->getNeigboringCellParticles(fmax(0,fmin(cell_size-1,cell_size*p[0])),
 												  fmax(0,fmin(cell_size-1,cell_size*p[1])),
 												  fmax(0,fmin(cell_size-1,cell_size*p[2])),1,1,1);
 	for( int n=0; n<neighbors.size(); n++ ) {
@@ -179,7 +179,7 @@ void resampleParticles( ParticleLocator *sort, openvdb::Vec3f& p,openvdb::Vec3f&
 void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particles, float dt, float re ) {
 	// Variables for Neighboring Particles
 	int cell_size = sort->getCellSize();
-	sort->sort(particles);
+	sort->update(particles);
 
 	// Compute Pseudo Moved Point
 	OPENMP_FOR for( int n=0; n<particles.size(); n++ ) {
@@ -189,7 +189,7 @@ void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle
 			float x = max(0.0f,min((float)cell_size,cell_size*p->mLocation[0]));
 			float y = max(0.0f,min((float)cell_size,cell_size*p->mLocation[1]));
 			float z = max(0.0f,min((float)cell_size,cell_size*p->mLocation[2]));
-			std::vector<FluidParticle*> neighbors = sort->getNeigboringParticles_cell(x,y,z,1,1,1);
+			std::vector<FluidParticle*> neighbors = sort->getNeigboringCellParticles(x,y,z,1,1,1);
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *np = neighbors[n];
 				if( p != np ) {
@@ -247,7 +247,7 @@ static double implicit_func( vector<FluidParticle *> &neighbors,openvdb::Vec3f& 
 
 double implicit_func( ParticleLocator *sort, openvdb::Vec3f& p, float density ) {
 	int gn = sort->getCellSize();
-	vector<FluidParticle *> neighbors = sort->getNeigboringParticles_cell(
+	vector<FluidParticle *> neighbors = sort->getNeigboringCellParticles(
 			fmax(0,fmin(gn-1,gn*p[0])),
 			fmax(0,fmin(gn-1,gn*p[1])),
 			fmax(0,fmin(gn-1,gn*p[2])),2,2,2

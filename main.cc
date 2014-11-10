@@ -56,7 +56,7 @@
 #include "EnrightSimulation.h"
 #include "SimulationPlayback.h"
 #include "ArmadilloTwist.h"
-#include "FluidSimulation.h"
+#include "SplashSimulation.h"
 #include <iostream>
 using namespace openvdb;
 using namespace imagesci;

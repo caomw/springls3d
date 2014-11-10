@@ -46,6 +46,9 @@ private:
 	ValueT* mPtr;
 	size_t mStrideX;
 	size_t mStrideY;
+	size_t mRows;
+	size_t mCols;
+	size_t mSlices;
 public:
 	RegularGrid(const openvdb::Coord& dim, const openvdb::Coord& min, ValueT value) :
 		openvdb::tools::Dense<ValueT, openvdb::tools::MemoryLayout::LayoutZYX>(dim, min) {
@@ -53,12 +56,18 @@ public:
 		mPtr = this->data();
 		mStrideX = this->xStride();
 		mStrideY = this->yStride();
+		mRows=dim[0];
+		mCols=dim[1];
+		mSlices=dim[2];
 	}
 	RegularGrid(int rows,int cols,int slices) :
 		openvdb::tools::Dense<ValueT, openvdb::tools::MemoryLayout::LayoutZYX>(openvdb::Coord(rows,cols,slices),openvdb::Coord(0)) {
 		mPtr = this->data();
 		mStrideX = this->xStride();
 		mStrideY = this->yStride();
+		mRows=rows;
+		mCols=cols;
+		mSlices=slices;
 	}
 	ValueT& operator()(size_t i, size_t j, size_t k) {
 		return mPtr[i * mStrideX + j * mStrideY + k];
@@ -72,17 +81,17 @@ public:
 	const Offset2D<ValueT> operator[](size_t i) const {
 		return Offset2D<ValueT>(&mPtr[i * mStrideX], mStrideY);
 	}
-	const size_t size() const {
-		return this->bbox().volume();
+	inline const size_t size() const {
+		return mRows*mCols*mSlices;
 	}
-	const size_t rows() const {
-		return this->bbox[0];
+	inline const size_t rows() const {
+		return mRows;
 	}
-	const size_t cols() const {
-		return this->bbox[1];
+	inline const size_t cols() const {
+		return mCols;
 	}
-	const size_t slices() const {
-		return this->bbox[2];
+	inline const size_t slices() const {
+		return mSlices;
 	}
 	void copyTo(RegularGrid<ValueT>& out){
 		ValueT* src=this->data();

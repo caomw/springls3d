@@ -37,10 +37,11 @@ namespace fluid{
  */
 class FluidSimulation :public Simulation{
 	protected:
+		//Constant, even though gravity really isn't constant on earth.
+		const static float GRAVITY ;
 		float mMaxDensity;
 		float mPicFlipBlendWeight ;
-		const static float mFluidParticleDensity;
-		const static float GRAVITY ;
+		float mFluidParticleDensity;
 		MACGrid<float> mVelocity;
 		MACGrid<float> mVelocityLast;
 		RegularGrid<char> mLabel;
@@ -62,7 +63,6 @@ class FluidSimulation :public Simulation{
 		void damBreakTest();
 		void computeParticleDensity(float maxDensity);
 		void computeWallNormals();
-		bool step();
 		void advectParticles();
 		void solvePicFlip();
 		void addExternalForce();
@@ -73,7 +73,6 @@ class FluidSimulation :public Simulation{
 		void project();
 		void createLevelSet();
 		void enforceBoundaryCondition();
-		void cleanup();
 		inline float isWallIndicator( char a ) {
 			return ((a == WALL) ? 1.0f : -1.0f);
 		}
@@ -82,6 +81,8 @@ class FluidSimulation :public Simulation{
 		std::vector<ParticlePtr> mParticles;
 		FluidSimulation(int gridSize,MotionScheme scheme) ;
 		bool init();
+		bool step();
+		void cleanup();
 		virtual ~FluidSimulation();
 	};
 }

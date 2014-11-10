@@ -28,13 +28,13 @@ using namespace openvdb::tools;
 using namespace std;
 namespace imagesci {
 namespace fluid {
-const float FluidSimulation::mFluidParticleDensity = 0.5f;
-const float FluidSimulation::GRAVITY = 9.8f;
+const float FluidSimulation::GRAVITY = 9.8067f;
 FluidSimulation::FluidSimulation(int gridSize,MotionScheme scheme) :
 		Simulation("Fluid Simulation",scheme),
 		mMaxDensity(0.0),
 		mStuckParticleCount(0),
 		mPicFlipBlendWeight(0.95f),
+		mFluidParticleDensity(0.5f),
 		mGridSize(gridSize),
 		mLevelSet(Coord(gridSize),Coord(0),0),
 		mLabel(Coord(gridSize), Coord(0), 0.0f),mDivergence(Coord(gridSize), Coord(0), 0.0f), mLaplacian(
@@ -198,9 +198,7 @@ void FluidSimulation::addParticle(double x, double y, double z, char type) {
 	//Add case for converting MESH object into collection of particles via inside/outside level set test.
 
 	CollisionObject *inside_obj = NULL;
-	for (int n = 0; n < mCollisionObjects.size(); n++) {
-		CollisionObject &obj = mCollisionObjects[n];
-
+	for (CollisionObject &obj: mCollisionObjects) {
 		bool found = false;
 		float thickness = 3.0 / mGridSize;
 		if (obj.shape == BOX) {
@@ -240,8 +238,8 @@ void FluidSimulation::addParticle(double x, double y, double z, char type) {
 		}
 
 		if (found) {
-			if (mCollisionObjects[n].type == type) {
-				inside_obj = &mCollisionObjects[n]; // Found
+			if (obj.type == type) {
+				inside_obj = &obj; // Found
 				break;
 			}
 		}

@@ -325,21 +325,19 @@ bool FluidSimulation::init() {
 			}
 		}
 	}
-
 	// Remove Particles That Stuck On Wal Cells
 	mParticleLocator->update(mParticles);
 	mParticleLocator->markAsWater(mLabel, mWallWeight, mFluidParticleDensity);
-
 	for (std::vector<ParticlePtr>::iterator iter = mParticles.begin();
 			iter != mParticles.end();) {
-		FluidParticle &p = **iter;
-		if (p.mObjectType == WALL) {
+		ParticlePtr p = *iter;
+		if (p->mObjectType == WALL) {
 			iter++;
 			continue;
 		}
-		int i = clamp(mGridSize*p.mLocation[0],0.0f,mGridSize-1.0f);
-		int j = clamp(mGridSize*p.mLocation[1],0.0f,mGridSize-1.0f);
-		int k = clamp(mGridSize*p.mLocation[2],0.0f,mGridSize-1.0f);
+		int i = clamp(mGridSize*p->mLocation[0],0.0f,mGridSize-1.0f);
+		int j = clamp(mGridSize*p->mLocation[1],0.0f,mGridSize-1.0f);
+		int k = clamp(mGridSize*p->mLocation[2],0.0f,mGridSize-1.0f);
 		if (mLabel[i][j][k] == WALL) {
 			iter = mParticles.erase(iter);
 		} else {

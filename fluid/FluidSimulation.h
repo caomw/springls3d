@@ -36,15 +36,9 @@ namespace fluid{
  *
  */
 class FluidSimulation :public Simulation{
-
 	protected:
-		int pourTime;
-		openvdb::Vec2f mPourPosition;
-		float mPourRadius;
-		double mMaxDensity;
-		//int MAX_STEP;
-		const static float mPicFlipBlendWeight ;
-		const static float mTimeStep   ;
+		float mMaxDensity;
+		float mPicFlipBlendWeight ;
 		const static float mDensityIsoLevel;
 		const static float GRAVITY ;
 		MACGrid<float> mVelocity;
@@ -59,26 +53,26 @@ class FluidSimulation :public Simulation{
 		int mGridSize;
 		int mStuckParticleCount;
 		float mWallThickness;
-		std::unique_ptr<sorter> mSorter;
-		std::vector<Object> mSimulationObjects;
-		void save_grid();
-		void subtract_grid();
+		std::unique_ptr<ParticleLocator> mParticleLocator;
+		std::vector<CollisionObject> mCollisionObjects;
+		void copyGridToBuffer();
+		void subtractGrid();
 		void placeObjects();
 		void placeWalls();
 		void damBreakTest();
-		void computeDensity();
-		void compute_wall_normal();
+		void computeParticleDensity();
+		void computeWallNormals();
 		bool step();
-		void advect_particle();
-		void solve_picflip();
-		void add_ExtForce();
+		void advectParticles();
+		void solvePicFlip();
+		void addExternalForce();
 		void pourWater(int limit);
-		void extrapolate_velocity();
+		void extrapolateVelocity();
 		void reposition(std::vector<int>& indices, std::vector<ParticlePtr> particles ) ;
-		void pushParticle( double x, double y, double z, char type );
+		void addParticle( double x, double y, double z, char type );
 		void project();
 		void createLevelSet();
-		void enforce_boundary();
+		void enforceBoundaryCondition();
 		void cleanup();
 		inline float isWallIndicator( char a ) {
 			return ((a == WALL) ? 1.0f : -1.0f);

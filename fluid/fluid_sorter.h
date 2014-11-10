@@ -9,14 +9,14 @@
 #define _SORTER_H
 namespace imagesci{
 namespace fluid{
-class sorter {
+class ParticleLocator {
 public:
-	sorter( int gn );
-	~sorter();
+	ParticleLocator( int gn );
+	~ParticleLocator();
 	
 	void sort( std::vector<ParticlePtr>& particles );
-	std::vector<particle*> getNeigboringParticles_wall( int i, int j, int k, int w, int h, int d );
-	std::vector<particle*> getNeigboringParticles_cell( int i, int j, int k, int w, int h, int d );
+	std::vector<FluidParticle*> getNeigboringParticles_wall( int i, int j, int k, int w, int h, int d );
+	std::vector<FluidParticle*> getNeigboringParticles_cell( int i, int j, int k, int w, int h, int d );
 	float levelset( int i, int j, int k, RegularGrid<float>& halfwall, float density );
 	
 	int	 getCellSize(){ return gn; }

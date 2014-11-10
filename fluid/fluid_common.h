@@ -72,25 +72,52 @@ public:
 	const Offset2D<ValueT> operator[](size_t i) const {
 		return Offset2D<ValueT>(&mPtr[i * mStrideX], mStrideY);
 	}
+	const size_t size() const {
+		return this->bbox().volume();
+	}
+	void copyTo(RegularGrid<ValueT>& out){
+		ValueT* src=this->data();
+		ValueT* dest=out.data();
+		memcpy(dest,src,sizeof(ValueT)*size());
+	}
+	void add(RegularGrid<ValueT>& out){
+		ValueT* src=this->data();
+		ValueT* dest=out.data();
+		size_t N=size();
+		for(size_t n=0;n<N;n++){
+			*src+=*dest;
+			src++;
+			dest++;
+		}
+	}
+	void subtract(RegularGrid<ValueT>& out){
+		ValueT* src=this->data();
+		ValueT* dest=out.data();
+		size_t N=size();
+		for(size_t n=0;n<N;n++){
+			*src-=*dest;
+			src++;
+			dest++;
+		}
+	}
+	void subtractFrom(RegularGrid<ValueT>& out){
+		ValueT* src=this->data();
+		ValueT* dest=out.data();
+		size_t N=size();
+		for(size_t n=0;n<N;n++){
+			*src=*dest-*src;
+			src++;
+			dest++;
+		}
+	}
 };
 template<typename ValueT> struct MACGrid {
 public:
 	RegularGrid<ValueT> mX, mY, mZ;
 	MACGrid(const openvdb::Coord& dim, const openvdb::Coord& min, ValueT value) :
-			mX(dim, min, value), mY(dim, min, value), mZ(dim, min, value) {
-	}
-	RegularGrid<ValueT>& operator[](size_t i) {
-		return (&mX)[i];
-	}
-
-};
-template<typename ValueT> struct StaggeredGrid {
-public:
-	RegularGrid<ValueT> mX, mY, mZ;
-	StaggeredGrid(const openvdb::Coord& dim, const openvdb::Coord& min, ValueT value) :
-			mX(openvdb::Coord(dim[0]+1,dim[1],dim[2]), min, value),
-			mY(openvdb::Coord(dim[0],dim[1]+1,dim[2]), min, value),
-			mZ(openvdb::Coord(dim[0],dim[1],dim[2]+1), min, value) {
+					mX(openvdb::Coord(dim[0]+1,dim[1],dim[2]), min, value),
+					mY(openvdb::Coord(dim[0],dim[1]+1,dim[2]), min, value),
+					mZ(openvdb::Coord(dim[0],dim[1],dim[2]+1), min, value) {
 	}
 	RegularGrid<ValueT>& operator[](size_t i) {
 		return (&mX)[i];
@@ -106,34 +133,29 @@ enum MaterialType {
 enum ObjectShape {
 	BOX= 0, SPHERE = 1
 };
-struct Object {
+struct CollisionObject {
 	ObjectType type;
 	ObjectShape shape;
 	MaterialType material;
-	bool visible;
-	float r;
-	openvdb::Vec3f c;
-	openvdb::Vec3f p[2];
+	bool mVisible;
+	float mRadius;
+	openvdb::Vec3f mColor;
+	openvdb::Vec3f mBounds[2];
 };
 
-struct particle {
-	openvdb::Vec3f p;
-	openvdb::Vec3f u;
-	openvdb::Vec3f n;
-	ObjectType type;
-	char visible;
-	char remove;
-	char thinparticle;
-	openvdb::Vec3f tmp[2];
-	float m;
-	float dens;
+struct FluidParticle {
+	openvdb::Vec3f mLocation;
+	openvdb::Vec3f mVelocity;
+	openvdb::Vec3f mNormal;
+	char mObjectType;
+	char mVisible;
+	char mRemoveIndicator;
+	char mThinParticle;
+	openvdb::Vec3f mTmp[2];
+	float mMass;
+	float mDensity;
 };
-typedef std::shared_ptr<particle> ParticlePtr;
-struct ipos {
-	int i;
-	int j;
-	int k;
-};
+typedef std::unique_ptr<FluidParticle> ParticlePtr;
 }
 }
 #endif

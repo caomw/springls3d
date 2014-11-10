@@ -47,29 +47,29 @@ FluidSimulation::FluidSimulation(int gridSize,MotionScheme scheme) :
 	mTimeStep=0.6e-2f;
 }
 void FluidSimulation::computeParticleDensity(float maxDensity) {
-	OPENMP_FOR for (int n = 0; n < mParticles.size(); n++) {
+	OPENMP_FOR for(ParticlePtr& p:mParticles) {
 		// Find Neighbors
 		int gn = mParticleLocator->getCellSize();
-		if (mParticles[n]->mObjectType == WALL) {
-			mParticles[n]->mDensity = 1.0;
+		if (p->mObjectType == WALL) {
+			p->mDensity = 1.0;
 			continue;
 		}
-		Vec3f& p = mParticles[n]->mLocation;
+		Vec3f& pt = p->mLocation;
 		std::vector<FluidParticle*> neighbors = mParticleLocator->getNeigboringCellParticles(
-				clamp(gn*p[0],0.0f,gn-1.0f),
-				clamp(gn*p[1],0.0f,gn-1.0f),
-				clamp(gn*p[2],0.0f,gn-1.0f), 1, 1, 1);
+				clamp(gn*pt[0],0.0f,gn-1.0f),
+				clamp(gn*pt[1],0.0f,gn-1.0f),
+				clamp(gn*pt[2],0.0f,gn-1.0f), 1, 1, 1);
 		float wsum = 0.0;
 		for (int m = 0; m < neighbors.size(); m++) {
 			FluidParticle& np = *neighbors[m];
 			if (np.mObjectType == WALL)
 				continue;
-			float d2 = length2(np.mLocation, p);
+			float d2 = length2(np.mLocation, pt);
 			float w = np.mMass * smooth_kernel(d2, 4.0f * mFluidParticleDensity / mGridSize);
 			wsum += w;
 		}
-		mParticles[n]->mDensity = wsum / maxDensity;
-	}
+		p->mDensity = wsum / maxDensity;
+	} OPENMP_END
 }
 void FluidSimulation::placeWalls() {
 	CollisionObject obj;
@@ -258,12 +258,8 @@ void FluidSimulation::addParticle(double x, double y, double z, char type) {
 		p->mLocation[2] = z
 				+ 0.01 * (inside_obj->type == FLUID) * 0.2
 						* ((rand() % 101) / 50.0 - 1.0) / mGridSize;
-		p->mVelocity[0] = 0.0;
-		p->mVelocity[1] = 0.0;
-		p->mVelocity[2] = 0.0;
-		p->mNormal[0] = 0.0;
-		p->mNormal[1] = 0.0;
-		p->mNormal[2] = 0.0;
+		p->mVelocity=Vec3f(0.0);
+		p->mNormal=Vec3f(0.0);
 		p->mThinParticle = 0;
 		p->mDensity = 10.0;
 		p->mObjectType = inside_obj->type;
@@ -276,29 +272,6 @@ bool FluidSimulation::init() {
 	mSimulationTime=0;
 	mSimulationIteration=0;
 	mSimulationDuration=600/mTimeStep;
-
-	//Not needed, already zeroed out on creation.
-	/*
-	FOR_EVERY_X_FLOW(mGridSize)
-		{
-			mVelocityLast[0][i][j][k] = mVelocity[0][i][j][k] = 0.0;
-		}END_FOR
-
-	FOR_EVERY_Y_FLOW(mGridSize)
-		{
-			mVelocityLast[1][i][j][k] = mVelocity[1][i][j][k] = 0.0;
-		}END_FOR
-
-	FOR_EVERY_Z_FLOW(mGridSize)
-		{
-			mVelocityLast[2][i][j][k] = mVelocity[2][i][j][k] = 0.0;
-		}END_FOR
-	 */
-	FOR_EVERY_CELL(mGridSize)
-		{
-			mLabel[i][j][k] = AIR;
-			//mPressure[i][j][k] = 0.0;
-		}END_FOR
 	mParticleLocator = std::unique_ptr<ParticleLocator>(new ParticleLocator(mGridSize));
 	placeObjects();
 	// This Is A Test Part. We Generate Pseudo Particles To Measure Maximum Particle Density

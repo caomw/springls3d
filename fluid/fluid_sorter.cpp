@@ -18,7 +18,7 @@ ParticleLocator::ParticleLocator( int gn ):cells(gn,gn,gn) {
 ParticleLocator::~ParticleLocator() {
 }
 
-void ParticleLocator::update( std::vector<ParticlePtr > &particles ) {
+void ParticleLocator::update( std::vector<ParticlePtr >& particles ) {
 	// Clear All Cells
 	FOR_EVERY_CELL(mGridSize) {
 		cells[i][j][k].clear();

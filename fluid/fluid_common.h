@@ -164,7 +164,7 @@ struct FluidParticle {
 	float mMass;
 	float mDensity;
 };
-typedef std::unique_ptr<FluidParticle> ParticlePtr;
+typedef std::shared_ptr<FluidParticle> ParticlePtr;
 }
 }
 #endif

@@ -502,14 +502,19 @@ void SpringLevelSet::create(FloatGrid& grid) {
 	mSignedLevelSet->setTransform(openvdb::math::Transform::createLinearTransform(1.0));
 	mIsoSurface.create(mSignedLevelSet);
 	mConstellation.create(&mIsoSurface);
-	updateSignedLevelSet();
 	updateIsoSurface();
-	updateUnSignedLevelSet();
-	updateNearestNeighbors();
+	for(int iter=0;iter<2;iter++){
+		updateUnSignedLevelSet();
+		updateNearestNeighbors();
+		relax(10);
+		updateUnSignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
+		clean();
+		updateUnSignedLevelSet();
+		fill();
+	}
 	updateGradient();
-
-	relax(10);
 }
+
 void SpringLevelSet::updateIsoSurface() {
 
 	mVolToMesh(*mSignedLevelSet);

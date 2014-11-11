@@ -24,18 +24,11 @@ void ParticleLocator::update( std::vector<ParticlePtr >& particles ) {
 		cells[i][j][k].clear();
 	} END_FOR
 	// Store Into The Cells
-	for( int n=0; n<particles.size(); n++ ) { 
-		ParticlePtr p = particles[n];
-		float pos[3];
-		for( int k=0; k<3; k++ ) {
-            pos[k] = p->mLocation[k];
-		}
-		int i = fmax(0,fmin(mGridSize-1,mGridSize*pos[0]));
-		int j = fmax(0,fmin(mGridSize-1,mGridSize*pos[1]));
-		int k = fmax(0,fmin(mGridSize-1,mGridSize*pos[2]));
+	for(ParticlePtr& p:particles) {
+		int i = fmax(0,fmin(mGridSize-1,mGridSize*p->mLocation[0]));
+		int j = fmax(0,fmin(mGridSize-1,mGridSize*p->mLocation[1]));
+		int k = fmax(0,fmin(mGridSize-1,mGridSize*p->mLocation[2]));
 		cells[i][j][k].push_back(p);
-
-
 	}
 }
 

@@ -248,9 +248,9 @@ static double implicit_func( vector<FluidParticle *> &neighbors,openvdb::Vec3f& 
 double implicit_func( ParticleLocator *sort, openvdb::Vec3f& p, float density ) {
 	int gn = sort->getCellSize();
 	vector<FluidParticle *> neighbors = sort->getNeigboringCellParticles(
-			fmax(0,fmin(gn-1,gn*p[0])),
-			fmax(0,fmin(gn-1,gn*p[1])),
-			fmax(0,fmin(gn-1,gn*p[2])),2,2,2
+			max(0.0f,min(gn-1.0f,gn*p[0])),
+			max(0.0f,min(gn-1.0f,gn*p[1])),
+			max(0.0f,min(gn-1.0f,gn*p[2])),2,2,2
 			);
 	return implicit_func( neighbors, p, density, gn );
 }

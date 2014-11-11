@@ -20,14 +20,18 @@
  */
 
 #include "SplashSimulation.h"
-
+#include <openvdb/tools/DenseSparseTools.h>
 namespace imagesci {
-SplashSimulation::SplashSimulation(const std::string& fileName,int gridSize,MotionScheme scheme):mSourceFileName(fileName),Simulation("Enright",scheme),mGridSize(gridSize) {
+using namespace openvdb::tools;
+using namespace imagesci::fluid;
+SplashSimulation::SplashSimulation(const std::string& fileName,int gridSize,MotionScheme scheme):FluidSimulation(gridSize,scheme),mSourceFileName(fileName),mGridSize(gridSize) {
 }
+
 bool SplashSimulation::init(){
+/*
 	Mesh mesh;
 	if(!mesh.openMesh(mSourceFileName))return false;
-	mesh.mapIntoBoundingBox(mesh.estimateVoxelSize());
+	mesh.mapIntoBoundingBox(4*mesh.estimateVoxelSize());
 	mesh.updateBoundingBox();
     openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     mSource.create(&mesh);
@@ -42,31 +46,32 @@ bool SplashSimulation::init(){
 	trans->postTranslate(t);
 	trans->postScale(scale);
 	trans->postTranslate(center);
+
 	mField=std::unique_ptr<FieldT>(new FluidVelocityField<float>());
 	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField,mMotionScheme));
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mAdvect->setResampleEnabled(true);
-	mSimulationDuration=1000;
-	mTimeStep=2*M_PI/180.0f;
+*/
+	bool ret=FluidSimulation::init();
+	FloatGrid grid;
+	grid.setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
+	grid.setTransform(openvdb::math::Transform::createLinearTransform(1.0/mGridSize));
+	copyFromDense(mLevelSet,grid,0.5f);
+	mSource.create(grid);
+	mSource.mConstellation.reset();
 	mIsMeshDirty=true;
-	return true;
-
+	return ret;
 }
 void SplashSimulation::cleanup(){
 	mAdvect.reset();
+	FluidSimulation::cleanup();
 }
 bool SplashSimulation::step(){
-	mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
+	bool ret=FluidSimulation::step();
+	copyFromDense(mLevelSet,*mSource.mSignedLevelSet,openvdb::LEVEL_SET_HALF_WIDTH);
+	mSource.updateIsoSurface();
+	//mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
 	mIsMeshDirty=true;
-	mSimulationIteration++;
-	mSimulationTime=mTimeStep*mSimulationIteration;
-
-	if(mSimulationTime<=mSimulationDuration&&mRunning){
-		return true;
-	} else {
-		mSimulationIteration--;
-		mSimulationTime=mSimulationDuration;
-		return false;
-	}
+	return ret;
 }
 } /* namespace imagesci */

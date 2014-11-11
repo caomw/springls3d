@@ -21,7 +21,7 @@
 #ifndef IMAGESCIUTIL_H_
 #define IMAGESCIUTIL_H_
 #include <openvdb/openvdb.h>
-
+#include <openvdb/tools/Dense.h>
 namespace imagesci {
 typedef openvdb::math::Vec4<unsigned char> RGBA;
 typedef openvdb::math::Vec4<float> RGBAf;
@@ -64,6 +64,7 @@ bool WriteImageToFile(const std::string& file,
 		const std::vector<openvdb::math::Vec4s>& image,
 		const int w, const int h);
 bool WriteToRawFile(openvdb::FloatGrid::Ptr grid, const std::string& fileName);
+bool WriteToRawFile(openvdb::tools::Dense<float,openvdb::tools::MemoryLayout::LayoutZYX>& grid, const std::string& fileName);
 bool WriteToRawFile(openvdb::VectorGrid::Ptr grid, const std::string& fileName);
 bool WriteToRawFile(openvdb::Int32Grid::Ptr grid, const std::string& fileName);
 float DistanceToEdgeSqr(const openvdb::Vec3s& pt, const openvdb::Vec3s& pt1,

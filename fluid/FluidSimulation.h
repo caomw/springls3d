@@ -80,9 +80,9 @@ class FluidSimulation :public Simulation{
 	public:
 		std::vector<ParticlePtr> mParticles;
 		FluidSimulation(int gridSize,MotionScheme scheme) ;
-		bool init();
-		bool step();
-		void cleanup();
+		virtual bool init();
+		virtual bool step();
+		virtual void cleanup();
 		virtual ~FluidSimulation();
 	};
 }

@@ -82,10 +82,7 @@ static void flipDivergence(RegularGrid<float>& x, int n) {
 
 // x <= y
 static void copy(RegularGrid<float>& x, RegularGrid<float>& y, int n) {
-	OPENMP_FOR FOR_EVERY_COMP(n)
-		{
-			x[i][j][k] = y[i][j][k];
-		}END_FOR;
+	y.copyTo(x);
 }
 
 // Ans = x + a*y
@@ -232,14 +229,11 @@ static void conjGrad(RegularGrid<char>& A, RegularGrid<double>& P,
 	RegularGrid<float> r(n, n, n);
 	RegularGrid<float> z(n, n, n);
 	RegularGrid<float> s(n, n, n);
-
 	compute_Ax(A, L, x, z, n);                // z = applyA(x)
 	op(A, b, z, r, -1.0, n);                  // r = b-Ax
 	double error2_0 = product(A, r, r, n);    // error2_0 = r . r
-
 	applyPreconditioner(z, r, P, L, A, n);		// Apply Conditioner z = f(r)
 	copy(s, z, n);								// s = z
-
 	double eps = 1.0e-2 * (n * n * n);
 	double a = product(A, z, r, n);			// a = z . r
 	dump("\n");
@@ -250,14 +244,12 @@ static void conjGrad(RegularGrid<char>& A, RegularGrid<double>& P,
 		op(A, r, z, r, -alpha, n);			// r = r - alpha*z;
 		float error2 = product(A, r, r, n);	// error2 = r . r
 		error2_0 = fmax(error2_0, error2);
-
 		// Dump Progress
 		double rate = 1.0
-				- fmax(0.0, fmin(1.0, (error2 - eps) / (error2_0 - eps)));
-		dump("%d th %s Iteration %f%% Solved.\n", k + 1, 100.0 * powf(rate, 6));
+				- max(0.0, min(1.0, (error2 - eps) / (error2_0 - eps)));
+		printf("%d Iteration %f Solved.\n", (k + 1), 100.0f * powf(rate, 6));
 		if (error2 <= eps)
 			break;
-
 		applyPreconditioner(z, r, P, L, A, n);	// Apply Conditioner z = f(r)
 		double a2 = product(A, z, r, n);		// a2 = z . r
 		double beta = a2 / a;                     // beta = a2 / a
@@ -271,8 +263,13 @@ void laplace_solve(RegularGrid<char>& A, RegularGrid<float>& L,
 		RegularGrid<float>& x, RegularGrid<float>& b, int n) {
 	RegularGrid<double> P(n, n, n);
 	// Flip Divergence
+	std::cout<<"Calculate divergence ..."<<std::endl;
 	flipDivergence(b, n);
+
+	std::cout<<"Create preconditioner ..."<<std::endl;
 	buildPreconditioner(P, L, A, n);
+
+	std::cout<<"Conjugate gradient solve ..."<<std::endl;
 	conjGrad(A, P, L, x, b, n);
 }
 }

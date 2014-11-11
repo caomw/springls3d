@@ -24,12 +24,13 @@
 #include "Simulation.h"
 #include "fluid/FluidVelocityField.h"
 #include "SpringLevelSetAdvection.h"
+#include "fluid/FluidSimulation.h"
 namespace imagesci {
 
 /*
  *
  */
-class SplashSimulation : public Simulation{
+class SplashSimulation : public fluid::FluidSimulation{
 	typedef FluidVelocityField<float> FieldT;
 	typedef SpringLevelSetAdvection<FieldT> AdvectT;
 protected:

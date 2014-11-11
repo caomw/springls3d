@@ -22,6 +22,7 @@
 #include "FluidSimulation.h"
 #include "fluid_utility.h"
 #include "laplace_solver.h"
+#include "../ImageSciUtil.h"
 #include <openvdb/openvdb.h>
 using namespace openvdb;
 using namespace openvdb::tools;
@@ -289,7 +290,6 @@ bool FluidSimulation::init() {
 		mMaxDensity = max(mMaxDensity, p->mDensity);
 	}
 	mParticles.clear();
-
 	// Place Fluid Particles And Walls
 	double w = mFluidParticleDensity * mWallThickness;
 	for (int i = 0; i < mGridSize / mFluidParticleDensity; i++) {
@@ -310,7 +310,6 @@ bool FluidSimulation::init() {
 			}
 		}
 	}
-
 	// Place Wall Particles And Walls
 	w = 1.0 / mGridSize;
 	for (int i = 0; i < mGridSize; i++) {
@@ -323,12 +322,12 @@ bool FluidSimulation::init() {
 			}
 		}
 	}
-	// Remove Particles That Stuck On Wal Cells
 	mParticleLocator->update(mParticles);
 	mParticleLocator->markAsWater(mLabel, mWallWeight, mFluidParticleDensity);
-	for (std::vector<ParticlePtr>::iterator iter = mParticles.begin();
-			iter != mParticles.end();) {
-		ParticlePtr p = *iter;
+
+	// Remove Particles That Stuck On Wal Cells
+	for (std::vector<ParticlePtr>::iterator iter = mParticles.begin();iter != mParticles.end();) {
+		ParticlePtr& p = *iter;
 		if (p->mObjectType == WALL) {
 			iter++;
 			continue;
@@ -341,9 +340,10 @@ bool FluidSimulation::init() {
 		} else {
 			iter++;
 		}
-		// Comput Normal for Walls
-		computeWallNormals();
 	}
+	// Comput Normal for Walls
+	computeWallNormals();
+	createLevelSet();
 	return true;
 }
 void FluidSimulation::pourWater( int limit ,float maxDensity) {
@@ -466,14 +466,24 @@ void FluidSimulation::cleanup(){
 }
 bool FluidSimulation::step() {
     //pourWater(pourTime);
+	std::cout<<"Update particles ..."<<std::endl;
 	mParticleLocator->update(mParticles);
+	std::cout<<"Compute particle density ... "<<mMaxDensity<<std::endl;
 	computeParticleDensity(mMaxDensity);
+	std::cout<<"Add external force ... "<<std::endl;
 	addExternalForce();
+	std::cout<<"Solve pic/flip ... "<<std::endl;
     solvePicFlip();
+	std::cout<<"Advect particles ... "<<std::endl;
 	advectParticles();
+	std::cout<<"Correct particles ... "<<std::endl;
 	correctParticles(mParticleLocator.get(),mParticles,mTimeStep,mFluidParticleDensity/mGridSize);
-	mSimulationTime=mSimulationIteration*mTimeStep;
     // If Exceeds Max Step Exit
+	mSimulationIteration++;
+	mSimulationTime=mSimulationIteration*mTimeStep;
+	std::cout<<"Create level set ... t="<<mSimulationTime<<std::endl;
+	createLevelSet();
+
 	if( mSimulationTime >= mSimulationDuration) {
 		return false;
 	} else return true;
@@ -530,9 +540,10 @@ void FluidSimulation::project() {
 	FOR_EVERY_CELL(mGridSize) {
 		mLaplacian[i][j][k] = mParticleLocator->getLevelSetValue(i,j,k,mWallWeight,mFluidParticleDensity);
 	} END_FOR;
-
+	std::cout<<"Laplace solve ... "<<std::endl;
 	laplace_solve(mLabel, mLaplacian, mPressure, mDivergence, mGridSize );
 
+	std::cout<<"Subtract pressure gradient ... "<<std::endl;
 	// Subtract Pressure Gradient
 	FOR_EVERY_X_FLOW(mGridSize) {
 		if( i>0 && i<mGridSize ) {
@@ -615,35 +626,43 @@ void FluidSimulation::extrapolateVelocity() {
 }
 void FluidSimulation::solvePicFlip() {
     // Map Particles Onto Grid
+	std::cout<<"Update particles  ..."<<std::endl;
 	mParticleLocator->update(mParticles);
-	mapParticlesToGrid(mParticleLocator.get(),mParticles,mVelocity,mGridSize);
-	mParticleLocator->markAsWater(mLabel,mWallWeight,mFluidParticleDensity);
 
+	std::cout<<"Map particles to grid ..."<<std::endl;
+	mapParticlesToGrid(mParticleLocator.get(),mParticles,mVelocity,mGridSize);
+	std::cout<<"Mark water ..."<<std::endl;
+	mParticleLocator->markAsWater(mLabel,mWallWeight,mFluidParticleDensity);
 	// Solve Fluid Velocity On Grid
 	copyGridToBuffer();
+	std::cout<<"Enforce boundary condition ..."<<std::endl;
 	enforceBoundaryCondition();
+	std::cout<<"Project ..."<<std::endl;
 	project();
+	std::cout<<"Enforce boundary condition ..."<<std::endl;
 	enforceBoundaryCondition();
+	std::cout<<"Extrapolate velocity ..."<<std::endl;
 	extrapolateVelocity();
+	std::cout<<"Subtract grid ..."<<std::endl;
 	subtractGrid();
+
+	std::cout<<"Copy velocity ..."<<std::endl;
 
 	// Copy Current Velocity
 	OPENMP_FOR for(ParticlePtr& p:mParticles) {
 		p->mTmp[0] = p->mVelocity;
 	}
-
 	// Map Changes Back To Particles
 	mapGridToParticles(mParticles,mVelocityLast,mGridSize);
-
 	// Set Tmp As FLIP Velocity
 	OPENMP_FOR for(ParticlePtr& p:mParticles) {
 		p->mTmp[0] = p->mVelocity + p->mTmp[0];
 	}
-
 	// Set u[] As PIC Velocity
 	mapGridToParticles(mParticles,mVelocity,mGridSize);
-
 	// Interpolate
+
+	std::cout<<"Blend velocity ..."<<std::endl;
 	OPENMP_FOR for(ParticlePtr& p:mParticles) {
 		p->mVelocity = (1.0-mPicFlipBlendWeight)*p->mVelocity + mPicFlipBlendWeight*p->mTmp[0];
 	}
@@ -661,15 +680,14 @@ void FluidSimulation::createLevelSet() {
         if( i==0 || i==mGridSize-1 || j==0 || j==mGridSize-1 || k==0 || k==mGridSize-1 ) {
             value = max(value,0.01);
         }
-        mLevelSet[i][j][k] = -value;
+        mLevelSet[i][j][k] = value*mGridSize;
 	} END_FOR
 }
 void FluidSimulation::computeWallNormals() {
 	// Sort Particles
 	mParticleLocator->update(mParticles);
 	// Compute Wall Normal
-	for (int n = 0; n < mParticles.size(); n++) {
-		FluidParticle *p = mParticles[n].get();
+	for (ParticlePtr& p:mParticles) {
 		int i = clamp(p->mLocation[0] * mGridSize,0.0f,mGridSize-1.0f);
 		int j = clamp(p->mLocation[1] * mGridSize,0.0f,mGridSize-1.0f);
 		int k = clamp(p->mLocation[2] * mGridSize,0.0f,mGridSize-1.0f);
@@ -700,7 +718,7 @@ void FluidSimulation::computeWallNormals() {
 						mParticleLocator->getNeigboringCellParticles(i, j, k, 3, 3, 3);
 				for (int n = 0; n < neighbors.size(); n++) {
 					FluidParticle *np = neighbors[n];
-					if (p != np && np->mObjectType == WALL) {
+					if (p.get() != np && np->mObjectType == WALL) {
 						float d = length(p->mLocation, np->mLocation);
 						float w = 1.0 / d;
 						p->mNormal += w * (p->mLocation - np->mLocation) / d;

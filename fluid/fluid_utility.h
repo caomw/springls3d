@@ -56,21 +56,12 @@ void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle
 double implicit_func( ParticleLocator *sort, openvdb::Vec3f& p, float density );
 static void dump(const char *format, ...) {
 	va_list args;
-    
-	FILE *console = fopen( "render/log/console.out", "a" );
 	va_start(args, format);
-	vfprintf(console, format, args);
-	va_end(args);
-	fclose(console);
-    
-	va_start(args, format);
-	vprintf(format, args);
+	printf(format, args);
 	va_end(args);
 }
 
 void my_rand_shuffle( std::vector<openvdb::Coord> &waters );
-
-
 
 }
 }

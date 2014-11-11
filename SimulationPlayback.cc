@@ -68,6 +68,9 @@ bool SimulationPlayback::init(){
 	return true;
 }
 bool SimulationPlayback::step(){
+	while(mIsMeshDirty){
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
 	mTemporaryMesh.openMesh(mDirectory+GetFileName(mConstellationFiles[mSimulationIteration]));
 	mSource.mConstellation.create(&mTemporaryMesh);
 	mSource.mConstellation.updateVertexNormals();
@@ -93,6 +96,7 @@ bool SimulationPlayback::step(){
 
 	mSimulationIteration++;
 	mIsMeshDirty=true;
+
 	if(mSimulationTime<=mSimulationDuration&&mSimulationIteration<mTimeSteps.size()&&mRunning){
 		return true;
 	} else {

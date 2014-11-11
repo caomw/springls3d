@@ -46,6 +46,7 @@ FluidSimulation::FluidSimulation(int gridSize,MotionScheme scheme) :
 				openvdb::Vec3f(0.0f)) {
 	mWallThickness = 1.0f / gridSize;
 	mTimeStep=0.6e-2f;
+	mSimulationDuration=600.0f*mTimeStep;
 }
 void FluidSimulation::computeParticleDensity(float maxDensity) {
 	OPENMP_FOR for(ParticlePtr& p:mParticles) {
@@ -270,7 +271,6 @@ void FluidSimulation::addParticle(double x, double y, double z, char type) {
 bool FluidSimulation::init() {
 	mSimulationTime=0;
 	mSimulationIteration=0;
-	mSimulationDuration=600/mTimeStep;
 	mParticleLocator = std::unique_ptr<ParticleLocator>(new ParticleLocator(mGridSize));
 	placeObjects();
 	// This Is A Test Part. We Generate Pseudo Particles To Measure Maximum Particle Density
@@ -481,12 +481,14 @@ bool FluidSimulation::step() {
     // If Exceeds Max Step Exit
 	mSimulationIteration++;
 	mSimulationTime=mSimulationIteration*mTimeStep;
-	std::cout<<"Create level set ... t="<<mSimulationTime<<std::endl;
+	std::cout<<"Create level set ... t="<<mSimulationTime<<" "<<mTimeStep<<std::endl;
 	createLevelSet();
 
-	if( mSimulationTime >= mSimulationDuration) {
+	if(mSimulationTime<=mSimulationDuration&&mRunning){
+		return true;
+	} else {
 		return false;
-	} else return true;
+	}
 }
 void FluidSimulation::copyGridToBuffer() {
 	mVelocity[0].copyTo(mVelocityLast[0]);

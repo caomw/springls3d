@@ -56,7 +56,7 @@ bool SplashSimulation::init(){
 	FloatGrid grid;
 	grid.setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
 	grid.setTransform(openvdb::math::Transform::createLinearTransform(1.0/mGridSize));
-	copyFromDense(mLevelSet,grid,0.5f);
+	copyFromDense(mLevelSet,grid,0.25f);
 	mSource.create(grid);
 	mSource.mConstellation.reset();
 	mIsMeshDirty=true;
@@ -68,7 +68,7 @@ void SplashSimulation::cleanup(){
 }
 bool SplashSimulation::step(){
 	bool ret=FluidSimulation::step();
-	copyFromDense(mLevelSet,*mSource.mSignedLevelSet,openvdb::LEVEL_SET_HALF_WIDTH);
+	copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25f);
 	mSource.updateIsoSurface();
 	//mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
 	mIsMeshDirty=true;

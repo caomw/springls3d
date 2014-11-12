@@ -50,8 +50,8 @@ FluidSimulation::FluidSimulation(int gridSize,MotionScheme scheme) :
 				Coord(0), 0.0f), mWallNormal(Coord(gridSize), Coord(0),
 				openvdb::Vec3f(0.0f)) {
 	mWallThickness = 1.0f / gridSize;
-	mTimeStep=0.6e-2f*32.0f/mGridSize;//Scale with grid size !?
-	mSimulationDuration=200.0f*mTimeStep;
+	mTimeStep=0.006f*64.0f/mGridSize;//Scale with grid size !?
+	mSimulationDuration=5.0f;//5 seconds max?
 }
 void FluidSimulation::computeParticleDensity(float maxDensity) {
 	OPENMP_FOR for(int n=0;n<mParticles.size();n++) {
@@ -487,9 +487,9 @@ bool FluidSimulation::step() {
 	mSimulationIteration++;
 	mSimulationTime=mSimulationIteration*mTimeStep;
 	createLevelSet();
-	std::stringstream ostr;
-	ostr<<"/home/blake/tmp/levelset"<<std::setw(8)<<std::setfill('0')<<mSimulationIteration;
-	WriteToRawFile(mLevelSet,ostr.str());
+	//std::stringstream ostr;
+	//ostr<<"/home/blake/tmp/levelset"<<std::setw(8)<<std::setfill('0')<<mSimulationIteration;
+	//WriteToRawFile(mLevelSet,ostr.str());
 	if(mSimulationTime<=mSimulationDuration&&mRunning){
 		return true;
 	} else {

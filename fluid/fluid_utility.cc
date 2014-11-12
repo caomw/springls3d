@@ -1,9 +1,28 @@
 /*
- *  utility.cpp
- *  flip3D
+ * Copyright(C) 2014, Blake C. Lucas, Ph.D. (img.science@gmail.com)
  *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ *  This implementation of a PIC/FLIP fluid simulator is derived from:
+ *
+ *  Ando, R., Thurey, N., & Tsuruno, R. (2012). Preserving fluid sheets with adaptively sampled anisotropic particles.
+ *  Visualization and Computer Graphics, IEEE Transactions on, 18(8), 1202-1214.
  */
-
 #include "fluid_utility.h"
 #include <algorithm>
 #include <stdio.h>
@@ -11,8 +30,10 @@
 #include <math.h>
 #include <sys/time.h>
 #define RE			1.4
+#define SPRING		50.0
 
 using namespace std;
+
 namespace imagesci{
 namespace fluid{
 float hypot2( float a, float b, float c ) {
@@ -69,16 +90,16 @@ void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
 				if( p->mObjectType == FLUID ) {
-					float x = fmax(0,fmin(gn,gn*p->mLocation[0]));
-					float y = fmax(0,fmin(gn,gn*p->mLocation[1]));
-					float z = fmax(0,fmin(gn,gn*p->mLocation[2]));
-					float pos[3] = { x, y, z };
+					float x = clamp(gn*p->mLocation[0],0.0f,(float)gn);
+					float y = clamp(gn*p->mLocation[1],0.0f,(float)gn);
+					float z = clamp(gn*p->mLocation[2],0.0f,(float)gn);
+					openvdb::Vec3f pos(x, y, z);
 					float w = p->mMass * sharp_kernel(length2(pos,px),RE);
 					sumx += w*p->mVelocity[0];
 					sumw += w;
 				}
 			}
-			grid[0][i][j][k] = sumw ? sumx/sumw : 0.0;
+			grid[0](i,j,k) = sumw ? sumx/sumw : 0.0;
 		}
 
 		// Map Y Grids
@@ -99,7 +120,7 @@ void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 					sumw += w;
 				}
 			}
-			grid[1][i][j][k] = sumw ? sumy/sumw : 0.0;
+			grid[1](i,j,k) = sumw ? sumy/sumw : 0.0;
 		}
 
 		// Map Z Grids
@@ -120,25 +141,21 @@ void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 					sumw += w;
 				}
 			}
-			grid[2][i][j][k] = sumw ? sumz/sumw : 0.0;
+			grid[2](i,j,k) = sumw ? sumz/sumw : 0.0;
 		}
 	} END_FOR
 }
 
-void mapGridToParticles(std::vector<ParticlePtr>& particles,MACGrid<float>& grid, int gn ) {
-	OPENMP_FOR for(ParticlePtr& p:particles){
-		fetchVelocity( p->mLocation, p->mVelocity, grid, gn );
-	} OPENMP_END;
-}
+
 float linear ( RegularGrid<float>& q, float x, float y, float z, int w, int h, int d ) {
-	x = fmax(0.0,fmin(w,x));
-	y = fmax(0.0,fmin(h,y));
-	z = fmax(0.0,fmin(d,z));
+	x = clamp(x,0.0f,(float)w);
+	y = clamp(y,0.0f,(float)h);
+	z = clamp(z,0.0f,(float)d);
 	int i = min((int)x,w-2);
 	int j = min((int)y,h-2);
-	int k = min((int)z,h-2);
-	return	(k+1-z)*(((i+1-x)*q[i][j][k]+(x-i)*q[i+1][j][k])*(j+1-y) + ((i+1-x)*q[i][j+1][k]+(x-i)*q[i+1][j+1][k])*(y-j)) +
-			(z-k)*(((i+1-x)*q[i][j][k+1]+(x-i)*q[i+1][j][k+1])*(j+1-y) + ((i+1-x)*q[i][j+1][k+1]+(x-i)*q[i+1][j+1][k+1])*(y-j));
+	int k = min((int)z,d-2);
+	return	(k+1-z)*(((i+1-x)*q(i,j,k)+(x-i)*q(i+1,j,k))*(j+1-y) + ((i+1-x)*q(i,j+1,k)+(x-i)*q(i+1,j+1,k))*(y-j)) +
+			(z-k)*(((i+1-x)*q(i,j,k+1)+(x-i)*q(i+1,j,k+1))*(j+1-y) + ((i+1-x)*q(i,j+1,k+1)+(x-i)*q(i+1,j+1,k+1))*(y-j));
 }
 
 void fetchVelocity(openvdb::Vec3f& p,openvdb::Vec3f& u, MACGrid<float>& grid, int gn ) {
@@ -146,7 +163,6 @@ void fetchVelocity(openvdb::Vec3f& p,openvdb::Vec3f& u, MACGrid<float>& grid, in
 	u[1] = linear( grid[1], gn*p[0]-0.5, gn*p[1], gn*p[2]-0.5, gn, gn+1, gn );
 	u[2] = linear( grid[2], gn*p[0]-0.5, gn*p[1]-0.5, gn*p[2], gn, gn, gn+1 );
 }
-#define SPRING		50.0
 
 void resampleParticles( ParticleLocator *sort, openvdb::Vec3f& p,openvdb::Vec3f& u, float re ) {
 	// Variables for Neighboring Particles
@@ -228,7 +244,12 @@ void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle
 		}
 	}
 }
-
+void mapGridToParticles(std::vector<ParticlePtr>& particles,MACGrid<float>& grid, int gn ) {
+	OPENMP_FOR for(int n=0;n<particles.size();n++){
+		ParticlePtr& p=particles[n];
+		fetchVelocity( p->mLocation, p->mVelocity, grid, gn );
+	}
+}
 static double implicit_func( vector<FluidParticle *> &neighbors,openvdb::Vec3f& p, float density, int gn) {
 	double phi = 8.0*density/gn;
 	for( int m=0; m<neighbors.size(); m++ ) {

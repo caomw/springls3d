@@ -1,8 +1,29 @@
 /*
- *  common.h
- *  flip3D
+ * Copyright(C) 2014, Blake C. Lucas, Ph.D. (img.science@gmail.com)
  *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ *  This implementation of a PIC/FLIP fluid simulator is derived from:
+ *
+ *  Ando, R., Thurey, N., & Tsuruno, R. (2012). Preserving fluid sheets with adaptively sampled anisotropic particles.
+ *  Visualization and Computer Graphics, IEEE Transactions on, 18(8), 1202-1214.
  */
+
 #ifndef _FLUIDCOMMON_H
 #define _FLUIDCOMMON_H
 #include <openvdb/openvdb.h>
@@ -80,12 +101,14 @@ public:
 	const ValueT& operator()(size_t i, size_t j, size_t k) const {
 		return mPtr[i * mStrideX + j * mStrideY + k];
 	}
-	inline Offset2D<ValueT> operator[](size_t i) {
-		return Offset2D<ValueT>(&mPtr[i * mStrideX], mStrideY);
-	}
-	inline const Offset2D<ValueT> operator[](size_t i) const {
-		return Offset2D<ValueT>(&mPtr[i * mStrideX], mStrideY);
-	}
+	//Not a good idea.
+	/*
+	 inline Offset2D<ValueT> operator[](size_t i) {
+	 return Offset2D<ValueT>(&mPtr[i * mStrideX], mStrideY);
+	 }
+	 inline const Offset2D<ValueT> operator[](size_t i) const {
+	 return Offset2D<ValueT>(&mPtr[i * mStrideX], mStrideY);
+	 }*/
 	inline const size_t size() const {
 		return mRows * mCols * mSlices;
 	}
@@ -107,34 +130,29 @@ public:
 		ValueT* src = this->data();
 		ValueT* dest = out.data();
 		size_t N = size();
-		for (size_t n = 0; n < N; n++) {
-			*src += *dest;
-			src++;
-			dest++;
+		OPENMP_FOR for (size_t n = 0; n < N; n++) {
+			src[n] += dest[n];
 		}
 	}
 	void subtract(RegularGrid<ValueT>& out) {
 		ValueT* src = this->data();
 		ValueT* dest = out.data();
 		size_t N = size();
-		for (size_t n = 0; n < N; n++) {
-			*src -= *dest;
-			src++;
-			dest++;
+		OPENMP_FOR for (size_t n = 0; n < N; n++) {
+			src[n] -= dest[n];
 		}
 	}
 	void subtractFrom(RegularGrid<ValueT>& out) {
 		ValueT* src = this->data();
 		ValueT* dest = out.data();
 		size_t N = size();
-		for (size_t n = 0; n < N; n++) {
-			*src = *dest - *src;
-			src++;
-			dest++;
+		OPENMP_FOR for (size_t n = 0; n < N; n++) {
+			src[n] = dest[n] - src[n];
 		}
 	}
 };
-inline bool WriteToRawFile(RegularGrid<float>& dense, const std::string& fileName) {
+inline bool WriteToRawFile(RegularGrid<float>& dense,
+		const std::string& fileName) {
 	std::ostringstream vstr;
 	vstr << fileName << ".raw";
 	FILE* f = fopen(vstr.str().c_str(), "wb");
@@ -209,7 +227,7 @@ public:
 	}
 
 };
-inline bool WriteToRawFile(MACGrid<float>& mac,const std::string& fileName) {
+inline bool WriteToRawFile(MACGrid<float>& mac, const std::string& fileName) {
 	bool r1 = WriteToRawFile(mac[0], fileName + "_x");
 	bool r2 = WriteToRawFile(mac[1], fileName + "_y");
 	bool r3 = WriteToRawFile(mac[2], fileName + "_z");

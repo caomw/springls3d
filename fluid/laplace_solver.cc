@@ -1,9 +1,28 @@
 /*
- *  solver.cpp
- *  flip3D
+ * Copyright(C) 2014, Blake C. Lucas, Ph.D. (img.science@gmail.com)
  *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ *  This implementation of a PIC/FLIP fluid simulator is derived from:
+ *
+ *  Ando, R., Thurey, N., & Tsuruno, R. (2012). Preserving fluid sheets with adaptively sampled anisotropic particles.
+ *  Visualization and Computer Graphics, IEEE Transactions on, 18(8), 1202-1214.
  */
-
 #include "laplace_solver.h"
 #include "fluid_common.h"
 #include "fluid_utility.h"
@@ -24,11 +43,11 @@ static float x_ref(RegularGrid<char>& A, RegularGrid<float>& L,
 	i = min(max(0, i), n - 1);
 	j = min(max(0, j), n - 1);
 	k = min(max(0, k), n - 1);
-	if (A[i][j][k] == FLUID)
-		return x[i][j][k];
-	else if (A[i][j][k] == WALL)
-		return x[fi][fj][fk];
-	return L[i][j][k] / fmin(1.0e-6, L[fi][fj][fk]) * x[fi][fj][fk];
+	if (A(i,j,k) == FLUID)
+		return x(i,j,k);
+	else if (A(i,j,k) == WALL)
+		return x(fi,fj,fk);
+	return L(i,j,k) / fmin(1.0e-6, L(fi,fj,fk)) * x(fi,fj,fk);
 }
 
 // Ans = Ax
@@ -37,8 +56,8 @@ static void compute_Ax(RegularGrid<char>& A, RegularGrid<float>& L,
 	float h2 = 1.0 / (n * n);
 	OPENMP_FOR FOR_EVERY_COMP(n)
 		{
-			if (A[i][j][k] == FLUID) {
-				ans[i][j][k] = (6.0 * x[i][j][k]
+			if (A(i,j,k) == FLUID) {
+				ans(i,j,k) = (6.0 * x(i,j,k)
 						- x_ref(A, L, x, i, j, k, i + 1, j, k, n)
 						- x_ref(A, L, x, i, j, k, i - 1, j, k, n)
 						- x_ref(A, L, x, i, j, k, i, j + 1, k, n)
@@ -46,7 +65,7 @@ static void compute_Ax(RegularGrid<char>& A, RegularGrid<float>& L,
 						- x_ref(A, L, x, i, j, k, i, j, k + 1, n)
 						- x_ref(A, L, x, i, j, k, i, j, k - 1, n)) / h2;
 			} else {
-				ans[i][j][k] = 0.0;
+				ans(i,j,k) = 0.0;
 			}
 		}END_FOR;
 }
@@ -56,13 +75,13 @@ static double product(RegularGrid<char>& A, RegularGrid<float>& x,
 		RegularGrid<float>& y, int n) {
 	static double ans;
 	ans = 0.0;
-#ifdef _OPENMP
+#ifdef MP
 #pragma omp for reduction(+:ans)
 #endif
 	FOR_EVERY_COMP(n)
 		{
-			if (A[i][j][k] == FLUID)
-				ans += x[i][j][k] * y[i][j][k];
+			if (A(i,j,k) == FLUID)
+				ans += x(i,j,k) * y(i,j,k);
 		}END_FOR;
 	return ans;
 }
@@ -76,7 +95,7 @@ static void clear(RegularGrid<T>& x, int n) {
 static void flipDivergence(RegularGrid<float>& x, int n) {
 	OPENMP_FOR FOR_EVERY_COMP(n)
 		{
-			x[i][j][k] = -x[i][j][k];
+			x(i,j,k) = -x(i,j,k);
 		}END_FOR;
 }
 
@@ -91,10 +110,10 @@ static void op(RegularGrid<char>& A, RegularGrid<float>& x,
 	RegularGrid<float> tmp(n, n, n);
 	OPENMP_FOR FOR_EVERY_COMP(n)
 		{
-			if (A[i][j][k] == FLUID)
-				tmp[i][j][k] = x[i][j][k] + a * y[i][j][k];
+			if (A(i,j,k) == FLUID)
+				tmp(i,j,k) = x(i,j,k) + a * y(i,j,k);
 			else
-				tmp[i][j][k] = 0.0;
+				tmp(i,j,k) = 0.0;
 		}END_FOR;
 	copy(ans, tmp, n);
 }
@@ -114,10 +133,10 @@ static inline float square(float a) {
 static float A_ref(RegularGrid<char>& A, int i, int j, int k, int qi, int qj,
 		int qk, int n) {
 	if (i < 0 || i > n - 1 || j < 0 || j > n - 1 || k < 0 || k > n - 1
-			|| A[i][j][k] != FLUID)
+			|| A(i,j,k) != FLUID)
 		return 0.0;
 	if (qi < 0 || qi > n - 1 || qj < 0 || qj > n - 1 || qk < 0 || qk > n - 1
-			|| A[qi][qj][qk] != FLUID)
+			|| A(qi,qj,qk) != FLUID)
 		return 0.0;
 	return -1.0;
 }
@@ -125,7 +144,7 @@ static float A_ref(RegularGrid<char>& A, int i, int j, int k, int qi, int qj,
 static float A_diag(RegularGrid<char>& A, RegularGrid<float>& L, int i, int j,
 		int k, int n) {
 	float diag = 6.0;
-	if (A[i][j][k] != FLUID)
+	if (A(i,j,k) != FLUID)
 		return diag;
 	int q[][3] = { { i - 1, j, k }, { i + 1, j, k }, { i, j - 1, k }, { i, j
 			+ 1, k }, { i, j, k - 1 }, { i, j, k + 1 } };
@@ -134,10 +153,10 @@ static float A_diag(RegularGrid<char>& A, RegularGrid<float>& L, int i, int j,
 		int qj = q[m][1];
 		int qk = q[m][2];
 		if (qi < 0 || qi > n - 1 || qj < 0 || qj > n - 1 || qk < 0 || qk > n - 1
-				|| A[qi][qj][qk] == WALL)
+				|| A(qi,qj,qk) == WALL)
 			diag -= 1.0;
-		else if (A[qi][qj][qk] == AIR) {
-			diag -= L[qi][qj][qk] / fmin(1.0e-6, L[i][j][k]);
+		else if (A(qi,qj,qk) == AIR) {
+			diag -= L(qi,qj,qk) / fmin(1.0e-6, L(i,j,k));
 		}
 	}
 	return diag;
@@ -146,9 +165,9 @@ static float A_diag(RegularGrid<char>& A, RegularGrid<float>& L, int i, int j,
 template<class T>
 static float P_ref(RegularGrid<T>& P, int i, int j, int k, int n) {
 	if (i < 0 || i > n - 1 || j < 0 || j > n - 1 || k < 0 || k > n - 1
-			|| P[i][j][k] != FLUID)
+			|| P(i,j,k) != FLUID)
 		return 0.0;
-	return P[i][j][k];
+	return P(i,j,k);
 }
 
 static void buildPreconditioner(RegularGrid<double>& P, RegularGrid<float>& L,
@@ -157,7 +176,7 @@ static void buildPreconditioner(RegularGrid<double>& P, RegularGrid<float>& L,
 	double a = 0.25;
 	FOR_EVERY_COMP(n)
 		{
-			if (A[i][j][k] == FLUID) {
+			if (A(i,j,k) == FLUID) {
 				double left = A_ref(A, i - 1, j, k, i, j, k, n)
 						* P_ref(P, i - 1, j, k, n);
 				double bottom = A_ref(A, i, j - 1, k, i, j, k, n)
@@ -168,7 +187,7 @@ static void buildPreconditioner(RegularGrid<double>& P, RegularGrid<float>& L,
 				double e = diag - square(left) - square(bottom) - square(back);
 				if (e < a * diag)
 					e = diag;
-				P[i][j][k] = 1.0 / sqrtf(e);
+				P(i,j,k) = 1.0 / sqrtf(e);
 			}
 		}END_FOR;
 }
@@ -183,7 +202,7 @@ static void applyPreconditioner(RegularGrid<float>& z, RegularGrid<float>& r,
 	for (int i = 0; i < n; i++) {
 		for (int j = 0; j < n; j++) {
 			for (int k = 0; k < n; k++) {
-				if (A[i][j][k] == FLUID) {
+				if (A(i,j,k) == FLUID) {
 					double left = A_ref(A, i - 1, j, k, i, j, k, n)
 							* P_ref(P, i - 1, j, k, n)
 							* P_ref(q, i - 1, j, k, n);
@@ -194,8 +213,8 @@ static void applyPreconditioner(RegularGrid<float>& z, RegularGrid<float>& r,
 							* P_ref(P, i, j, k - 1, n)
 							* P_ref(q, i, j, k - 1, n);
 
-					double t = r[i][j][k] - left - bottom - back;
-					q[i][j][k] = t * P[i][j][k];
+					double t = r(i,j,k) - left - bottom - back;
+					q(i,j,k) = t * P(i,j,k);
 				}
 			}
 		}
@@ -205,7 +224,7 @@ static void applyPreconditioner(RegularGrid<float>& z, RegularGrid<float>& r,
 	for (int i = n - 1; i >= 0; i--) {
 		for (int j = n - 1; j >= 0; j--) {
 			for (int k = n - 1; k >= 0; k--) {
-				if (A[i][j][k] == FLUID) {
+				if (A(i,j,k) == FLUID) {
 					double right = A_ref(A, i, j, k, i + 1, j, k, n)
 							* P_ref(P, i, j, k, n) * P_ref(z, i + 1, j, k, n);
 					double top = A_ref(A, i, j, k, i, j + 1, k, n)
@@ -213,8 +232,8 @@ static void applyPreconditioner(RegularGrid<float>& z, RegularGrid<float>& r,
 					double front = A_ref(A, i, j, k, i, j, k + 1, n)
 							* P_ref(P, i, j, k, n) * P_ref(z, i, j, k + 1, n);
 
-					double t = q[i][j][k] - right - top - front;
-					z[i][j][k] = t * P[i][j][k];
+					double t = q(i,j,k) - right - top - front;
+					z(i,j,k) = t * P(i,j,k);
 				}
 			}
 		}
@@ -236,7 +255,6 @@ static void conjGrad(RegularGrid<char>& A, RegularGrid<double>& P,
 	copy(s, z, n);								// s = z
 	double eps = 1.0e-2 * (n * n * n);
 	double a = product(A, z, r, n);			// a = z . r
-	dump("\n");
 	for (int k = 0; k < n * n * n; k++) {
 		compute_Ax(A, L, s, z, n);			// z = applyA(s)
 		double alpha = a / product(A, z, s, n);	// alpha = a/(z . s)
@@ -247,7 +265,7 @@ static void conjGrad(RegularGrid<char>& A, RegularGrid<double>& P,
 		// Dump Progress
 		double rate = 1.0
 				- max(0.0, min(1.0, (error2 - eps) / (error2_0 - eps)));
-		printf("%d Iteration %f Solved.\n", (k + 1), 100.0f * powf(rate, 6));
+		std::cout<<"Laplace iteration "<<(k + 1)<<" ["<<100.0f * powf(rate, 6)<<"%]"<<std::endl;
 		if (error2 <= eps)
 			break;
 		applyPreconditioner(z, r, P, L, A, n);	// Apply Conditioner z = f(r)
@@ -263,13 +281,8 @@ void laplace_solve(RegularGrid<char>& A, RegularGrid<float>& L,
 		RegularGrid<float>& x, RegularGrid<float>& b, int n) {
 	RegularGrid<double> P(n, n, n);
 	// Flip Divergence
-	std::cout<<"Calculate divergence ..."<<std::endl;
 	flipDivergence(b, n);
-
-	std::cout<<"Create preconditioner ..."<<std::endl;
 	buildPreconditioner(P, L, A, n);
-
-	std::cout<<"Conjugate gradient solve ..."<<std::endl;
 	conjGrad(A, P, L, x, b, n);
 }
 }

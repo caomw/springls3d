@@ -128,7 +128,7 @@
 								</option>
 								<option id="gnu.cpp.compiler.option.other.pic.1178352333" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.compiler.option.debugging.other.426035632" name="Other debugging flags" superClass="gnu.cpp.compiler.option.debugging.other" value="" valueType="string"/>
-								<option id="gnu.cpp.compiler.option.other.other.1327063172" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.1327063172" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" value="-c  -fopenmp" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.undef.1464272044" name="Undefined symbols (-U)" superClass="gnu.cpp.compiler.option.preprocessor.undef" valueType="undefDefinedSymbols">
 									<listOptionValue builtIn="false" value="OPENVDB_REQUIRE_VERSION_NAME"/>
 								</option>
@@ -153,6 +153,7 @@
 							<tool command="gcc" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GLDErrorParser" id="cdt.managedbuild.tool.gnu.cpp.linker.exe.release.24591998" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.release">
 								<option id="gnu.cpp.link.option.libs.2063023434" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="glfw3"/>
+									<listOptionValue builtIn="false" value="gomp"/>
 									<listOptionValue builtIn="false" value="GL"/>
 									<listOptionValue builtIn="false" value="Xext"/>
 									<listOptionValue builtIn="false" value="GLU"/>

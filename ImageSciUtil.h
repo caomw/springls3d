@@ -22,7 +22,24 @@
 #define IMAGESCIUTIL_H_
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/Dense.h>
+
+#ifdef MP
+#include <omp.h>
+#pragma omp
+#define OPENMP_FOR		_Pragma("omp parallel for" )
+#define OPENMP_SECTION  _Pragma("omp section" )
+#define OPENMP_BEGIN	_Pragma("omp parallel" ) {
+#define OPENMP_END		}
+#define OPENMP_FOR_P	_Pragma("omp for" )
+#else
+#define OPENMP_FOR
+#define OPENMP_SECTION
+#define OPENMP_BEGIN
+#define OPENMP_END
+#define OPENMP_FOR_P
+#endif
 namespace imagesci {
+
 typedef openvdb::math::Vec4<unsigned char> RGBA;
 typedef openvdb::math::Vec4<float> RGBAf;
 typedef openvdb::math::Vec2<float> UV;

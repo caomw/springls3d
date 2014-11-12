@@ -38,7 +38,7 @@ bool EnrightSimulation::init(){
 	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,mField,mMotionScheme));
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mSimulationDuration=3.0f;
-	mTimeStep=0.005;
+	mTimeStep=0.005*128.0/mGridSize;
 	mIsMeshDirty=true;
 	return true;
 }

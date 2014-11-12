@@ -17,6 +17,12 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * This is a re-implementation of the following work:
+ *
+ * Lucas, Blake C., Michael Kazhdan, and Russell H. Taylor. "Spring level sets: a deformable model
+ * representation to provide interoperability between meshes and level sets."
+ * Visualization and Computer Graphics, IEEE Transactions on 19.5 (2013): 852-865.
  */
 #ifndef SPRINGLEVELSETBASE_H_
 #define SPRINGLEVELSETBASE_H_

@@ -157,7 +157,7 @@ void FluidSimulation::placeObjects() {
 	placeWalls();
 	damBreakTest();
 }
-void FluidSimulation::repositionParticles(vector<int>& indices, vector<ParticlePtr> particles ) {
+void FluidSimulation::repositionParticles(vector<int>& indices) {
 	if( indices.empty() ) return;
 	int gn = mParticleLocator->getCellSize();
 
@@ -187,19 +187,19 @@ void FluidSimulation::repositionParticles(vector<int>& indices, vector<ParticleP
 
 	float h = 1.0/gn;
 	for( int n=0; n<indices.size(); n++ ) {
-		FluidParticle &p = *particles[indices[n]];
-		p.mLocation[0] = h*(waters[n][0]+0.25+0.5*(rand()%101)/100);
-		p.mLocation[1] = h*(waters[n][1]+0.25+0.5*(rand()%101)/100);
-		p.mLocation[2] = h*(waters[n][2]+0.25+0.5*(rand()%101)/100);
+		ParticlePtr& p = mParticles[indices[n]];
+		p->mLocation[0] = h*(waters[n][0]+0.25+0.5*(rand()%101)/100);
+		p->mLocation[1] = h*(waters[n][1]+0.25+0.5*(rand()%101)/100);
+		p->mLocation[2] = h*(waters[n][2]+0.25+0.5*(rand()%101)/100);
 	}
 
-	mParticleLocator->update(particles);
+	mParticleLocator->update(mParticles);
 
 	for( int n=0; n<indices.size(); n++ ) {
-		FluidParticle &p = *particles[indices[n]];
+		ParticlePtr &p = mParticles[indices[n]];
 		Vec3f u(0.0);
-		resampleParticles( mParticleLocator.get(), p.mLocation,u, h );
-		p.mVelocity = u;
+		resampleParticles( mParticleLocator.get(), p->mLocation,u, h );
+		p->mVelocity = u;
 	}
 }
 void FluidSimulation::addParticle(double x, double y, double z, char type) {
@@ -470,7 +470,7 @@ void FluidSimulation::advectParticles() {
 	}
 	// Store Stuck Particle Number
 	mStuckParticleCount = reposition_indices.size();
-	repositionParticles(reposition_indices, mParticles );
+	repositionParticles(reposition_indices );
 }
 void FluidSimulation::cleanup(){
 	mParticles.clear();
@@ -661,6 +661,9 @@ void FluidSimulation::solvePicFlip() {
 		ParticlePtr& p=mParticles[n];
 		p->mVelocity = (1.0-mPicFlipBlendWeight)*p->mVelocity + mPicFlipBlendWeight*p->mTmp[0];
 	}
+}
+void FluidSimulation::getParticles(ParticleVolume& pv){
+
 }
 void FluidSimulation::createLevelSet() {
 	// Create Density Field

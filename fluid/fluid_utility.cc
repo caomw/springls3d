@@ -250,7 +250,7 @@ void mapGridToParticles(std::vector<ParticlePtr>& particles,MACGrid<float>& grid
 		fetchVelocity( p->mLocation, p->mVelocity, grid, gn );
 	}
 }
-static double implicit_func( vector<FluidParticle *> &neighbors,openvdb::Vec3f& p, float density, int gn) {
+static double implicit_func( vector<ParticlePtr> &neighbors,openvdb::Vec3f& p, float density, int gn) {
 	double phi = 8.0*density/gn;
 	for( int m=0; m<neighbors.size(); m++ ) {
 		FluidParticle &np = *neighbors[m];
@@ -265,7 +265,21 @@ static double implicit_func( vector<FluidParticle *> &neighbors,openvdb::Vec3f& 
 	}
 	return phi - density/gn;
 }
-
+static double implicit_func( vector<FluidParticle*> &neighbors,openvdb::Vec3f& p, float density, int gn) {
+	double phi = 8.0*density/gn;
+	for( int m=0; m<neighbors.size(); m++ ) {
+		FluidParticle &np = *neighbors[m];
+		if( np.mObjectType == WALL ) {
+			if( length(np.mLocation,p) < density/gn ) return 4.5*density/gn;
+			continue;
+		}
+		double d = length(np.mLocation,p);
+		if( d < phi ) {
+			phi = d;
+		}
+	}
+	return phi - density/gn;
+}
 double implicit_func( ParticleLocator *sort, openvdb::Vec3f& p, float density ) {
 	int gn = sort->getCellSize();
 	vector<FluidParticle *> neighbors = sort->getNeigboringCellParticles(

@@ -32,6 +32,7 @@
 #include <list>
 #include <iostream>
 #include "Mesh.h"
+#include "ParticleVolume.h"
 #include "ImageSciUtil.h"
 #include "AdvectionForce.h"
 #include "json/JsonSerializable.h"
@@ -167,6 +168,7 @@ public:
 	static const float MIN_AREA;
 
 	Mesh mIsoSurface;
+	ParticleVolume mParticleVolume;
 	Constellation mConstellation;
 	NearestNeighborMap mNearestNeighbors;
 	SLevelSetPtr mSignedLevelSet;

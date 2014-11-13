@@ -44,7 +44,7 @@ public:
 	void deleteAllParticles();
 	
 protected:
-	RegularGrid<std::vector<ParticlePtr> > cells;
+	RegularGrid<std::vector<FluidParticle*> > cells;
 	int mGridSize;
 };
 }}

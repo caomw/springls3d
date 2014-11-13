@@ -64,7 +64,6 @@ protected:
 	std::list<SimulationListener*> mListeners;
 public:
 	SimulationTimeStepDescription getDescription();
-
 	inline void addListener(SimulationListener* listener){
 		mListeners.push_back(listener);
 	}

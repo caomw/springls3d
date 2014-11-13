@@ -30,6 +30,7 @@
 #include <openvdb/tools/DenseSparseTools.h>
 #include "fluid_common.h"
 #include "fluid_sorter.h"
+#include "../ParticleVolume.h"
 #include "../Simulation.h"
 #undef OPENVDB_REQUIRE_VERSION_NAME
 
@@ -60,6 +61,8 @@ class FluidSimulation :public Simulation{
 		float mWallThickness;
 		std::unique_ptr<ParticleLocator> mParticleLocator;
 		std::vector<CollisionObject> mCollisionObjects;
+		std::vector<ParticlePtr> mParticles;
+		void getParticles(ParticleVolume& pv);
 		void copyGridToBuffer();
 		void subtractGrid();
 		void placeObjects();
@@ -72,7 +75,7 @@ class FluidSimulation :public Simulation{
 		void addExternalForce();
 		void pourWater(int limit,float maxDensity);
 		void extrapolateVelocity();
-		void repositionParticles(std::vector<int>& indices, std::vector<ParticlePtr> particles ) ;
+		void repositionParticles(std::vector<int>& indices) ;
 		void addParticle( double x, double y, double z, char type );
 		void project();
 		void createLevelSet();
@@ -80,9 +83,7 @@ class FluidSimulation :public Simulation{
 		inline float isWallIndicator( char a ) {
 			return ((a == WALL) ? 1.0f : -1.0f);
 		}
-
 	public:
-		std::vector<ParticlePtr> mParticles;
 		FluidSimulation(int gridSize,MotionScheme scheme) ;
 		virtual bool init();
 		virtual bool step();

@@ -99,7 +99,7 @@ void ParticleVolume::updateGL() {
 		if (glIsBuffer(mGL.mColorBuffer) == GL_FALSE)
 			throw Exception("Error: Unable to create color buffer");
 
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * mColors.size(),
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 4 * mColors.size(),
 				&mColors[0], GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);

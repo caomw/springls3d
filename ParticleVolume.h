@@ -48,7 +48,7 @@ public:
 	GLuint mParticleCount;
 	std::vector<openvdb::Vec3s> mParticles;
 	//The "w" component of the color encodes the radius.
-	std::vector<openvdb::Vec3s> mColors;
+	std::vector<openvdb::Vec4s> mColors;
 	ParticleVolume();
 	inline openvdb::BBoxd getBoundingBox(){return mBoundingBox;}
 	void setBoundingBox(openvdb::BBoxd& bboxd){

@@ -40,7 +40,7 @@ FluidSimulation::FluidSimulation(int gridSize,MotionScheme scheme) :
 		mMaxDensity(0.0),
 		mStuckParticleCount(0),
 		mPicFlipBlendWeight(0.95f),
-		mFluidParticleRadius(0.5f),
+		mFluidParticleDiameter(0.5f),
 		mGridSize(gridSize),
 		mLevelSet(Coord(gridSize),Coord(0),0),
 		mLabel(Coord(gridSize), Coord(0), 0.0f),mDivergence(Coord(gridSize), Coord(0), 0.0f), mLaplacian(
@@ -49,7 +49,7 @@ FluidSimulation::FluidSimulation(int gridSize,MotionScheme scheme) :
 				Coord(gridSize), Coord(0), 0.0f), mWallWeight(Coord(gridSize),
 				Coord(0), 0.0f), mWallNormal(Coord(gridSize), Coord(0),
 				openvdb::Vec3f(0.0f)) {
-	mWallThickness = 1.0f / gridSize;
+	mWallThickness = 1.0f / mGridSize;
 	mTimeStep=0.006f*64.0f/mGridSize;//Scale with grid size !?
 	mSimulationDuration=5.0f;//5 seconds max?
 }
@@ -73,7 +73,7 @@ void FluidSimulation::computeParticleDensity(float maxDensity) {
 			if (np.mObjectType == WALL)
 				continue;
 			float d2 = length2(np.mLocation, pt);
-			float w = np.mMass * smooth_kernel(d2, 4.0f * mFluidParticleRadius / mGridSize);
+			float w = np.mMass * smooth_kernel(d2, 4.0f * mFluidParticleDiameter / mGridSize);
 			wsum += w;
 		}
 		p->mDensity = wsum / maxDensity;
@@ -203,8 +203,6 @@ void FluidSimulation::repositionParticles(vector<int>& indices) {
 	}
 }
 void FluidSimulation::addParticle(double x, double y, double z, char type) {
-	//Add case for converting MESH object into collection of particles via inside/outside level set test.
-
 	CollisionObject *inside_obj = NULL;
 	for (CollisionObject &obj: mCollisionObjects) {
 		bool found = false;
@@ -284,7 +282,7 @@ bool FluidSimulation::init() {
 	mParticleLocator = std::unique_ptr<ParticleLocator>(new ParticleLocator(mGridSize));
 	placeObjects();
 	// This Is A Test Part. We Generate Pseudo Particles To Measure Maximum Particle Density
-	float h = mFluidParticleRadius / mGridSize;
+	float h = mFluidParticleDiameter / mGridSize;
 	FOR_EVERY_CELL(10)
 		{
 			FluidParticle *p = new FluidParticle;
@@ -301,10 +299,11 @@ bool FluidSimulation::init() {
 	}
 	mParticles.clear();
 	// Place Fluid Particles And Walls
-	double w = mFluidParticleRadius * mWallThickness;
-	for (int i = 0; i < mGridSize / mFluidParticleRadius; i++) {
-		for (int j = 0; j < mGridSize / mFluidParticleRadius; j++) {
-			for (int k = 0; k < mGridSize / mFluidParticleRadius; k++) {
+	double w = mFluidParticleDiameter * mWallThickness;
+
+	for (int i = 0; i < mGridSize / mFluidParticleDiameter; i++) {
+		for (int j = 0; j < mGridSize / mFluidParticleDiameter; j++) {
+			for (int k = 0; k < mGridSize / mFluidParticleDiameter; k++) {
 				double x = i * w + w / 2.0;
 				double y = j * w + w / 2.0;
 				double z = k * w + w / 2.0;
@@ -321,19 +320,19 @@ bool FluidSimulation::init() {
 		}
 	}
 	// Place Wall Particles And Walls
-	w = 1.0 / mGridSize;
+	w = 2*mFluidParticleDiameter / mGridSize;
 	for (int i = 0; i < mGridSize; i++) {
 		for (int j = 0; j < mGridSize; j++) {
 			for (int k = 0; k < mGridSize; k++) {
-				double x = i * w + w / 2.0;
-				double y = j * w + w / 2.0;
-				double z = k * w + w / 2.0;
+				double x = i * w + w*0.5;
+				double y = j * w + w*0.5;
+				double z = k * w + w*0.5;
 				addParticle(x, y, z, WALL);
 			}
 		}
 	}
 	mParticleLocator->update(mParticles);
-	mParticleLocator->markAsWater(mLabel, mWallWeight, mFluidParticleRadius);
+	mParticleLocator->markAsWater(mLabel, mWallWeight, mFluidParticleDiameter);
 
 	// Remove Particles That Stuck On Wal Cells
 	for (std::vector<ParticlePtr>::iterator iter = mParticles.begin();iter != mParticles.end();) {
@@ -361,13 +360,13 @@ void FluidSimulation::pourWater( int limit ,float maxDensity) {
     Vec2f mPourPosition(0.0,0.0);
     float mPourRadius(0.12);
     int cnt = 0;
-	double w = mFluidParticleRadius/mGridSize;
+	double w = mFluidParticleDiameter/mGridSize;
     for( float x=w+w/2.0; x < 1.0-w/2.0; x += w ) {
          for( float z=w+w/2.0; z < 1.0-w/2.0; z += w ) {
              if( hypot(x-mPourPosition[0],z-mPourPosition[1]) < mPourRadius ) {
                  FluidParticle *p = new FluidParticle;
-                 p->mLocation=Vec3f(x, 1.0 - mWallThickness - 2.5*mFluidParticleRadius/mGridSize,z);
-                 p->mVelocity=Vec3f(0.0,-0.5*mFluidParticleRadius/mGridSize/mTimeStep,0.0);
+                 p->mLocation=Vec3f(x, 1.0 - mWallThickness - 2.5*mFluidParticleDiameter/mGridSize,z);
+                 p->mVelocity=Vec3f(0.0,-0.5*mFluidParticleDiameter/mGridSize/mTimeStep,0.0);
                  p->mNormal=Vec3f(0.0);
 				 p->mThinParticle = 0;
                  p->mObjectType = FLUID;
@@ -412,7 +411,7 @@ void FluidSimulation::advectParticles() {
 			vector<FluidParticle*> neighbors = mParticleLocator->getNeigboringCellParticles(i,j,k,1,1,1);
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *np = neighbors[n];
-				double re = 1.5*mFluidParticleRadius/mGridSize;
+				double re = 1.5*mFluidParticleDiameter/mGridSize;
 				if( np->mObjectType == WALL ) {
 					float dist = length(p->mLocation,np->mLocation);
 					if( dist < re ) {
@@ -482,7 +481,7 @@ bool FluidSimulation::step() {
 	addExternalForce();
     solvePicFlip();
 	advectParticles();
-	correctParticles(mParticleLocator.get(),mParticles,mTimeStep,mFluidParticleRadius/mGridSize);
+	correctParticles(mParticleLocator.get(),mParticles,mTimeStep,mFluidParticleDiameter/mGridSize);
     // If Exceeds Max Step Exit
 	mSimulationIteration++;
 	mSimulationTime=mSimulationIteration*mTimeStep;
@@ -546,7 +545,7 @@ void FluidSimulation::project() {
 
 	// Compute LevelSet
 	FOR_EVERY_CELL(mGridSize) {
-		mLaplacian(i,j,k) = mParticleLocator->getLevelSetValue(i,j,k,mWallWeight,mFluidParticleRadius);
+		mLaplacian(i,j,k) = mParticleLocator->getLevelSetValue(i,j,k,mWallWeight,mFluidParticleDiameter);
 	} END_FOR;
 	laplace_solve(mLabel, mLaplacian, mPressure, mDivergence, mGridSize );
 
@@ -634,7 +633,7 @@ void FluidSimulation::solvePicFlip() {
     // Map Particles Onto Grid
 	mParticleLocator->update(mParticles);
 	mapParticlesToGrid(mParticleLocator.get(),mParticles,mVelocity,mGridSize);
-	mParticleLocator->markAsWater(mLabel,mWallWeight,mFluidParticleRadius);
+	mParticleLocator->markAsWater(mLabel,mWallWeight,mFluidParticleDiameter);
 	// Solve Fluid Velocity On Grid
 	copyGridToBuffer();
 	enforceBoundaryCondition();
@@ -668,16 +667,18 @@ void FluidSimulation::getParticles(ParticleVolume& pv){
 void FluidSimulation::createLevelSet() {
 	// Create Density Field
 	OPENMP_FOR FOR_EVERY_CELL(mGridSize) {
-		double h = 1.0/(double)(mGridSize-1);
+		double h = 1.0/(double)(mGridSize);
 		double x = i*h;
 		double y = j*h;
 		double z = k*h;
 		Vec3f p( x, y, z);
-        double value = implicit_func( mParticleLocator.get(), p, mFluidParticleRadius);
+        double value = implicit_func( mParticleLocator.get(), p, mFluidParticleDiameter);
         if( i==0 || i==mGridSize-1 || j==0 || j==mGridSize-1 || k==0 || k==mGridSize-1 ) {
-            value = max(value,0.01);
+            //value = max(value,0.01);
+        	mLevelSet(i,j,k)=0.001;
+        } else{
+        	mLevelSet(i,j,k) = value*mGridSize;
         }
-        mLevelSet(i,j,k) = value*mGridSize;
 	} END_FOR
 	int N=mParticles.size();
 	mSource.mParticleVolume.mParticles.clear();
@@ -685,14 +686,14 @@ void FluidSimulation::createLevelSet() {
 	for(int n=0;n<N;n++){
 		FluidParticle* p=mParticles[n].get();
 		if(p->mObjectType==ObjectType::FLUID){
-		Vec3s l=mGridSize*p->mLocation;
-		Vec4s v(l[0],l[1],l[2],mFluidParticleRadius);
-		mSource.mParticleVolume.mParticles.push_back(v);
+			Vec3s l=mGridSize*p->mLocation;
+			Vec4s v(l[0],l[1],l[2],0.5f*mFluidParticleDiameter);
+			mSource.mParticleVolume.mParticles.push_back(v);
 		}
 		/*
 		Vec4f color;
 		if(p->mObjectType==ObjectType::FLUID){
-			color=Vec4f(0.5f,0.0f,0.0f,mFluidParticleRadius);
+			color=Vec4f(0.5f,0.0f,0.0f,mFluidParticleDiameter);
 		} else if(p->mObjectType==ObjectType::WALL){
 			color=Vec4f(0.0f,0.0f,0.5f,2*mFluidParticleRadius);
 		} else {
@@ -751,7 +752,7 @@ void FluidSimulation::computeWallNormals() {
 	}
 
 	mParticleLocator->update(mParticles);
-	mParticleLocator->markAsWater(mLabel, mWallWeight, mFluidParticleRadius);
+	mParticleLocator->markAsWater(mLabel, mWallWeight, mFluidParticleDiameter);
 
 	// Compute Perimeter Normal
 	FOR_EVERY_CELL(mGridSize)

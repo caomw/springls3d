@@ -54,11 +54,13 @@ void ParticleLocator::update( std::vector<ParticlePtr >& particles ) {
 
 std::vector<FluidParticle*> ParticleLocator::getNeigboringWallParticles( int i, int j, int k, int w, int h, int d ) {
 	std::vector<FluidParticle*> res;
-	for( int si=i-w; si<=i+w-1; si++ ) for( int sj=j-h; sj<=j+h-1; sj++ ) for( int sk=k-d; sk<=k+d-1; sk++ ) {
-		if( si < 0 || si > mGridSize-1 || sj < 0 || sj > mGridSize-1 || sk < 0 || sk > mGridSize-1 ) continue;
-		for( int a=0; a<cells(si,sj,sk).size(); a++ ) {
-			FluidParticle* p = cells(si,sj,sk)[a];
-			res.push_back(p);
+	for( int si=max(i-w,0); si<=min(i+w-1,mGridSize-1); si++ ) {
+		for( int sj=max(j-h,0); sj<=min(j+h-1,mGridSize-1); sj++ ) {
+			for( int sk=max(k-d,0); sk<=min(k+d-1,mGridSize-1); sk++ ) {
+				for(FluidParticle* p:cells(si,sj,sk)) {
+					res.push_back(p);
+				}
+			}
 		}
 	}
 	return res;
@@ -66,11 +68,13 @@ std::vector<FluidParticle*> ParticleLocator::getNeigboringWallParticles( int i, 
 
 std::vector<FluidParticle*> ParticleLocator::getNeigboringCellParticles( int i, int j, int k, int w, int h, int d ) {
 	std::vector<FluidParticle*> res;
-	for( int si=i-w; si<=i+w; si++ ) for( int sj=j-h; sj<=j+h; sj++ ) for( int sk=k-d; sk<=k+d; sk++ ) {
-		if( si < 0 || si > mGridSize-1 || sj < 0 || sj > mGridSize-1 || sk < 0 || sk > mGridSize-1 ) continue;
-		for( int a=0; a<cells(si,sj,sk).size(); a++ ) {
-			FluidParticle* p = cells(si,sj,sk)[a];
-			res.push_back(p);
+	for( int si=max(i-w,0); si<=min(i+w,mGridSize-1); si++ ) {
+		for( int sj=max(j-h,0); sj<=min(j+h,mGridSize-1); sj++ ) {
+			for( int sk=max(k-d,0); sk<=min(k+d,mGridSize-1); sk++ ) {
+				for(FluidParticle* p:cells(si,sj,sk)) {
+					res.push_back(p);
+				}
+			}
 		}
 	}
 	return res;

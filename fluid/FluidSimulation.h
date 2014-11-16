@@ -46,7 +46,7 @@ class FluidSimulation :public Simulation{
 		const static float GRAVITY ;
 		float mMaxDensity;
 		float mPicFlipBlendWeight ;
-		float mFluidParticleRadius;
+		float mFluidParticleDiameter;
 		MACGrid<float> mVelocity;
 		MACGrid<float> mVelocityLast;
 		RegularGrid<char> mLabel;

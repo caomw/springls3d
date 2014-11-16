@@ -27,7 +27,7 @@ void main() {
   mat4 PVM=P*V*M;
   mat4 VM=V*M;
   vec4 pt=gl_in[0].gl_Position;
-  float r=0.5f*pt.w;
+  float r=pt.w;
   pt.w=1.0;
   vec4 v = VM*pt;
   r=length(VM*vec4(0,0,r,0));

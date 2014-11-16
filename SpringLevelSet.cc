@@ -78,6 +78,7 @@ void SpringLevelSetDescription::serialize(Json::Value& root_in)
 		root["ConstellationFile"]=mConstellationFile;
 		root["IsoSurfaceFile"]=mIsoSurfaceFile;
 		root["SignedLevelSetFile"]=mSignedLevelSetFile;
+		root["ParticleVolumeFile"]=mParticleVolumeFile;
 		for(int i=0;i<mMetricNames.size();i++){
 			root[mMetricNames[i]]=mMetricValues[mMetricNames[i]];
 		}
@@ -88,6 +89,7 @@ void SpringLevelSetDescription::deserialize(Json::Value& root_in)
 		mConstellationFile=root.get("ConstellationFile","").asString();
 		mIsoSurfaceFile=root.get("IsoSurfaceFile","").asString();
 		mSignedLevelSetFile=root.get("SignedLevelSetFile","").asString();
+		mParticleVolumeFile=root.get("ParticleVolumeFile","").asString();
 		for(int i=0;i<mMetricNames.size();i++){
 			mMetricValues[mMetricNames[i]]=root.get(mMetricNames[i],0.0).asDouble();
 		}

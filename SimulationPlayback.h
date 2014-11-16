@@ -32,6 +32,7 @@ protected:
 	std::vector<std::string> mIsoSurfaceFiles;
 	std::vector<std::string> mConstellationFiles;
 	std::vector<std::string> mSignedDistanceFiles;
+	std::vector<std::string> mParticleVolumeFiles;
 	std::vector<SimulationTimeStepDescription> mTimeSteps;
 	std::string mDirectory;
 	Mesh mTemporaryMesh;

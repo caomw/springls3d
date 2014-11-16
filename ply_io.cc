@@ -90,12 +90,22 @@ void myfree(void* ptr){
 	}
 }
 void* myrealloc (void* ptr,size_t mem_size){
-	if(OBJECT_MEMORY.find(ptr)!=OBJECT_MEMORY.end()){
-		return ptr;
+	std::map<void*,size_t>::iterator iter=OBJECT_MEMORY.find(ptr);
+	if(iter!=OBJECT_MEMORY.end()){
+		size_t oldSize=OBJECT_MEMORY[ptr];
+		if(oldSize==mem_size){
+			return ptr;
+		} else {
+			void* newPtr=malloc(mem_size);
+			memcpy(newPtr,ptr,std::min(oldSize,mem_size));
+			free(ptr);
+			OBJECT_MEMORY.erase(iter);
+			OBJECT_MEMORY[newPtr]=mem_size;
+			return newPtr;
+		}
 	} else {
 		return myalloc(mem_size);
 	}
-
 }
 char* my_strdup(char* str){
 	int len=strlen(str);

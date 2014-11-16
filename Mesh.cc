@@ -29,47 +29,8 @@
 namespace imagesci {
 
 using namespace openvdb;
-typedef struct _plyVertex {
-	float x[3];             // the usual 3-space position of a vertex
-	unsigned char red;
-	unsigned char green;
-	unsigned char blue;
-	unsigned char alpha;
-	_plyVertex() {
-		x[0] = 0;
-		x[1] = 0;
-		x[2] = 0;
-		red = 0;
-		green = 0;
-		blue = 0;
-		alpha = 0;
-	}
-} plyVertex;
 
-char* elemNames[]={"vertex","face","normal"};
-
-typedef struct _plyFace {
-	unsigned char nverts;    // number of vertex indices in list
-	int *verts;              // vertex index list
-	_plyFace() {
-		nverts = 0;
-		verts = NULL;
-	}
-} plyFace;
-typedef struct _plyFaceTexutre {
-	unsigned char nverts;    // number of vertex indices in list
-	int *verts;              // vertex index list
-	unsigned char uvcount;
-	float* uvs;
-	_plyFaceTexutre(){
-		nverts = 0;
-		uvs=NULL;
-		verts = NULL;
-		uvcount = 6;
-	}
-} plyFaceTexutre;
-
-PlyProperty vertProps[] = { // property information for a vertex
+PlyProperty MeshVertProps[] = { // property information for a vertex
 		{ "x", Float32, Float32, static_cast<int>(offsetof(plyVertex, x)), 0, 0,
 				0, 0 },
 		{ "y", Float32, Float32,
@@ -85,7 +46,7 @@ PlyProperty vertProps[] = { // property information for a vertex
 				"alpha", Uint8, Uint8, static_cast<int>(offsetof(plyVertex,
 						alpha)), 0, 0, 0, 0 }, };
 
-PlyProperty faceProps[] = { // property information for a face
+PlyProperty MeshFaceProps[] = { // property information for a face
 	{ "vertex_indices", Int32, Int32, static_cast<int>(offsetof(plyFace, verts)), 1, Uint8, Uint8, static_cast<int>(offsetof(plyFace, nverts)) },
 	{ "vertex_indices", Int32, Int32, static_cast<int>(offsetof(plyFaceTexutre, verts)), 1, Uint8, Uint8, static_cast<int>(offsetof(plyFaceTexutre, nverts)) },
 	{ "texcoord", Float32, Float32, static_cast<int>(offsetof(plyFaceTexutre, uvs)), 1, Uint8, Uint8, static_cast<int>(offsetof(plyFaceTexutre, uvcount)) },
@@ -110,6 +71,9 @@ void Mesh::reset(){
 	mVertexAuxBuffer.clear();
 }
 bool Mesh::save(const std::string& f) {
+	if(mVertexes.size()==0)return false;
+	char* elemNames[]={"vertex","face","normal"};
+
 	std::cout<<"Saving "<<f<<" ... ";
 	int i, j, idx;
 	const char* fileName = f.c_str();
@@ -118,7 +82,7 @@ bool Mesh::save(const std::string& f) {
 	PlyFile *ply;
 
 	// Get input and check data
-	ply = open_for_writing_ply(fileName, 2, elemNames, PLY_ASCII);
+	ply = open_for_writing_ply(fileName, 2, elemNames, PLY_BINARY_LE);
 
 	if (ply == NULL){
 		std::cout<<"Failed. "<<std::endl;
@@ -147,21 +111,21 @@ bool Mesh::save(const std::string& f) {
 	}
 	// describe what properties go into the vertex and face elements
 	element_count_ply(ply, "vertex", numPts);
-	ply_describe_property(ply, "vertex", &vertProps[0]);
-	ply_describe_property(ply, "vertex", &vertProps[1]);
-	ply_describe_property(ply, "vertex", &vertProps[2]);
+	ply_describe_property(ply, "vertex", &MeshVertProps[0]);
+	ply_describe_property(ply, "vertex", &MeshVertProps[1]);
+	ply_describe_property(ply, "vertex", &MeshVertProps[2]);
 	if (mColors.size() > 0) {
-		ply_describe_property(ply, "vertex", &vertProps[3]);
-		ply_describe_property(ply, "vertex", &vertProps[4]);
-		ply_describe_property(ply, "vertex", &vertProps[5]);
+		ply_describe_property(ply, "vertex", &MeshVertProps[3]);
+		ply_describe_property(ply, "vertex", &MeshVertProps[4]);
+		ply_describe_property(ply, "vertex", &MeshVertProps[5]);
 	}
 	element_count_ply(ply, "face", numPolys);
 
 	if (usingTexture){
-		ply_describe_property(ply, "face", &faceProps[1]);
-		ply_describe_property(ply, "face", &faceProps[2]);
+		ply_describe_property(ply, "face", &MeshFaceProps[1]);
+		ply_describe_property(ply, "face", &MeshFaceProps[2]);
 	} else {
-		ply_describe_property(ply, "face", &faceProps[0]);
+		ply_describe_property(ply, "face", &MeshFaceProps[0]);
 	}
 
 	// write a comment and an object information field
@@ -270,7 +234,8 @@ bool Mesh::openMesh(const std::string& file) {
 	float version;
 	if (!(ply = ply_open_for_reading(file.c_str(), &nelems, &elist, &fileType,
 			&version))) {
-		std::cerr << "Could not open ply file." << std::endl;
+		std::cout << "Could not open ply file. ["<<file<<"]" << std::endl;
+		free_ply(ply);
 		return false;
 	}
 	// Check to make sure that we can read geometry
@@ -320,15 +285,15 @@ bool Mesh::openMesh(const std::string& file) {
 			numPts = numElems;
 			this->mVertexes.resize(numPts,Vec3s(0.0f));
 			// Setup to read the PLY elements
-			ply_get_property(ply, elemName, &vertProps[0]);
-			ply_get_property(ply, elemName, &vertProps[1]);
-			ply_get_property(ply, elemName, &vertProps[2]);
+			ply_get_property(ply, elemName, &MeshVertProps[0]);
+			ply_get_property(ply, elemName, &MeshVertProps[1]);
+			ply_get_property(ply, elemName, &MeshVertProps[2]);
 
 			if (RGBPointsAvailable) {
 				this->mColors.resize(numPts);
-				ply_get_property(ply, elemName, &vertProps[3]);
-				ply_get_property(ply, elemName, &vertProps[4]);
-				ply_get_property(ply, elemName, &vertProps[5]);
+				ply_get_property(ply, elemName, &MeshVertProps[3]);
+				ply_get_property(ply, elemName, &MeshVertProps[4]);
+				ply_get_property(ply, elemName, &MeshVertProps[5]);
 			}
 			for (j = 0; j < numPts; j++) {
 				get_element_ply(ply, &vertex);
@@ -343,7 +308,7 @@ bool Mesh::openMesh(const std::string& file) {
 			// Create a polygonal array
 			numPolys = numElems;
 			// Get the face properties
-			ply_get_property(ply, elemName, &faceProps[0]);
+			ply_get_property(ply, elemName, &MeshFaceProps[0]);
 			for (j = 0; j < numPolys; j++) {
 
 				//grab and element from the file

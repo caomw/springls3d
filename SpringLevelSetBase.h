@@ -140,6 +140,7 @@ class SpringLevelSetDescription: public JsonSerializable{
 	public:
 		std::string mConstellationFile;
 		std::string mIsoSurfaceFile;
+		std::string mParticleVolumeFile;
 		std::string mSignedLevelSetFile;
 		static std::vector<std::string> mMetricNames;
 		std::map<std::string,double> mMetricValues;

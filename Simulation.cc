@@ -50,29 +50,37 @@ Simulation::Simulation(const std::string& name,MotionScheme scheme):mName(name),
 bool Simulation::stash(const std::string& directory){
 	SimulationTimeStepDescription simDesc=getDescription();
 	SpringLevelSetDescription springlDesc;
-	std::stringstream constFile,isoFile,signedFile,descFile;
+	std::stringstream constFile,isoFile,signedFile,descFile,fluidFile;
 	constFile<< directory<<mName<<"_sls_" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".ply";
 	isoFile<< directory<<mName<<"_iso_" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".ply";
+	fluidFile<< directory<<mName<<"_fluid_" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".ply";
 	signedFile<< directory<<mName<<"_signed_"<<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".vdb";
 	descFile<< directory<<mName<<"_"<<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".sim";
-	springlDesc.mConstellationFile=constFile.str();
-	springlDesc.mIsoSurfaceFile=isoFile.str();
-	springlDesc.mSignedLevelSetFile=signedFile.str();
+
 	springlDesc.mMetricValues["Elements"]=mSource.mConstellation.getNumSpringls();
 	springlDesc.mMetricValues["Removed"]=mSource.getLastCleanCount();
 	springlDesc.mMetricValues["Added"]=mSource.getLastFillCount();
-	if(!mSource.mConstellation.save(springlDesc.mConstellationFile))return false;
-	if(!mSource.mIsoSurface.save(springlDesc.mIsoSurfaceFile))return false;
-	openvdb::io::File file(springlDesc.mSignedLevelSetFile);
-	openvdb::GridPtrVec grids;
-	FloatGrid::Ptr mSignedLevelSet=boost::static_pointer_cast<FloatGrid>(mSource.mSignedLevelSet->copyGrid(CopyPolicy::CP_COPY));
-	mSignedLevelSet->transform()=mSource.transform();
-	grids.push_back(mSignedLevelSet);
+	if(mSource.mConstellation.save(constFile.str())){
+		springlDesc.mConstellationFile=constFile.str();
+	}
 	try {
+		openvdb::io::File file(signedFile.str());
+		openvdb::GridPtrVec grids;
+		mSource.mSignedLevelSet->transform()=mSource.transform();
+		grids.push_back(mSource.mSignedLevelSet);
 		file.write(grids);
+		mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
+		springlDesc.mSignedLevelSetFile=signedFile.str();
 	}catch(openvdb::Exception& e){
-		std::cerr<<e.what()<<std::endl;
-		return false;
+		std::cout<<"OpenVDB: "<<e.what()<<std::endl;
+	} catch(std::exception& e){
+		std::cout<<e.what()<<std::endl;
+	}
+	if(mSource.mIsoSurface.save(isoFile.str())){
+		springlDesc.mIsoSurfaceFile=isoFile.str();
+	}
+	if(mSource.mParticleVolume.save(fluidFile.str())){
+		springlDesc.mParticleVolumeFile=fluidFile.str();
 	}
 	std::ofstream ofs;
 	ofs.open(descFile.str(), std::ofstream::out);

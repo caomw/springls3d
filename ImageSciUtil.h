@@ -49,6 +49,55 @@ typedef openvdb::math::Mat4f Matrix4f;
 template<typename T> T clamp(T val, T min, T max) {
 	return std::min(std::max(val, min), max);
 }
+struct plyVertex {
+	float x[3];             // the usual 3-space position of a vertex
+	unsigned char red;
+	unsigned char green;
+	unsigned char blue;
+	unsigned char alpha;
+	plyVertex() {
+		x[0] = 0;
+		x[1] = 0;
+		x[2] = 0;
+		red = 0;
+		green = 0;
+		blue = 0;
+		alpha = 0;
+	}
+};
+struct plyParticle {
+	float x[3];             // the usual 3-space position of a vertex
+	float radius;
+	plyParticle() {
+		x[0] = 0;
+		x[1] = 0;
+		x[2] = 0;
+		radius=0.0f;
+	}
+};
+
+
+typedef struct _plyFace {
+	unsigned char nverts;    // number of vertex indices in list
+	int *verts;              // vertex index list
+	_plyFace() {
+		nverts = 0;
+		verts = NULL;
+	}
+} plyFace;
+typedef struct _plyFaceTexutre {
+	unsigned char nverts;    // number of vertex indices in list
+	int *verts;              // vertex index list
+	unsigned char uvcount;
+	float* uvs;
+	_plyFaceTexutre(){
+		nverts = 0;
+		uvs=NULL;
+		verts = NULL;
+		uvcount = 6;
+	}
+} plyFaceTexutre;
+
 class Exception:public std::exception{
 protected:
 	std::string message;

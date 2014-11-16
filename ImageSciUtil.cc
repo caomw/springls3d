@@ -66,6 +66,7 @@ std::string GetFileDirectoryPath(const std::string& FileName)
 }
 std::string GetFileName(const std::string& FileName)
 {
+	if(FileName.length()==0)return "";
 	if (FileName.find_last_of(PATH_SEPARATOR) != std::string::npos)
 	{
 		size_t start = FileName.find_last_of(PATH_SEPARATOR);

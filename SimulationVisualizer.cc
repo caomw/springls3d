@@ -139,7 +139,7 @@ void SimulationVisualizer::stop(){
 	if(mSimulation!=NULL)mSimulation->stop();
 }
 void SimulationVisualizer::SimulationEvent(Simulation* simulation,int mSimulationIteration,double time){
-	//simulation->stash(mOutputDirectory);
+	simulation->stash(mOutputDirectory);
 }
 bool SimulationVisualizer::run(int width,int height){
     if (glfwInit() != GL_TRUE) {

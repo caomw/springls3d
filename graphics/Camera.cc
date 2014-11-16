@@ -195,11 +195,11 @@ void Camera::aim(int x,int y,int width,int height,GLShader& shader){
         mProjection=Tcamera*perspectiveMatrix(mFov,aspectRatio,mNearPlane,mFarPlane).transpose();
         mView=Teye*S*mRw*T*mRm;
     }
-    /*
-    std::cout<<"P=\n"<<P<<std::endl;
-    std::cout<<"V=\n"<<V<<std::endl;
-    std::cout<<"M=\n"<<M<<std::endl;
-    */
+/*
+    std::cout<<"P=\n"<<mProjection<<std::endl;
+    std::cout<<"V=\n"<<mView<<std::endl;
+    std::cout<<"M=\n"<<mModel<<std::endl;
+*/
     glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "P"), 1,GL_TRUE, mProjection.asPointer());
     glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "V"), 1,GL_TRUE, mView.asPointer());
     glUniformMatrix4fv(glGetUniformLocation(shader.GetProgramHandle(), "M"), 1,GL_TRUE, mModel.asPointer());

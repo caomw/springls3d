@@ -95,6 +95,7 @@ bool Simulation::updateGL(){
 	if(mIsMeshDirty){
 		mSource.mConstellation.updateGL();
 		mSource.mIsoSurface.updateGL();
+		mSource.mParticleVolume.updateGL();
 		mIsMeshDirty=false;
 		return true;
 	} else return false;

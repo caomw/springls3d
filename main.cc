@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
 						}
 					}
 					SplashSimulation sim(sourceFileName,dim,scheme);
-					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
+					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_HEIGHT,WIN_HEIGHT,dirName);
 					status=EXIT_SUCCESS;
 				}
 			} else if(args[i]=="-twist"){

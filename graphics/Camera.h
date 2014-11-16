@@ -180,6 +180,9 @@ public:
     float nearPlane(){return mNearPlane;}
     float farPlane(){return mFarPlane;}
     bool needsDisplay() const { return mNeedsDisplay; }
+    void setNeedsDisplay(bool val){
+    	mNeedsDisplay=val;
+    }
     openvdb::Vec3s transform(openvdb::Vec3s& pt){
     	openvdb::Vec4s ptp(pt[0],pt[1],pt[2],1.0f);
     	openvdb::Vec4s p=mProjection*mView*mModel*ptp;

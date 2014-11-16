@@ -35,7 +35,7 @@ ParticleVolume::~ParticleVolume() {
 }
 void ParticleVolume::reset() {
 	mParticles.clear();
-	mColors.clear();
+	//mColors.clear();
 }
 //Implement me
 bool ParticleVolume::save(const std::string& f) {
@@ -47,14 +47,14 @@ bool ParticleVolume::open(const std::string& file) {
 }
 void ParticleVolume::mapIntoBoundingBox(float voxelSize) {
 	Vec3s minPt = mBoundingBox.min();
-	for (Vec3s& pt : mParticles) {
-		pt = (pt - minPt) / voxelSize;
+	for (Vec4s& pt : mParticles) {
+		pt = (pt - Vec4s(minPt[0],minPt[1],minPt[2],0.0)) / voxelSize;
 	}
 }
 void ParticleVolume::mapOutOfBoundingBox(float voxelSize) {
 	Vec3s minPt = mBoundingBox.min();
-	for (Vec3s& pt : mParticles) {
-		pt = pt * voxelSize + minPt;
+	for (Vec4s& pt : mParticles) {
+		pt = pt * voxelSize + Vec4s(minPt[0],minPt[1],minPt[2],0.0);
 	}
 }
 void ParticleVolume::draw() {
@@ -62,14 +62,10 @@ void ParticleVolume::draw() {
 	if (mGL.mParticleBuffer > 0) {
 		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, mGL.mParticleBuffer);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	}
-	if (mGL.mColorBuffer > 0) {
-		glEnableVertexAttribArray(2);
-		glBindBuffer(GL_ARRAY_BUFFER, mGL.mColorBuffer);
-		glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 0, 0);
+		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 	}
 	glDrawArrays(GL_POINTS, 0, mParticleCount);
+	glDisableVertexAttribArray(0);
 	glBindVertexArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
@@ -85,11 +81,12 @@ void ParticleVolume::updateGL() {
 		glBindBuffer(GL_ARRAY_BUFFER, mGL.mParticleBuffer);
 		if (glIsBuffer(mGL.mParticleBuffer) == GL_FALSE)
 			throw Exception("Error: Unable to create particle buffer");
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * mParticles.size(),
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 4 * mParticles.size(),
 				&mParticles[0], GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		mParticleCount = mParticles.size();
 	}
+	/*
 	if (mColors.size() > 0) {
 		if (glIsBuffer(mGL.mColorBuffer) == GL_TRUE)
 			glDeleteBuffers(1, &mGL.mColorBuffer);
@@ -104,5 +101,6 @@ void ParticleVolume::updateGL() {
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
+	*/
 }
 } /* namespace imagesci */

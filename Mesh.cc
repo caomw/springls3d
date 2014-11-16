@@ -624,6 +624,7 @@ void Mesh::draw() {
 		glBindBuffer(GL_ARRAY_BUFFER, mGL.mVertexBuffer);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	}
+
 	if (mGL.mNormalBuffer > 0) {
 		glEnableVertexAttribArray(1);
 		glBindBuffer(GL_ARRAY_BUFFER, mGL.mNormalBuffer);
@@ -637,18 +638,23 @@ void Mesh::draw() {
 	if (mQuadIndexCount > 0) {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mGL.mQuadIndexBuffer);
 		glDrawElements(GL_TRIANGLES, mQuadIndexCount, GL_UNSIGNED_INT, NULL);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
 	}  else if(mQuadCount>0){
 		glDrawArrays(GL_TRIANGLES, 0, mQuadCount);
 	}
 	if (mTriangleIndexCount > 0) {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mGL.mTriIndexBuffer);
 		glDrawElements(GL_TRIANGLES, mTriangleIndexCount, GL_UNSIGNED_INT, NULL);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
 	} else if(mTriangleCount>0){
 		glDrawArrays(GL_TRIANGLES, 0, mTriangleCount);
 	}
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
 
-	glBindVertexArray (0);
 	glBindBuffer(GL_ARRAY_BUFFER,0);
+	glBindVertexArray (0);
 }
 
 void Mesh::updateGL() {

@@ -27,20 +27,24 @@
 #include "graphics/GLFrameBuffer.h"
 #include "graphics/GLImage.h"
 #include "graphics/GLSpringlShader.h"
+#include "graphics/GLFluidParticleShader.h"
 #include "graphics/GLRenderUI.h"
 #include "graphics/GLText.h"
 #include <memory>
 #include <string>
+#include <mutex>
 namespace imagesci {
 class SimulationVisualizer: public SimulationListener {
 private:
-	int mUpdates;
-    GLEnvironmentalShader mIsoShader;
-    GLEnvironmentalShader mSpringlShader;
-    std::unique_ptr<GLFrameBuffer> mIsoTexture;
-    std::unique_ptr<GLFrameBuffer> mSpringlTexture;
-	std::unique_ptr<GLShader> isoShader;
-	std::unique_ptr<GLSpringlShader> mPrettySpringlShader;
+    GLEnvironmentalShader mIsoSurfaceShader;
+    GLFluidParticleShader mParticleShader;
+
+    std::unique_ptr<GLFrameBuffer> mMiniViewTexture;
+    std::unique_ptr<GLFrameBuffer> mParticleTexture;
+	GLShader mMiniViewShader;
+	GLShader mImageShader;
+
+	std::unique_ptr<GLSpringlShader> mSpringlElementsShader;
 	std::unique_ptr<Camera> mCamera;
 	std::unique_ptr<Camera> mMiniCamera;
 
@@ -50,6 +54,7 @@ private:
 	openvdb::BBoxd mOriginalBoundingBox;
 	Simulation* mSimulation;
 	static SimulationVisualizer* mSimVis;
+	std::mutex mDrawLock;
 	SimulationVisualizer();
 public:
 	void SimulationEvent(Simulation* simulation,int mSimulationIteration,double time);
@@ -62,12 +67,10 @@ public:
 	void setSimulation(Simulation* simulation){
 		this->mSimulation=simulation;
 	}
-	bool needsDisplay();
-	void setNeedsDisplay();
 	void setWindowTitle(double fps = 0.0);
 	void render();
 	void resume();
-	bool init(int width, int height);
+	bool run(int width, int height);
 	void keyCallback(GLFWwindow* win,int key, int action,int mod);
 	void mouseButtonCallback(int button, int action);
 	void mousePosCallback(int x, int y);

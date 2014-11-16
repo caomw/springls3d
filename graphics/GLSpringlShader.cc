@@ -25,21 +25,6 @@
 #include <GLFW/glfw3.h>
 #include <openvdb/openvdb.h>
 namespace imagesci {
-const char* const vertexShaderDepthGPU = "varying vec3 N;\n"
-		"void main( void )\n"
-		"{\n"
-		"	N = normalize(gl_NormalMatrix * gl_Normal);\n"
-		"	gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;\n"
-		"}\n";
-const char* const fragmentShaderDepthGPU =
-		"varying vec3 N;\n"
-		"void main(void )\n"
-		"{\n"
-		"    float lValue = gl_FragCoord.z;\n"
-		"    gl_FragColor = vec4(N,lValue);\n"
-		"}\n";
-const char* const NormalAndDepthAttributes[] = { 0 };
-const char* const MixerAttributes[] = { 0};
 GLSpringlShader::GLSpringlShader(int x, int y, int w, int h) :
 		GLComponent(x, y, w, h),
 		mSpringLS(NULL),

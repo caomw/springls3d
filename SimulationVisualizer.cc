@@ -100,7 +100,7 @@ using namespace openvdb;
 using namespace openvdb::tools;
 
 void SimulationVisualizer::windowRefreshCallback(){
-	setNeedsDisplay();
+	 mCamera->setNeedsDisplay(true);
 }
 
 SimulationVisualizer::SimulationVisualizer()
@@ -108,14 +108,13 @@ SimulationVisualizer::SimulationVisualizer()
 	, mMiniCamera(new Camera())
 	, mWin(NULL)
 	, mSimulation(NULL)
-	, mUpdates(0)
 	, mOutputDirectory("./")
 {
 }
 void SimulationVisualizer::run(Simulation* simulation,int width,int height,const std::string outputDirectory){
 	getInstance()->setSimulation(simulation);
 	getInstance()->setOutputDirectory(outputDirectory);
-	getInstance()->init(width,height);
+	getInstance()->run(width,height);
 	deleteInstance();
 }
 void SimulationVisualizer::start(){
@@ -140,9 +139,9 @@ void SimulationVisualizer::stop(){
 	if(mSimulation!=NULL)mSimulation->stop();
 }
 void SimulationVisualizer::SimulationEvent(Simulation* simulation,int mSimulationIteration,double time){
-	simulation->stash(mOutputDirectory);
+	//simulation->stash(mOutputDirectory);
 }
-bool SimulationVisualizer::init(int width,int height){
+bool SimulationVisualizer::run(int width,int height){
     if (glfwInit() != GL_TRUE) {
         std::cout<<"GLFW Initialization Failed.";
         return false;
@@ -178,24 +177,31 @@ bool SimulationVisualizer::init(int width,int height){
     std::list<std::string> attrib;
 	attrib.push_back("vp");
 	attrib.push_back("vn");
-	mIsoShader.Init("./matcap/JG_Red.png");
-
-	mSpringlShader.Init("./matcap/JG_Silver.png");
-	int mainW=1200;
-	mPrettySpringlShader=std::unique_ptr<GLSpringlShader>(new GLSpringlShader(0,0,width,height));
-	mPrettySpringlShader->setMesh(mCamera.get(),&mSimulation->getSource(),"./matcap/JG_Red.png","./matcap/JG_Silver.png");
-	mPrettySpringlShader->updateGL();
-
-	int miniW=256;
-	int miniH=256;
-	mIsoTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(width-miniW,0,miniW,miniH,miniW,miniH));
+	mIsoSurfaceShader.Init("./matcap/JG_Red.png");
+	mParticleShader.Init();
 	std::vector<std::string> args;
 	args.push_back("vp");
 	args.push_back("uv");
-	isoShader=std::unique_ptr<GLShader>(new GLShader());
-	isoShader->Initialize(ReadTextFile("shaders/silhouette_shader.vert"),ReadTextFile("shaders/silhouette_shader.frag"),"",args);
-	mIsoTexture->setShader(isoShader.get());
-	mIsoTexture->updateGL();
+	int mainW=1200;
+	mSpringlElementsShader=std::unique_ptr<GLSpringlShader>(new GLSpringlShader(0,0,width,height));
+	mSpringlElementsShader->setMesh(mCamera.get(),&mSimulation->getSource(),"./matcap/JG_Red.png","./matcap/JG_Silver.png");
+	mSpringlElementsShader->updateGL();
+
+	mImageShader.Initialize(ReadTextFile("shaders/image_shader.vert"),ReadTextFile("shaders/image_shader.frag"),"",args);
+	mParticleTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(0,0,width,height,width,height));
+	mParticleTexture->setShader(&mImageShader);
+	mParticleTexture->updateGL();
+
+	int miniW=256;
+	int miniH=256;
+	mMiniViewTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(width-miniW,0,miniW,miniH,miniW,miniH));
+
+
+	//Set shader to use for background of texture
+	mMiniViewShader.Initialize(ReadTextFile("shaders/silhouette_shader.vert"),ReadTextFile("shaders/silhouette_shader.frag"),"",args);
+	mMiniViewTexture->setShader(&mMiniViewShader);
+	mMiniViewTexture->updateGL();
+
 	std::vector<RGBA> imgBuffer;
 	int imgW,imgH;
     glfwSetKeyCallback(mWin,keyCB);
@@ -216,12 +222,14 @@ bool SimulationVisualizer::init(int width,int height){
     glfwSwapInterval(1);
     if(mSimulation->getName()!="Recording")mSimulation->addListener(this);
     start();
+    //mSimulation->init();
     do {
     	if(mSimulation->updateGL()){
     		mSimulation->getSource().mConstellation.updateBoundingBox();
 			render();
         } else {
-    		if(needsDisplay()){
+
+    		if( mCamera->needsDisplay()){
     			render();
     		}
     	}
@@ -260,9 +268,16 @@ SimulationVisualizer::setWindowTitle(double fps)
 void
 SimulationVisualizer::render()
 {
-
+	mDrawLock.lock();
+	bool hasParticles=(mSimulation->getSource().mParticleVolume.mParticles.size()>0);
     const openvdb::BBoxd renderBBox=BBoxd(Vec3s(-0.5,-0.5,-0.5),Vec3s(0.5,0.5,0.5));
-    if(mSimulation->getSimulationIteration()==0)mOriginalBoundingBox=mSimulation->getSource().mIsoSurface.getBoundingBox();
+    if(mSimulation->getSimulationIteration()==0){
+    	if(hasParticles){
+    		mOriginalBoundingBox=mSimulation->getSource().mParticleVolume.getBoundingBox();
+    	} else {
+    		mOriginalBoundingBox=mSimulation->getSource().mIsoSurface.getBoundingBox();
+    	}
+    }
     openvdb::BBoxd bbox=mOriginalBoundingBox;
     openvdb::Vec3d extents = bbox.extents();
     openvdb::Vec3d rextents=renderBBox.extents();
@@ -274,9 +289,13 @@ SimulationVisualizer::render()
     Pose.postTranslate(-minPt);
 	Pose.postScale(Vec3s(scale,scale,scale));
 	Pose.postTranslate(rminPt);
+
 	if(mSimulation->getSource().mConstellation.mVertexes.size()>0){
 		bbox=mSimulation->getSource().mConstellation.getBoundingBox();
+	} else {
+		bbox=mSimulation->getSource().mIsoSurface.getBoundingBox();
 	}
+
     extents = bbox.extents();
     scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));
     minPt=bbox.getCenter();
@@ -297,38 +316,44 @@ SimulationVisualizer::render()
 
     mCamera->setPose(Pose.transpose());
     float t=mSimulation->getSimulationTime()/mSimulation->getSimulationDuration();
-    /*
-    const float specular=3;
-    const float minZoom=0.25;
-    const float maxZoom=2.0;
-    float w=pow(cos(2*(t-0.5f)*M_PI)*0.5f+0.5f,specular);
-    float zoom=w*(maxZoom-minZoom)+minZoom;
-    if(mSimulation->isRunning())mCamera->setDistance(zoom);
-     */
+
     CameraAndSceneConfig p=mCamera->getConfig();
     p.mDistanceToObject=0.8f;
     p.mModelTranslation=Vec3d(0);
     p.mWorldTranslation=Vec3d(0);
-
     mMiniCamera->setConfig(p);
-
     mMiniCamera->setPose(miniPose.transpose());
-
     glEnable(GL_DEPTH_TEST);
-	mIsoTexture->begin();
-	mIsoShader.begin();
-	mMiniCamera->aim(0,0,mIsoTexture->w,mIsoTexture->h,mIsoShader);
-	mSimulation->getSource().mIsoSurface.draw();
-	mIsoShader.end();
-	mIsoTexture->end();
-	mPrettySpringlShader->compute(mWin);
+
+
+    if(hasParticles){
+
+		mParticleTexture->begin();
+		mParticleShader.begin();
+		mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mParticleShader);
+		mSimulation->getSource().mParticleVolume.draw();
+		mParticleShader.end();
+		mParticleTexture->end();
+
+    } else {
+		mMiniViewTexture->begin();
+		mIsoSurfaceShader.begin();
+		mMiniCamera->aim(0,0,mMiniViewTexture->w,mMiniViewTexture->h,mIsoSurfaceShader);
+		mSimulation->getSource().mIsoSurface.draw();
+		mIsoSurfaceShader.end();
+		mMiniViewTexture->end();
+    }
+	mSpringlElementsShader->compute(mWin);
 	glViewport(0,0,width,height);
-
-	glEnable(GL_BLEND);
 	glDisable(GL_DEPTH_TEST);
-	mPrettySpringlShader->render(mWin);
-	mIsoTexture->render(mWin);
 
+
+	if(hasParticles){
+		mParticleTexture->render(mWin);
+	} else {
+		mSpringlElementsShader->render(mWin);
+		mMiniViewTexture->render(mWin);
+	}
 	/*
 	if(mSimulation->isRunning()){
 		std::stringstream ostr1,ostr2,ostr3;
@@ -346,12 +371,14 @@ SimulationVisualizer::render()
 		WriteImageToFile(ostr1.str(),tmp2,width,height);
 	}
 	*/
+	mDrawLock.unlock();
 }
 
 
 void
 SimulationVisualizer::keyCallback(GLFWwindow* win,int key, int action,int mod)
 {
+	mDrawLock.lock();
     bool keyPress = (glfwGetKey(win,key) == GLFW_PRESS);
     mCamera->keyCallback(win,key, action);
     if(keyPress){
@@ -365,7 +392,8 @@ SimulationVisualizer::keyCallback(GLFWwindow* win,int key, int action,int mod)
 			}
 		}
     }
-    setNeedsDisplay();
+    mCamera->setNeedsDisplay(true);
+    mDrawLock.unlock();
 
 }
 
@@ -373,50 +401,36 @@ SimulationVisualizer::keyCallback(GLFWwindow* win,int key, int action,int mod)
 void
 SimulationVisualizer::mouseButtonCallback(int button, int action)
 {
+	mDrawLock.lock();
     mCamera->mouseButtonCallback(button, action);
-    if (mCamera->needsDisplay()) setNeedsDisplay();
+    mDrawLock.unlock();
 }
 
 
 void
 SimulationVisualizer::mousePosCallback(int x, int y)
 {
+	mDrawLock.lock();
 	mCamera->mousePosCallback(x, y);
-    if (mCamera->needsDisplay()) setNeedsDisplay();
+	mDrawLock.unlock();
 }
 
 
 void
 SimulationVisualizer::mouseWheelCallback(double pos)
 {
-        mCamera->mouseWheelCallback(pos);
-        if (mCamera->needsDisplay()) setNeedsDisplay();
+	mDrawLock.lock();
+	mCamera->mouseWheelCallback(pos);
+    mDrawLock.unlock();
 }
 
 
 void
 SimulationVisualizer::windowSizeCallback(int, int)
 {
-    setNeedsDisplay();
+	mDrawLock.lock();
+    mCamera->setNeedsDisplay(true);
+    mDrawLock.unlock();
 }
 
-////////////////////////////////////////
-
-
-bool
-SimulationVisualizer::needsDisplay()
-{
-    if (mUpdates < 2) {
-        mUpdates += 1;
-        return true;
-    }
-    return false;
-}
-
-
-void
-SimulationVisualizer::setNeedsDisplay()
-{
-    mUpdates = 0;
-}
 }

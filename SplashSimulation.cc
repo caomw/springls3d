@@ -59,7 +59,6 @@ bool SplashSimulation::init(){
 	//createLevelSet();
 	copyFromDense(mLevelSet,grid,0.25f);
 	mSource.create(grid);
-	//mSource.updateIsoSurface();
 	mSource.mConstellation.reset();
 	mIsMeshDirty=true;
 	return ret;
@@ -70,9 +69,8 @@ void SplashSimulation::cleanup(){
 }
 bool SplashSimulation::step(){
 	bool ret=FluidSimulation::step();
-
-	//copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25f);
-	//mSource.updateIsoSurface();
+	copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25f);
+	mSource.updateIsoSurface();
 
 	//mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
 	mIsMeshDirty=true;

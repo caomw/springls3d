@@ -333,6 +333,10 @@ SimulationVisualizer::render()
 		mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mParticleShader);
 		mSimulation->getSource().mParticleVolume.draw();
 		mParticleShader.end();
+		mIsoSurfaceShader.begin();
+		mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mIsoSurfaceShader);
+		mSimulation->getSource().mIsoSurface.draw();
+		mIsoSurfaceShader.end();
 		mParticleTexture->end();
 
     } else {

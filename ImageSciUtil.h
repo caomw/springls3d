@@ -25,7 +25,6 @@
 
 #ifdef MP
 #include <omp.h>
-#pragma omp
 #define OPENMP_FOR		_Pragma("omp parallel for" )
 #define OPENMP_SECTION  _Pragma("omp section" )
 #define OPENMP_BEGIN	_Pragma("omp parallel" ) {

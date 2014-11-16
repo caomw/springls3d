@@ -53,11 +53,12 @@ class FluidSimulation :public Simulation{
 		RegularGrid<float> mLaplacian;
 		RegularGrid<float> mDivergence;
 		RegularGrid<float> mPressure;
-		RegularGrid<openvdb::Vec3f> mWallNormal;
+		RegularGrid<openvdb::Vec3s> mWallNormal;
 		RegularGrid<float> mWallWeight;
 		RegularGrid<float> mLevelSet;
-		int mGridSize;
+		openvdb::Coord mGridSize;
 		int mStuckParticleCount;
+		float mVoxelSize;
 		float mWallThickness;
 		std::unique_ptr<ParticleLocator> mParticleLocator;
 		std::vector<CollisionObject> mCollisionObjects;
@@ -84,7 +85,7 @@ class FluidSimulation :public Simulation{
 			return ((a == WALL) ? 1.0f : -1.0f);
 		}
 	public:
-		FluidSimulation(int gridSize,MotionScheme scheme) ;
+		FluidSimulation(const openvdb::Coord& dims,float voxelSize,MotionScheme scheme) ;
 		virtual bool init();
 		virtual bool step();
 		virtual void cleanup();

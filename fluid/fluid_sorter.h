@@ -31,21 +31,23 @@ namespace imagesci{
 namespace fluid{
 class ParticleLocator {
 public:
-	ParticleLocator( int gn );
+	ParticleLocator(openvdb::Coord dims,float voxelSize);
 	~ParticleLocator();
 	
 	void update( std::vector<ParticlePtr>& particles );
 	std::vector<FluidParticle*> getNeigboringWallParticles( int i, int j, int k, int w=1, int h=1, int d=1 );
 	std::vector<FluidParticle*> getNeigboringCellParticles( int i, int j, int k, int w=1, int h=1, int d=1 );
 	float getLevelSetValue( int i, int j, int k, RegularGrid<float>& halfwall, float density );
-	int	 getCellSize(){ return mGridSize; }
+	const openvdb::Coord& getCellSize(){ return mGridSize; }
+	float getVoxelSize(){return mVoxelSize;}
 	int	 getParticleCount( int i, int j, int k );
 	void markAsWater(RegularGrid<char>& A, RegularGrid<float>& halfwall, float density );
 	void deleteAllParticles();
 	
 protected:
+	openvdb::Coord mGridSize;
+	float mVoxelSize;
 	RegularGrid<std::vector<FluidParticle*> > cells;
-	int mGridSize;
 };
 }}
 #endif

@@ -32,31 +32,30 @@
 using namespace std;
 namespace imagesci{
 namespace fluid{
-ParticleLocator::ParticleLocator( int gn ):cells(gn,gn,gn) {
-	this->mGridSize = gn;
+ParticleLocator::ParticleLocator(openvdb::Coord dims,float voxelSize):mVoxelSize(voxelSize),cells(dims,voxelSize,std::vector<FluidParticle*>()),mGridSize(dims) {
 }
 ParticleLocator::~ParticleLocator() {
 }
 
 void ParticleLocator::update( std::vector<ParticlePtr >& particles ) {
 	// Clear All Cells
-	FOR_EVERY_CELL(mGridSize) {
+	FOR_EVERY_GRID_CELL(cells) {
 		cells(i,j,k).clear();
 	} END_FOR
 	// Store Into The Cells
 	for(ParticlePtr& p:particles) {
-		int i = clamp((int)(mGridSize*p->mLocation[0]),0,mGridSize-1);
-		int j = clamp((int)(mGridSize*p->mLocation[1]),0,mGridSize-1);
-		int k = clamp((int)(mGridSize*p->mLocation[2]),0,mGridSize-1);
+		int i = clamp((int)(mGridSize[0]*p->mLocation[0]),0,mGridSize[0]-1);
+		int j = clamp((int)(mGridSize[1]*p->mLocation[1]),0,mGridSize[1]-1);
+		int k = clamp((int)(mGridSize[2]*p->mLocation[2]),0,mGridSize[2]-1);
 		cells(i,j,k).push_back(p.get());
 	}
 }
 
 std::vector<FluidParticle*> ParticleLocator::getNeigboringWallParticles( int i, int j, int k, int w, int h, int d ) {
 	std::vector<FluidParticle*> res;
-	for( int si=max(i-w,0); si<=min(i+w-1,mGridSize-1); si++ ) {
-		for( int sj=max(j-h,0); sj<=min(j+h-1,mGridSize-1); sj++ ) {
-			for( int sk=max(k-d,0); sk<=min(k+d-1,mGridSize-1); sk++ ) {
+	for( int si=max(i-w,0); si<=min(i+w-1,mGridSize[0]-1); si++ ) {
+		for( int sj=max(j-h,0); sj<=min(j+h-1,mGridSize[1]-1); sj++ ) {
+			for( int sk=max(k-d,0); sk<=min(k+d-1,mGridSize[2]-1); sk++ ) {
 				for(FluidParticle* p:cells(si,sj,sk)) {
 					res.push_back(p);
 				}
@@ -68,9 +67,9 @@ std::vector<FluidParticle*> ParticleLocator::getNeigboringWallParticles( int i, 
 
 std::vector<FluidParticle*> ParticleLocator::getNeigboringCellParticles( int i, int j, int k, int w, int h, int d ) {
 	std::vector<FluidParticle*> res;
-	for( int si=max(i-w,0); si<=min(i+w,mGridSize-1); si++ ) {
-		for( int sj=max(j-h,0); sj<=min(j+h,mGridSize-1); sj++ ) {
-			for( int sk=max(k-d,0); sk<=min(k+d,mGridSize-1); sk++ ) {
+	for( int si=max(i-w,0); si<=min(i+w,mGridSize[0]-1); si++ ) {
+		for( int sj=max(j-h,0); sj<=min(j+h,mGridSize[1]-1); sj++ ) {
+			for( int sk=max(k-d,0); sk<=min(k+d,mGridSize[2]-1); sk++ ) {
 				for(FluidParticle* p:cells(si,sj,sk)) {
 					res.push_back(p);
 				}
@@ -86,9 +85,9 @@ int	 ParticleLocator::getParticleCount( int i, int j, int k ) {
 
 float ParticleLocator::getLevelSetValue( int i, int j, int k, RegularGrid<float>& halfwall, float density ) {
 	float accm = 0.0;
-	for( int a=0; a<cells(i,j,k).size(); a++ ) {
-		if( cells(i,j,k)[a]->mObjectType == FLUID ) {
-			accm += cells(i,j,k)[a]->mDensity;
+	for(FluidParticle* p:cells(i,j,k)) {
+		if(p->mObjectType == FLUID ) {
+			accm += p->mDensity;
 		} else {
 			return 1.0;
 		}
@@ -98,7 +97,7 @@ float ParticleLocator::getLevelSetValue( int i, int j, int k, RegularGrid<float>
 }
 
 void ParticleLocator::markAsWater(RegularGrid<char>& A, RegularGrid<float>& halfwall, float density ) {
-	FOR_EVERY_CELL(mGridSize) {
+	FOR_EVERY_GRID_CELL(cells) {
 		A(i,j,k) = AIR;
 		for( int a=0; a<cells(i,j,k).size(); a++ ) {
 			if( cells(i,j,k)[a]->mObjectType == WALL ) {
@@ -109,10 +108,8 @@ void ParticleLocator::markAsWater(RegularGrid<char>& A, RegularGrid<float>& half
 	} END_FOR
 }
 void ParticleLocator::deleteAllParticles() {
-	FOR_EVERY_CELL(mGridSize) {
-		for( int a=0; a<cells(i,j,k).size(); a++ ) {
-			cells(i,j,k).clear();
-		}
+	OPENMP_FOR FOR_EVERY_GRID_CELL(cells) {
+		cells(i,j,k).clear();
 	} END_FOR
 }
 }}

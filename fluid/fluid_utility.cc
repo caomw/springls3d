@@ -29,60 +29,51 @@
 #include <stdlib.h>
 #include <math.h>
 #include <sys/time.h>
-#define RE			1.4
-#define SPRING		50.0
+
+const float RELAXATION_KERNEL_WIDTH=1.4;
+const float SPRING_CONSTANT=50.0;
 
 using namespace std;
 
 namespace imagesci{
 namespace fluid{
-float hypot2( float a, float b, float c ) {
+float LengthSquared( float a, float b, float c ) {
     return a*a + b*b + c*c;
 }
 
-float length2(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1) {
+float DistanceSquared(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1) {
 	return (p0-p1).lengthSqr();
 }
 
-float length(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1) {
+float Distance(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1) {
 	return (p0-p1).length();
 }
 
-void my_rand_shuffle( std::vector<openvdb::Coord> &waters ) {
+void ShuffleCoordinates( std::vector<openvdb::Coord> &waters ) {
 	random_shuffle( waters.begin(), waters.end() );
 }
 
-unsigned long getMicroseconds() {
-	struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return tv.tv_sec*1000000 + tv.tv_usec;
+
+float SmoothKernel( float r2, float h ) {
+    return max( 1.0-r2/(h*h), 0.0 );
 }
-float smooth_kernel( float r2, float h ) {
-    return fmax( 1.0-r2/(h*h), 0.0 );
-}
-float sharp_kernel( float r2, float h ) {
-    return fmax( h*h/fmax(r2,1.0e-5) - 1.0, 0.0 );
-}
-double dumptime() {
-	static unsigned prevMicroSec = getMicroseconds();
-	unsigned curMicroSec = getMicroseconds();
-	double res = (curMicroSec - prevMicroSec)/1000000.0;
-	prevMicroSec = curMicroSec;
-	return res;
+float SharpKernel( float r2, float h ) {
+    return max( h*h/fmax(r2,1.0e-5) - 1.0, 0.0 );
 }
 
 
 
-void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& particles, MACGrid<float>& grid, int gn ) {
+
+void MapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& particles, MACGrid<float>& grid) {
 
 	// Compute Mapping
-	OPENMP_FOR FOR_EVERY_CELL(gn+1) {
-
+	openvdb::Coord dims(grid.rows(),grid.cols(),grid.slices());
+	OPENMP_FOR FOR_EVERY_CELL(dims[0]+1,dims[1]+1,dims[2]+1) {
 		// Variales for Particle Sorter
 		vector<FluidParticle*> neighbors;
 
 		// Map X Grids
-		if( j < gn && k < gn) {
+		if( j <dims[1] && k < dims[2]) {
 			openvdb::Vec3f px(i, j+0.5, k+0.5);
 			float sumw = 0.0;
 			float sumx = 0.0;
@@ -90,11 +81,11 @@ void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
 				if( p->mObjectType == FLUID ) {
-					float x = clamp(gn*p->mLocation[0],0.0f,(float)gn);
-					float y = clamp(gn*p->mLocation[1],0.0f,(float)gn);
-					float z = clamp(gn*p->mLocation[2],0.0f,(float)gn);
+					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
+					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
+					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
 					openvdb::Vec3f pos(x, y, z);
-					float w = p->mMass * sharp_kernel(length2(pos,px),RE);
+					float w = p->mMass * SharpKernel(DistanceSquared(pos,px),RELAXATION_KERNEL_WIDTH);
 					sumx += w*p->mVelocity[0];
 					sumw += w;
 				}
@@ -103,7 +94,7 @@ void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 		}
 
 		// Map Y Grids
-		if( i < gn && k < gn ) {
+		if( i < dims[0] && k < dims[2] ) {
 			openvdb::Vec3f py( i+0.5, j, k+0.5);
 			float sumw = 0.0;
 			float sumy = 0.0;
@@ -111,11 +102,11 @@ void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
 				if( p->mObjectType == FLUID ) {
-					float x = fmax(0,fmin(gn,gn*p->mLocation[0]));
-					float y = fmax(0,fmin(gn,gn*p->mLocation[1]));
-					float z = fmax(0,fmin(gn,gn*p->mLocation[2]));
+					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
+					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
+					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
 					float pos[3] = { x, y, z };
-					float w = p->mMass * sharp_kernel(length2(pos,py),RE);
+					float w = p->mMass * SharpKernel(DistanceSquared(pos,py),RELAXATION_KERNEL_WIDTH);
 					sumy += w*p->mVelocity[1];
 					sumw += w;
 				}
@@ -124,7 +115,7 @@ void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 		}
 
 		// Map Z Grids
-		if( i < gn && j < gn ) {
+		if( i < dims[0] && j < dims[1] ) {
 			openvdb::Vec3f pz(i+0.5, j+0.5, k);
 			float sumw = 0.0;
 			float sumz = 0.0;
@@ -132,11 +123,11 @@ void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
 				if( p->mObjectType == FLUID ) {
-					float x = fmax(0,fmin(gn,gn*p->mLocation[0]));
-					float y = fmax(0,fmin(gn,gn*p->mLocation[1]));
-					float z = fmax(0,fmin(gn,gn*p->mLocation[2]));
+					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
+					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
+					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
 					float pos[3] = { x, y, z };
-					float w = p->mMass * sharp_kernel(length2(pos,pz),RE);
+					float w = p->mMass * SharpKernel(DistanceSquared(pos,pz),RELAXATION_KERNEL_WIDTH);
 					sumz += w*p->mVelocity[2];
 					sumw += w;
 				}
@@ -146,8 +137,10 @@ void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 	} END_FOR
 }
 
-
-float linear ( RegularGrid<float>& q, float x, float y, float z, int w, int h, int d ) {
+float linear ( RegularGrid<float>& q, float x, float y, float z) {
+	 int w=q.rows();
+	 int h=q.cols();
+	 int d=q.slices();
 	x = clamp(x,0.0f,(float)w);
 	y = clamp(y,0.0f,(float)h);
 	z = clamp(z,0.0f,(float)d);
@@ -157,30 +150,31 @@ float linear ( RegularGrid<float>& q, float x, float y, float z, int w, int h, i
 	return	(k+1-z)*(((i+1-x)*q(i,j,k)+(x-i)*q(i+1,j,k))*(j+1-y) + ((i+1-x)*q(i,j+1,k)+(x-i)*q(i+1,j+1,k))*(y-j)) +
 			(z-k)*(((i+1-x)*q(i,j,k+1)+(x-i)*q(i+1,j,k+1))*(j+1-y) + ((i+1-x)*q(i,j+1,k+1)+(x-i)*q(i+1,j+1,k+1))*(y-j));
 }
+void fetchVelocity(openvdb::Vec3f& p,openvdb::Vec3f& u, MACGrid<float>& grid) {
 
-void fetchVelocity(openvdb::Vec3f& p,openvdb::Vec3f& u, MACGrid<float>& grid, int gn ) {
-	u[0] = linear( grid[0], gn*p[0], gn*p[1]-0.5, gn*p[2]-0.5, gn+1, gn, gn );
-	u[1] = linear( grid[1], gn*p[0]-0.5, gn*p[1], gn*p[2]-0.5, gn, gn+1, gn );
-	u[2] = linear( grid[2], gn*p[0]-0.5, gn*p[1]-0.5, gn*p[2], gn, gn, gn+1 );
+	u[0] = linear( grid[0], grid.rows()*p[0], grid.cols()*p[1]-0.5, grid.slices()*p[2]-0.5);
+	u[1] = linear( grid[1], grid.rows()*p[0]-0.5, grid.cols()*p[1], grid.slices()*p[2]-0.5);
+	u[2] = linear( grid[2], grid.rows()*p[0]-0.5, grid.cols()*p[1]-0.5, grid.slices()*p[2]);
 }
 
 void resampleParticles( ParticleLocator *sort, openvdb::Vec3f& p,openvdb::Vec3f& u, float re ) {
 	// Variables for Neighboring Particles
 	std::vector<FluidParticle*> neighbors;
-	int cell_size = sort->getCellSize();
+
+	openvdb::Coord cell_size = sort->getCellSize();
 	float wsum = 0.0;
 	openvdb::Vec3f save(u);
 	u[0] = u[1] = u[2] = 0.0;
-
+	int i = clamp((int)(p[0]*cell_size[0]),0,cell_size[0]-1);
+	int j = clamp((int)(p[1]*cell_size[1]),0,cell_size[1]-1);
+	int k = clamp((int)(p[2]*cell_size[2]),0,cell_size[2]-1);
 	// Gather Neighboring Particles
-	neighbors = sort->getNeigboringCellParticles(fmax(0,fmin(cell_size-1,cell_size*p[0])),
-												  fmax(0,fmin(cell_size-1,cell_size*p[1])),
-												  fmax(0,fmin(cell_size-1,cell_size*p[2])),1,1,1);
+	neighbors = sort->getNeigboringCellParticles(i,j,k,1,1,1);
 	for( int n=0; n<neighbors.size(); n++ ) {
 		FluidParticle *np = neighbors[n];
 		if( np->mObjectType == FLUID ) {
-			float dist2 = length2(p,np->mLocation);
-			float w = np->mMass * sharp_kernel(dist2,re);
+			float dist2 = DistanceSquared(p,np->mLocation);
+			float w = np->mMass * SharpKernel(dist2,re);
 			u += w * np->mVelocity;
 			wsum += w;
 		}
@@ -194,7 +188,7 @@ void resampleParticles( ParticleLocator *sort, openvdb::Vec3f& p,openvdb::Vec3f&
 
 void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particles, float dt, float re ) {
 	// Variables for Neighboring Particles
-	int cell_size = sort->getCellSize();
+	openvdb::Coord cell_size = sort->getCellSize();
 	sort->update(particles);
 
 	// Compute Pseudo Moved Point
@@ -202,15 +196,15 @@ void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle
 		if( particles[n]->mObjectType == FLUID ) {
 			FluidParticle *p = particles[n].get();
 			openvdb::Vec3f spring(0.0);
-			float x = max(0.0f,min((float)cell_size,cell_size*p->mLocation[0]));
-			float y = max(0.0f,min((float)cell_size,cell_size*p->mLocation[1]));
-			float z = max(0.0f,min((float)cell_size,cell_size*p->mLocation[2]));
-			std::vector<FluidParticle*> neighbors = sort->getNeigboringCellParticles(x,y,z,1,1,1);
+			int i = clamp((int)(p->mLocation[0]*cell_size[0]),0,cell_size[0]-1);
+			int j = clamp((int)(p->mLocation[1]*cell_size[1]),0,cell_size[1]-1);
+			int k = clamp((int)(p->mLocation[2]*cell_size[2]),0,cell_size[2]-1);
+			std::vector<FluidParticle*> neighbors = sort->getNeigboringCellParticles(i,j,k,1,1,1);
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *np = neighbors[n];
 				if( p != np ) {
-					float dist = length(p->mLocation,np->mLocation);
-					float w = SPRING * np->mMass * smooth_kernel(dist*dist,re);
+					float dist = Distance(p->mLocation,np->mLocation);
+					float w = SPRING_CONSTANT * np->mMass * SmoothKernel(dist*dist,re);
 					if( dist > 0.1*re ) {
 						spring += w * (p->mLocation-np->mLocation) / dist * re;
 					} else {
@@ -244,10 +238,10 @@ void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle
 		}
 	}
 }
-void mapGridToParticles(std::vector<ParticlePtr>& particles,MACGrid<float>& grid, int gn ) {
+void MapGridToParticles(std::vector<ParticlePtr>& particles,MACGrid<float>& grid) {
 	OPENMP_FOR for(int n=0;n<particles.size();n++){
 		ParticlePtr& p=particles[n];
-		fetchVelocity( p->mLocation, p->mVelocity, grid, gn );
+		fetchVelocity( p->mLocation, p->mVelocity, grid);
 	}
 }
 static double implicit_func( vector<ParticlePtr> &neighbors,openvdb::Vec3f& p, float density, int gn) {
@@ -255,39 +249,39 @@ static double implicit_func( vector<ParticlePtr> &neighbors,openvdb::Vec3f& p, f
 	for( int m=0; m<neighbors.size(); m++ ) {
 		FluidParticle &np = *neighbors[m];
 		if( np.mObjectType == WALL ) {
-			if( length(np.mLocation,p) < density/gn ) return 4.5*density/gn;
+			if( Distance(np.mLocation,p) < density/gn ) return 4.5*density/gn;
 			continue;
 		}
-		double d = length(np.mLocation,p);
+		double d = Distance(np.mLocation,p);
 		if( d < phi ) {
 			phi = d;
 		}
 	}
 	return phi - density/gn;
 }
-static double implicit_func( vector<FluidParticle*> &neighbors,openvdb::Vec3f& p, float density, int gn) {
-	double phi = 8.0*density/gn;
+static double implicit_func( vector<FluidParticle*> &neighbors,openvdb::Vec3f& p, float density,float voxelSize) {
+	double phi = 8.0*density*voxelSize;
 	for( int m=0; m<neighbors.size(); m++ ) {
 		FluidParticle &np = *neighbors[m];
 		if( np.mObjectType == WALL ) {
-			if( length(np.mLocation,p) < density/gn ) return 4.5*density/gn;
+			if( Distance(np.mLocation,p) < density*voxelSize) return 4.5*density*voxelSize;
 			continue;
 		}
-		double d = length(np.mLocation,p);
+		double d = Distance(np.mLocation,p);
 		if( d < phi ) {
 			phi = d;
 		}
 	}
-	return phi - density/gn;
+	return phi - density*voxelSize;
 }
 double implicit_func( ParticleLocator *sort, openvdb::Vec3f& p, float density ) {
-	int gn = sort->getCellSize();
+	openvdb::Coord cell_size = sort->getCellSize();
 	vector<FluidParticle *> neighbors = sort->getNeigboringCellParticles(
-			clamp((int)(p[0]*gn),0,gn-1),
-			clamp((int)(p[1]*gn),0,gn-1),
-			clamp((int)(p[2]*gn),0,gn-1),2,2,2
+			clamp((int)(p[0]*cell_size[0]),0,cell_size[0]-1),
+			clamp((int)(p[1]*cell_size[1]),0,cell_size[1]-1),
+			clamp((int)(p[2]*cell_size[2]),0,cell_size[2]-1),2,2,2
 			);
-	return implicit_func( neighbors, p, density, gn );
+	return implicit_func( neighbors, p, density,sort->getVoxelSize());
 }
 }
 }

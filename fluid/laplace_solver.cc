@@ -38,11 +38,10 @@ namespace fluid {
 
 // Clamped Fetch
 static float x_ref(RegularGrid<char>& A, RegularGrid<float>& L,
-		RegularGrid<float>& x, int fi, int fj, int fk, int i, int j, int k,
-		int n) {
-	i = min(max(0, i), n - 1);
-	j = min(max(0, j), n - 1);
-	k = min(max(0, k), n - 1);
+		RegularGrid<float>& x, int fi, int fj, int fk, int i, int j, int k) {
+	i = clamp(i,0,(int)x.rows()-1);
+	j = clamp(j,0,(int)x.cols()-1);
+	k = clamp(k,0,(int)x.slices()-1);
 	if (A(i,j,k) == FLUID)
 		return x(i,j,k);
 	else if (A(i,j,k) == WALL)
@@ -52,18 +51,18 @@ static float x_ref(RegularGrid<char>& A, RegularGrid<float>& L,
 
 // Ans = Ax
 static void compute_Ax(RegularGrid<char>& A, RegularGrid<float>& L,
-		RegularGrid<float>& x, RegularGrid<float>& ans, int n) {
-	float h2 = 1.0 / (n * n);
-	OPENMP_FOR FOR_EVERY_COMP(n)
+		RegularGrid<float>& x, RegularGrid<float>& ans) {
+	float h2 = x.voxelSize()*x.voxelSize();
+	OPENMP_FOR FOR_EVERY_GRID_CELL(x)
 		{
 			if (A(i,j,k) == FLUID) {
 				ans(i,j,k) = (6.0 * x(i,j,k)
-						- x_ref(A, L, x, i, j, k, i + 1, j, k, n)
-						- x_ref(A, L, x, i, j, k, i - 1, j, k, n)
-						- x_ref(A, L, x, i, j, k, i, j + 1, k, n)
-						- x_ref(A, L, x, i, j, k, i, j - 1, k, n)
-						- x_ref(A, L, x, i, j, k, i, j, k + 1, n)
-						- x_ref(A, L, x, i, j, k, i, j, k - 1, n)) / h2;
+						- x_ref(A, L, x, i, j, k, i + 1, j, k)
+						- x_ref(A, L, x, i, j, k, i - 1, j, k)
+						- x_ref(A, L, x, i, j, k, i, j + 1, k)
+						- x_ref(A, L, x, i, j, k, i, j - 1, k)
+						- x_ref(A, L, x, i, j, k, i, j, k + 1)
+						- x_ref(A, L, x, i, j, k, i, j, k - 1)) / h2;
 			} else {
 				ans(i,j,k) = 0.0;
 			}
@@ -72,13 +71,13 @@ static void compute_Ax(RegularGrid<char>& A, RegularGrid<float>& L,
 
 // ans = x^T * x
 static double product(RegularGrid<char>& A, RegularGrid<float>& x,
-		RegularGrid<float>& y, int n) {
+		RegularGrid<float>& y) {
 	static double ans;
 	ans = 0.0;
 #ifdef MP
 #pragma omp for reduction(+:ans)
 #endif
-	FOR_EVERY_COMP(n)
+	FOR_EVERY_GRID_CELL(A)
 		{
 			if (A(i,j,k) == FLUID)
 				ans += x(i,j,k) * y(i,j,k);
@@ -86,44 +85,36 @@ static double product(RegularGrid<char>& A, RegularGrid<float>& x,
 	return ans;
 }
 
-// x = 0
-template<class T>
-static void clear(RegularGrid<T>& x, int n) {
-	x.fill(0.0);
-}
-
-static void flipDivergence(RegularGrid<float>& x, int n) {
-	OPENMP_FOR FOR_EVERY_COMP(n)
-		{
-			x(i,j,k) = -x(i,j,k);
-		}END_FOR;
+static void flipDivergence(RegularGrid<float>& x) {
+	OPENMP_FOR FOR_EVERY_GRID_CELL(x){
+		x(i,j,k) = -x(i,j,k);
+	} END_FOR;
 }
 
 // x <= y
-static void copy(RegularGrid<float>& x, RegularGrid<float>& y, int n) {
+static void copy(RegularGrid<float>& x, RegularGrid<float>& y) {
 	y.copyTo(x);
 }
 
 // Ans = x + a*y
 static void op(RegularGrid<char>& A, RegularGrid<float>& x,
-		RegularGrid<float>& y, RegularGrid<float>& ans, float a, int n) {
-	RegularGrid<float> tmp(n, n, n);
-	OPENMP_FOR FOR_EVERY_COMP(n)
+		RegularGrid<float>& y, RegularGrid<float>& ans, float a) {
+	RegularGrid<float> tmp(x.rows(),x.cols(),x.slices(),x.voxelSize());
+	OPENMP_FOR FOR_EVERY_GRID_CELL(x)
 		{
 			if (A(i,j,k) == FLUID)
 				tmp(i,j,k) = x(i,j,k) + a * y(i,j,k);
 			else
 				tmp(i,j,k) = 0.0;
 		}END_FOR;
-	copy(ans, tmp, n);
+	copy(ans, tmp);
 }
 
 // r = b - Ax
 static void residual(RegularGrid<char>& A, RegularGrid<float>& L,
-		RegularGrid<float>& x, RegularGrid<float>& b, RegularGrid<float>& r,
-		int n) {
-	compute_Ax(A, L, x, r, n);
-	op(A, b, r, r, -1.0, n);
+		RegularGrid<float>& x, RegularGrid<float>& b, RegularGrid<float>& r) {
+	compute_Ax(A, L, x, r);
+	op(A, b, r, r, -1.0);
 }
 
 static inline float square(float a) {
@@ -131,18 +122,18 @@ static inline float square(float a) {
 }
 
 static float A_ref(RegularGrid<char>& A, int i, int j, int k, int qi, int qj,
-		int qk, int n) {
-	if (i < 0 || i > n - 1 || j < 0 || j > n - 1 || k < 0 || k > n - 1
+		int qk) {
+	if (i < 0 || i > A.rows() - 1 || j < 0 || j > A.cols() - 1 || k < 0 || k > A.slices() - 1
 			|| A(i,j,k) != FLUID)
 		return 0.0;
-	if (qi < 0 || qi > n - 1 || qj < 0 || qj > n - 1 || qk < 0 || qk > n - 1
+	if (qi < 0 || qi > A.rows() - 1 || qj < 0 || qj >A.cols() - 1 || qk < 0 || qk > A.slices() - 1
 			|| A(qi,qj,qk) != FLUID)
 		return 0.0;
 	return -1.0;
 }
 
 static float A_diag(RegularGrid<char>& A, RegularGrid<float>& L, int i, int j,
-		int k, int n) {
+		int k) {
 	float diag = 6.0;
 	if (A(i,j,k) != FLUID)
 		return diag;
@@ -152,7 +143,7 @@ static float A_diag(RegularGrid<char>& A, RegularGrid<float>& L, int i, int j,
 		int qi = q[m][0];
 		int qj = q[m][1];
 		int qk = q[m][2];
-		if (qi < 0 || qi > n - 1 || qj < 0 || qj > n - 1 || qk < 0 || qk > n - 1
+		if (qi < 0 || qi > A.rows() - 1 || qj < 0 || qj > A.cols() - 1 || qk < 0 || qk > A.slices() - 1
 				|| A(qi,qj,qk) == WALL)
 			diag -= 1.0;
 		else if (A(qi,qj,qk) == AIR) {
@@ -163,27 +154,26 @@ static float A_diag(RegularGrid<char>& A, RegularGrid<float>& L, int i, int j,
 }
 
 template<class T>
-static float P_ref(RegularGrid<T>& P, int i, int j, int k, int n) {
-	if (i < 0 || i > n - 1 || j < 0 || j > n - 1 || k < 0 || k > n - 1
+static float P_ref(RegularGrid<T>& P, int i, int j, int k) {
+	if (i < 0 || i > P.rows() - 1 || j < 0 || j > P.cols() - 1 || k < 0 || k > P.slices() - 1
 			|| P(i,j,k) != FLUID)
 		return 0.0;
 	return P(i,j,k);
 }
 
 static void buildPreconditioner(RegularGrid<double>& P, RegularGrid<float>& L,
-		RegularGrid<char>& A, int n) {
-	clear(P, n);
+		RegularGrid<char>& A) {
 	double a = 0.25;
-	FOR_EVERY_COMP(n)
+	FOR_EVERY_GRID_CELL(A)
 		{
 			if (A(i,j,k) == FLUID) {
-				double left = A_ref(A, i - 1, j, k, i, j, k, n)
-						* P_ref(P, i - 1, j, k, n);
-				double bottom = A_ref(A, i, j - 1, k, i, j, k, n)
-						* P_ref(P, i, j - 1, k, n);
-				double back = A_ref(A, i, j, k - 1, i, j, k, n)
-						* P_ref(P, i, j, k - 1, n);
-				double diag = A_diag(A, L, i, j, k, n);
+				double left = A_ref(A, i - 1, j, k, i, j, k)
+						* P_ref(P, i - 1, j, k);
+				double bottom = A_ref(A, i, j - 1, k, i, j, k)
+						* P_ref(P, i, j - 1, k);
+				double back = A_ref(A, i, j, k - 1, i, j, k)
+						* P_ref(P, i, j, k - 1);
+				double diag = A_diag(A, L, i, j, k);
 				double e = diag - square(left) - square(bottom) - square(back);
 				if (e < a * diag)
 					e = diag;
@@ -193,44 +183,36 @@ static void buildPreconditioner(RegularGrid<double>& P, RegularGrid<float>& L,
 }
 
 static void applyPreconditioner(RegularGrid<float>& z, RegularGrid<float>& r,
-		RegularGrid<double>& P, RegularGrid<float>& L, RegularGrid<char>& A,
-		int n) {
-	RegularGrid<double> q(n, n, n);
-	clear(q, n);
-
+		RegularGrid<double>& P, RegularGrid<float>& L, RegularGrid<char>& A) {
+	RegularGrid<double> q(P.rows(),P.cols(),P.slices(),P.voxelSize(),0.0);
 	// Lq = r
-	for (int i = 0; i < n; i++) {
-		for (int j = 0; j < n; j++) {
-			for (int k = 0; k < n; k++) {
+	FOR_EVERY_GRID_CELL(q){
 				if (A(i,j,k) == FLUID) {
-					double left = A_ref(A, i - 1, j, k, i, j, k, n)
-							* P_ref(P, i - 1, j, k, n)
-							* P_ref(q, i - 1, j, k, n);
-					double bottom = A_ref(A, i, j - 1, k, i, j, k, n)
-							* P_ref(P, i, j - 1, k, n)
-							* P_ref(q, i, j - 1, k, n);
-					double back = A_ref(A, i, j, k - 1, i, j, k, n)
-							* P_ref(P, i, j, k - 1, n)
-							* P_ref(q, i, j, k - 1, n);
-
+					double left = A_ref(A, i - 1, j, k, i, j, k)
+							* P_ref(P, i - 1, j, k)
+							* P_ref(q, i - 1, j, k);
+					double bottom = A_ref(A, i, j - 1, k, i, j, k)
+							* P_ref(P, i, j - 1, k)
+							* P_ref(q, i, j - 1, k);
+					double back = A_ref(A, i, j, k - 1, i, j, k)
+							* P_ref(P, i, j, k - 1)
+							* P_ref(q, i, j, k - 1);
 					double t = r(i,j,k) - left - bottom - back;
 					q(i,j,k) = t * P(i,j,k);
 				}
-			}
-		}
-	}
+	}END_FOR;
 
 	// L^T z = q
-	for (int i = n - 1; i >= 0; i--) {
-		for (int j = n - 1; j >= 0; j--) {
-			for (int k = n - 1; k >= 0; k--) {
+	for (int i = q.rows() - 1; i >= 0; i--) {
+		for (int j = q.cols() - 1; j >= 0; j--) {
+			for (int k = q.slices() - 1; k >= 0; k--) {
 				if (A(i,j,k) == FLUID) {
-					double right = A_ref(A, i, j, k, i + 1, j, k, n)
-							* P_ref(P, i, j, k, n) * P_ref(z, i + 1, j, k, n);
-					double top = A_ref(A, i, j, k, i, j + 1, k, n)
-							* P_ref(P, i, j, k, n) * P_ref(z, i, j + 1, k, n);
-					double front = A_ref(A, i, j, k, i, j, k + 1, n)
-							* P_ref(P, i, j, k, n) * P_ref(z, i, j, k + 1, n);
+					double right = A_ref(A, i, j, k, i + 1, j, k)
+							* P_ref(P, i, j, k) * P_ref(z, i + 1, j, k);
+					double top = A_ref(A, i, j, k, i, j + 1, k)
+							* P_ref(P, i, j, k) * P_ref(z, i, j + 1, k);
+					double front = A_ref(A, i, j, k, i, j, k + 1)
+							* P_ref(P, i, j, k) * P_ref(z, i, j, k + 1);
 
 					double t = q(i,j,k) - right - top - front;
 					z(i,j,k) = t * P(i,j,k);
@@ -242,25 +224,26 @@ static void applyPreconditioner(RegularGrid<float>& z, RegularGrid<float>& r,
 
 // Conjugate Gradient Method
 static void conjGrad(RegularGrid<char>& A, RegularGrid<double>& P,
-		RegularGrid<float>& L, RegularGrid<float>& x, RegularGrid<float>& b,
-		int n) {
+		RegularGrid<float>& L, RegularGrid<float>& x, RegularGrid<float>& b) {
 	// Pre-allocate Memory
-	RegularGrid<float> r(n, n, n);
-	RegularGrid<float> z(n, n, n);
-	RegularGrid<float> s(n, n, n);
-	compute_Ax(A, L, x, z, n);                // z = applyA(x)
-	op(A, b, z, r, -1.0, n);                  // r = b-Ax
-	double error2_0 = product(A, r, r, n);    // error2_0 = r . r
-	applyPreconditioner(z, r, P, L, A, n);		// Apply Conditioner z = f(r)
-	copy(s, z, n);								// s = z
-	double eps = 1.0e-2 * (n * n * n);
-	double a = product(A, z, r, n);			// a = z . r
-	for (int k = 0; k < n * n * n; k++) {
-		compute_Ax(A, L, s, z, n);			// z = applyA(s)
-		double alpha = a / product(A, z, s, n);	// alpha = a/(z . s)
-		op(A, x, s, x, alpha, n);				// x = x + alpha*s
-		op(A, r, z, r, -alpha, n);			// r = r - alpha*z;
-		float error2 = product(A, r, r, n);	// error2 = r . r
+	openvdb::Coord dims(x.rows(),x.cols(),x.slices());
+	RegularGrid<float> r(dims,x.voxelSize(),0.0);
+	RegularGrid<float> z(dims,x.voxelSize(),0.0);
+	RegularGrid<float> s(dims,x.voxelSize(),0.0);
+	compute_Ax(A, L, x, z);                // z = applyA(x)
+	op(A, b, z, r, -1.0);                  // r = b-Ax
+	double error2_0 = product(A, r, r);    // error2_0 = r . r
+	applyPreconditioner(z, r, P, L, A);		// Apply Conditioner z = f(r)
+	copy(s, z);								// s = z
+	int V=dims[0]*dims[1]*dims[2];
+	double eps = 1.0e-2 * (V);
+	double a = product(A, z, r);			// a = z . r
+	for (int k = 0; k < V; k++) {
+		compute_Ax(A, L, s, z);			// z = applyA(s)
+		double alpha = a / product(A, z, s);	// alpha = a/(z . s)
+		op(A, x, s, x, alpha);				// x = x + alpha*s
+		op(A, r, z, r, -alpha);			// r = r - alpha*z;
+		float error2 = product(A, r, r);	// error2 = r . r
 		error2_0 = fmax(error2_0, error2);
 		// Dump Progress
 		double rate = 1.0
@@ -268,22 +251,22 @@ static void conjGrad(RegularGrid<char>& A, RegularGrid<double>& P,
 		std::cout<<"Laplace iteration "<<(k + 1)<<" ["<<100.0f * powf(rate, 6)<<"%]"<<std::endl;
 		if (error2 <= eps)
 			break;
-		applyPreconditioner(z, r, P, L, A, n);	// Apply Conditioner z = f(r)
-		double a2 = product(A, z, r, n);		// a2 = z . r
+		applyPreconditioner(z, r, P, L, A);	// Apply Conditioner z = f(r)
+		double a2 = product(A, z, r);		// a2 = z . r
 		double beta = a2 / a;                     // beta = a2 / a
-		op(A, z, s, s, beta, n);				// s = z + beta*s
+		op(A, z, s, s, beta);				// s = z + beta*s
 		a = a2;
 	}
 }
 
 
 void laplace_solve(RegularGrid<char>& A, RegularGrid<float>& L,
-		RegularGrid<float>& x, RegularGrid<float>& b, int n) {
-	RegularGrid<double> P(n, n, n);
+		RegularGrid<float>& x, RegularGrid<float>& b) {
+	RegularGrid<double> P(x.rows(),x.cols(),x.slices(),x.voxelSize());
 	// Flip Divergence
-	flipDivergence(b, n);
-	buildPreconditioner(P, L, A, n);
-	conjGrad(A, P, L, x, b, n);
+	flipDivergence(b);
+	buildPreconditioner(P, L, A);
+	conjGrad(A, P, L, x, b);
 }
 }
 }

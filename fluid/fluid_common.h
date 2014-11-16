@@ -32,83 +32,60 @@
 #include <memory>
 namespace imagesci {
 namespace fluid {
-template<typename ValueT> struct Offset1D {
-private:
-	ValueT* mPtr;
-public:
-	Offset1D(ValueT* ptr) :
-			mPtr(ptr) {
-	}
-	inline ValueT& operator[](size_t k) {
-		return mPtr[k];
-	}
-	inline const ValueT& operator[](size_t k) const {
-		return mPtr[k];
-	}
-};
-template<typename ValueT> struct Offset2D {
-private:
-	ValueT* mPtr;
-	size_t strideY;
-public:
-	Offset2D(ValueT* ptr, int stride) :
-			mPtr(ptr), strideY(stride) {
-	}
-	inline Offset1D<ValueT> operator[](size_t j) {
-		return Offset1D<ValueT>(&mPtr[strideY * j]);
-	}
-	inline const Offset1D<ValueT> operator[](size_t j) const {
-		return Offset1D<ValueT>(&mPtr[strideY * j]);
-	}
-};
-
 template<typename ValueT> class RegularGrid: public openvdb::tools::Dense<
 		ValueT, openvdb::tools::MemoryLayout::LayoutZYX> {
 private:
 	ValueT* mPtr;
-	size_t mStrideX;
-	size_t mStrideY;
-	size_t mRows;
-	size_t mCols;
-	size_t mSlices;
+	const size_t mStrideX;
+	const size_t mStrideY;
+	const size_t mRows;
+	const size_t mCols;
+	const size_t mSlices;
+	const float mVoxelSize;
+	const openvdb::BBoxd mBoundingBox;
 public:
-	RegularGrid(const openvdb::Coord& dim, const openvdb::Coord& min,
-			ValueT value) :
+	RegularGrid(const openvdb::Coord& dims, const openvdb::BBoxd& boundingBox,
+			ValueT value=0.0) :
 			openvdb::tools::Dense<ValueT,
-					openvdb::tools::MemoryLayout::LayoutZYX>(dim, min) {
+					openvdb::tools::MemoryLayout::LayoutZYX>(dims, openvdb::Coord(0)),mBoundingBox(boundingBox) {
 		this->fill(value);
 		mPtr = this->data();
 		mStrideX = this->xStride();
 		mStrideY = this->yStride();
-		mRows = dim[0];
-		mCols = dim[1];
-		mSlices = dim[2];
+		mRows = dims[0];
+		mCols = dims[1];
+		mSlices = dims[2];
+		//Assume isotropic voxels!
+		mVoxelSize=(boundingBox.max()-boundingBox.min())[0]/dims[0];
 	}
-	RegularGrid(int rows, int cols, int slices) :
+	RegularGrid(int rows, int cols, int slices,float voxelSize,ValueT value=0.0) :
 			openvdb::tools::Dense<ValueT,
 					openvdb::tools::MemoryLayout::LayoutZYX>(
-					openvdb::Coord(rows, cols, slices), openvdb::Coord(0)) {
+					openvdb::Coord(rows, cols, slices), openvdb::Coord(0)),
+					mStrideX(this->xStride()),
+					mStrideY(this->yStride()),
+					mRows(rows),
+					mCols(cols),
+					mSlices(slices),
+					mVoxelSize(voxelSize),
+					mBoundingBox(openvdb::Vec3d(0,0,0),openvdb::Vec3d(voxelSize*rows,voxelSize*cols,voxelSize*slices)) {
 		mPtr = this->data();
-		mStrideX = this->xStride();
-		mStrideY = this->yStride();
-		mRows = rows;
-		mCols = cols;
-		mSlices = slices;
+		this->fill(value);
 	}
+	RegularGrid(const openvdb::Coord& dims,float voxelSize,ValueT value=0.0):RegularGrid(dims[0],dims[1],dims[2],voxelSize,value){
+
+	}
+
+
 	ValueT& operator()(size_t i, size_t j, size_t k) {
 		return mPtr[i * mStrideX + j * mStrideY + k];
 	}
 	const ValueT& operator()(size_t i, size_t j, size_t k) const {
 		return mPtr[i * mStrideX + j * mStrideY + k];
 	}
-	//Not a good idea.
-	/*
-	 inline Offset2D<ValueT> operator[](size_t i) {
-	 return Offset2D<ValueT>(&mPtr[i * mStrideX], mStrideY);
-	 }
-	 inline const Offset2D<ValueT> operator[](size_t i) const {
-	 return Offset2D<ValueT>(&mPtr[i * mStrideX], mStrideY);
-	 }*/
+	const openvdb::BBoxd& getBoundingBox() const {
+		return mBoundingBox;
+	}
 	inline const size_t size() const {
 		return mRows * mCols * mSlices;
 	}
@@ -120,6 +97,9 @@ public:
 	}
 	inline const size_t slices() const {
 		return mSlices;
+	}
+	inline const float voxelSize() const {
+		return mVoxelSize;
 	}
 	void copyTo(RegularGrid<ValueT>& out) {
 		ValueT* src = this->data();
@@ -215,17 +195,38 @@ inline bool WriteToRawFile(RegularGrid<float>& dense,
 	return true;
 }
 template<typename ValueT> struct MACGrid {
-public:
+protected:
 	RegularGrid<ValueT> mX, mY, mZ;
-	MACGrid(const openvdb::Coord& dim, const openvdb::Coord& min, ValueT value) :
-			mX(openvdb::Coord(dim[0] + 1, dim[1], dim[2]), min, value), mY(
-					openvdb::Coord(dim[0], dim[1] + 1, dim[2]), min, value), mZ(
-					openvdb::Coord(dim[0], dim[1], dim[2] + 1), min, value) {
+	const size_t mRows;
+	const size_t mCols;
+	const size_t mSlices;
+	const float mVoxelSize;
+public:
+
+	MACGrid(const openvdb::Coord& dim, float voxelSize,ValueT value=0.0) :
+			mX(dim[0] + 1, dim[1], dim[2], voxelSize,value),
+			mY(dim[0], dim[1] + 1, dim[2], voxelSize ,value),
+			mZ(dim[0], dim[1], dim[2] + 1, voxelSize ,value),mRows(dim[0]),mCols(dim[1]),mSlices(dim[2]),mVoxelSize(voxelSize) {
 	}
 	RegularGrid<ValueT>& operator[](size_t i) {
 		return (&mX)[i];
 	}
 
+	inline const size_t size() const {
+		return mRows * mCols * mSlices;
+	}
+	inline const size_t rows() const {
+		return mRows;
+	}
+	inline const size_t cols() const {
+		return mCols;
+	}
+	inline const size_t slices() const {
+		return mSlices;
+	}
+	inline const float voxelSize() const {
+		return mVoxelSize;
+	}
 };
 inline bool WriteToRawFile(MACGrid<float>& mac, const std::string& fileName) {
 	bool r1 = WriteToRawFile(mac[0], fileName + "_x");
@@ -259,8 +260,7 @@ struct FluidParticle {
 	openvdb::Vec3f mNormal;
 	char mObjectType;
 	char mVisible;
-	char mRemoveIndicator;
-	char mThinParticle;
+	bool mRemoveIndicator;
 	openvdb::Vec3f mTmp[2];
 	float mMass;
 	float mDensity;

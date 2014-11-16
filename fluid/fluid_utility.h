@@ -34,10 +34,11 @@
 #include "fluid_common.h"
 #include "fluid_sorter.h"
 
-#define FOR_EVERY_X_FLOW(N)	for( int i=0; i<N+1; i++ ) for( int j=0; j<N; j++ ) for( int k=0; k<N; k++ ) {
-#define FOR_EVERY_Y_FLOW(N)	for( int i=0; i<N; i++ ) for( int j=0; j<N+1; j++ ) for( int k=0; k<N; k++ ) {
-#define FOR_EVERY_Z_FLOW(N)	for( int i=0; i<N; i++ ) for( int j=0; j<N; j++ ) for( int k=0; k<N+1; k++ ) {
-#define FOR_EVERY_CELL(n)		for( int i=0; i<n; i++ ) for( int j=0; j<n; j++ ) for( int k=0; k<n; k++ ) {
+#define FOR_EVERY_X_FLOW(NX,NY,NZ)		for( int i=0; i<NX+1; i++ ) for( int j=0; j<NY; j++ ) for( int k=0; k<NZ; k++ ) {
+#define FOR_EVERY_Y_FLOW(NX,NY,NZ)		for( int i=0; i<NX; i++ ) for( int j=0; j<NY+1; j++ ) for( int k=0; k<NZ; k++ ) {
+#define FOR_EVERY_Z_FLOW(NX,NY,NZ)		for( int i=0; i<NX; i++ ) for( int j=0; j<NY; j++ ) for( int k=0; k<NZ+1; k++ ) {
+#define FOR_EVERY_CELL(NX,NY,NZ)		for( int i=0; i<NX; i++ ) for( int j=0; j<NY; j++ ) for( int k=0; k<NZ; k++ ) {
+#define FOR_EVERY_GRID_CELL(G)		for( int i=0; i<G.rows(); i++ ) for( int j=0; j<G.cols(); j++ ) for( int k=0; k<G.slices(); k++ ) {
 #define END_FOR }
 
 namespace imagesci{
@@ -48,15 +49,15 @@ template<typename ValueT> RegularGrid<ValueT> alloc3D( int w, int h, int d ) {
 
 unsigned long getMicroseconds();
 double dumptime();
-float smooth_kernel( float r2, float h );
-float sharp_kernel( float r2, float h );
-float length(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1);
-float length2(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1);
-float hypot2( float a, float b, float c );
-void mapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& particles,MACGrid<float>&  grid, int gn );
-void mapGridToParticles( std::vector<ParticlePtr>& particles, MACGrid<float>& grid, int gn );
-float linear( RegularGrid<float>& q, float x, float y, float z, int w, int h, int d ) ;
-void fetchVelocity(openvdb::Vec3f& p,openvdb::Vec3f& u,MACGrid<float>& grid, int gn );
+float SmoothKernel( float r2, float h );
+float SharpKernel( float r2, float h );
+float Distance(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1);
+float DistanceSquared(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1);
+float LengthSquared( float a, float b, float c );
+void MapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& particles,MACGrid<float>&  grid);
+void MapGridToParticles( std::vector<ParticlePtr>& particles, MACGrid<float>& grid );
+float linear( RegularGrid<float>& q, float x, float y, float z ) ;
+void fetchVelocity(openvdb::Vec3f& p,openvdb::Vec3f& u,MACGrid<float>& grid );
 void resampleParticles( ParticleLocator *sort, openvdb::Vec3f& p, openvdb::Vec3f& u, float re );
 void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle, float dt, float re);
 double implicit_func( ParticleLocator *sort, openvdb::Vec3f& p, float density );
@@ -67,7 +68,7 @@ static void dump(const char *format, ...) {
 	va_end(args);
 }
 
-void my_rand_shuffle( std::vector<openvdb::Coord> &waters );
+void ShuffleCoordinates( std::vector<openvdb::Coord> &waters );
 
 }
 }

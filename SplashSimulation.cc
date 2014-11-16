@@ -24,7 +24,7 @@
 namespace imagesci {
 using namespace openvdb::tools;
 using namespace imagesci::fluid;
-SplashSimulation::SplashSimulation(const std::string& fileName,int gridSize,MotionScheme scheme):FluidSimulation(gridSize,scheme),mSourceFileName(fileName),mGridSize(gridSize) {
+SplashSimulation::SplashSimulation(const std::string& fileName,int gridSize,MotionScheme scheme):FluidSimulation(Coord(gridSize,gridSize,gridSize),1.0f/gridSize,scheme),mSourceFileName(fileName),mGridSize(gridSize) {
 }
 
 bool SplashSimulation::init(){

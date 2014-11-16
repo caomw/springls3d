@@ -35,45 +35,46 @@ using namespace std;
 namespace imagesci {
 namespace fluid {
 const float FluidSimulation::GRAVITY = 9.8067f;
-FluidSimulation::FluidSimulation(int gridSize,MotionScheme scheme) :
+FluidSimulation::FluidSimulation(const openvdb::Coord& dims,float voxelSize,MotionScheme scheme) :
 		Simulation("Fluid Simulation",scheme),
 		mMaxDensity(0.0),
 		mStuckParticleCount(0),
 		mPicFlipBlendWeight(0.95f),
 		mFluidParticleDiameter(0.5f),
-		mGridSize(gridSize),
-		mLevelSet(Coord(gridSize),Coord(0),0),
-		mLabel(Coord(gridSize), Coord(0), 0.0f),mDivergence(Coord(gridSize), Coord(0), 0.0f), mLaplacian(
-				Coord(gridSize), Coord(0), 0.0f), mPressure(Coord(gridSize),
-				Coord(0), 0.0f), mVelocity(Coord(gridSize), Coord(0), 0.0f), mVelocityLast(
-				Coord(gridSize), Coord(0), 0.0f), mWallWeight(Coord(gridSize),
-				Coord(0), 0.0f), mWallNormal(Coord(gridSize), Coord(0),
-				openvdb::Vec3f(0.0f)) {
-	mWallThickness = 1.0f / mGridSize;
-	mTimeStep=0.006f*64.0f/mGridSize;//Scale with grid size !?
-	mSimulationDuration=5.0f;//5 seconds max?
+		mVoxelSize(voxelSize),
+		mGridSize(dims),
+		mWallNormal(dims,voxelSize,openvdb::Vec3s(0.0)),
+		mLevelSet(dims,voxelSize),
+		mLabel(dims,voxelSize),
+		mLaplacian(dims,voxelSize),
+		mDivergence(dims,voxelSize),
+		mPressure(dims,voxelSize),
+		mVelocity(dims,voxelSize),
+		mVelocityLast(dims,voxelSize),
+		mWallWeight(dims,voxelSize){
+	mWallThickness = voxelSize;
+	mTimeStep=0.006f*64.0f*voxelSize;//Scale with grid size !?
+	mSimulationDuration=2.0f;//5 seconds max?
 }
 void FluidSimulation::computeParticleDensity(float maxDensity) {
 	OPENMP_FOR for(int n=0;n<mParticles.size();n++) {
 		ParticlePtr& p=mParticles[n];
-		// Find Neighbors
-		int gn = mParticleLocator->getCellSize();
 		if (p->mObjectType == WALL) {
 			p->mDensity = 1.0;
 			continue;
 		}
 		Vec3f& pt = p->mLocation;
-		std::vector<FluidParticle*> neighbors = mParticleLocator->getNeigboringCellParticles(
-				clamp(gn*pt[0],0.0f,gn-1.0f),
-				clamp(gn*pt[1],0.0f,gn-1.0f),
-				clamp(gn*pt[2],0.0f,gn-1.0f), 1, 1, 1);
+		int i = clamp((int)(mGridSize[0]*p->mLocation[0]),0,mGridSize[0]-1);
+		int j = clamp((int)(mGridSize[1]*p->mLocation[1]),0,mGridSize[1]-1);
+		int k = clamp((int)(mGridSize[2]*p->mLocation[2]),0,mGridSize[2]-1);
+		std::vector<FluidParticle*> neighbors = mParticleLocator->getNeigboringCellParticles(i,j,k, 1, 1, 1);
 		float wsum = 0.0;
 		for (int m = 0; m < neighbors.size(); m++) {
 			FluidParticle& np = *neighbors[m];
 			if (np.mObjectType == WALL)
 				continue;
-			float d2 = length2(np.mLocation, pt);
-			float w = np.mMass * smooth_kernel(d2, 4.0f * mFluidParticleDiameter / mGridSize);
+			float d2 = DistanceSquared(np.mLocation, pt);
+			float w = np.mMass * SmoothKernel(d2, 4.0f * mFluidParticleDiameter *mVoxelSize);
 			wsum += w;
 		}
 		p->mDensity = wsum / maxDensity;
@@ -159,33 +160,31 @@ void FluidSimulation::placeObjects() {
 }
 void FluidSimulation::repositionParticles(vector<int>& indices) {
 	if( indices.empty() ) return;
-	int gn = mParticleLocator->getCellSize();
-
 	// First Search for Deep Water
 	vector<Coord> waters;
 	while( waters.size() < indices.size() ) {
-		FOR_EVERY_CELL(gn) {
+		FOR_EVERY_GRID_CELL(mLabel) {
 			if( i > 0 && mLabel(i-1,j,k) != FLUID ) continue;
-			if( i < mGridSize-1 && mLabel(i+1,j,k) != FLUID ) continue;
+			if( i < mGridSize[0]-1 && mLabel(i+1,j,k) != FLUID ) continue;
 			if( j > 0 && mLabel(i,j-1,k) != FLUID ) continue;
-			if( j < mGridSize-1 && mLabel(i,j+1,k) != FLUID ) continue;
+			if( j < mGridSize[1]-1 && mLabel(i,j+1,k) != FLUID ) continue;
 			if( k > 0 && mLabel(i,j,k-1) != FLUID ) continue;
-			if( k < mGridSize-1 && mLabel(i,j,k+1) != FLUID ) continue;
+			if( k < mGridSize[2]-1 && mLabel(i,j,k+1) != FLUID ) continue;
 			if( mLabel(i,j,k) != FLUID ) continue;
 
 			Coord aPos(i,j,k);
 			waters.push_back(aPos);
 			if( waters.size() >= indices.size() ) {
-				i = mGridSize; j = mGridSize; k = mGridSize;
+				i = mGridSize[0]; j = mGridSize[1]; k = mGridSize[2];
 			}
 		} END_FOR;
 		if( waters.empty() ) return;
 	}
 
 	// Shuffle
-	my_rand_shuffle(waters);
+	ShuffleCoordinates(waters);
 
-	float h = 1.0/gn;
+	float h = mVoxelSize;
 	for( int n=0; n<indices.size(); n++ ) {
 		ParticlePtr& p = mParticles[indices[n]];
 		p->mLocation[0] = h*(waters[n][0]+0.25+0.5*(rand()%101)/100);
@@ -206,7 +205,7 @@ void FluidSimulation::addParticle(double x, double y, double z, char type) {
 	CollisionObject *inside_obj = NULL;
 	for (CollisionObject &obj: mCollisionObjects) {
 		bool found = false;
-		float thickness = 3.0 / mGridSize;
+		float thickness = 3.0 *mVoxelSize;
 		if (obj.shape == BOX) {
 			if (x > obj.mBounds[0][0] && x < obj.mBounds[1][0] && y > obj.mBounds[0][1]
 					&& y < obj.mBounds[1][1] && z > obj.mBounds[0][2] && z < obj.mBounds[1][2]) {
@@ -227,7 +226,7 @@ void FluidSimulation::addParticle(double x, double y, double z, char type) {
 		} else if (obj.shape == SPHERE) {
 			Vec3f p((float)x,(float)y,(float)z);
 			Vec3f c(obj.mColor[0], obj.mColor[1], obj.mColor[2]);
-			float len = length(p, c);
+			float len = Distance(p, c);
 			if (len < obj.mRadius) {
 				if (obj.type == WALL) {
 					found = true;
@@ -255,16 +254,16 @@ void FluidSimulation::addParticle(double x, double y, double z, char type) {
 		FluidParticle *p = new FluidParticle;
 		p->mLocation[0] = x
 				+ 0.01 * (inside_obj->type == FLUID) * 0.2
-						* ((rand() % 101) / 50.0 - 1.0) / mGridSize;
+						* ((rand() % 101) / 50.0 - 1.0) *mVoxelSize;
 		p->mLocation[1] = y
 				+ 0.01 * (inside_obj->type == FLUID) * 0.2
-						* ((rand() % 101) / 50.0 - 1.0) / mGridSize;
+						* ((rand() % 101) / 50.0 - 1.0) *mVoxelSize;
 		p->mLocation[2] = z
 				+ 0.01 * (inside_obj->type == FLUID) * 0.2
-						* ((rand() % 101) / 50.0 - 1.0) / mGridSize;
+						* ((rand() % 101) / 50.0 - 1.0) *mVoxelSize;
 		p->mVelocity=Vec3f(0.0);
 		p->mNormal=Vec3f(0.0);
-		p->mThinParticle = 0;
+		//p->mThinParticle = 0;
 		p->mDensity = 10.0;
 		p->mObjectType = inside_obj->type;
 		p->mVisible = inside_obj->mVisible;
@@ -279,18 +278,17 @@ bool FluidSimulation::init() {
 	static int procs = omp_get_num_procs();
 	std::cout<<"Number of OpenMP threads: "<< procs<<std::endl;
 	#endif
-	mParticleLocator = std::unique_ptr<ParticleLocator>(new ParticleLocator(mGridSize));
+	mParticleLocator = std::unique_ptr<ParticleLocator>(new ParticleLocator(mGridSize,mVoxelSize));
 	placeObjects();
 	// This Is A Test Part. We Generate Pseudo Particles To Measure Maximum Particle Density
-	float h = mFluidParticleDiameter / mGridSize;
-	FOR_EVERY_CELL(10)
-		{
-			FluidParticle *p = new FluidParticle;
-			p->mLocation=Vec3f((i + 0.5) * h,(j + 0.5) * h,(k + 0.5) * h);
-			p->mObjectType = FLUID;
-			p->mMass = 1.0;
-			mParticles.push_back(std::unique_ptr<FluidParticle>(p));
-		}END_FOR
+	float h = mFluidParticleDiameter *mVoxelSize;
+	FOR_EVERY_CELL(10,10,10){
+		FluidParticle *p = new FluidParticle;
+		p->mLocation=Vec3f((i + 0.5) * h,(j + 0.5) * h,(k + 0.5) * h);
+		p->mObjectType = FLUID;
+		p->mMass = 1.0;
+		mParticles.push_back(std::unique_ptr<FluidParticle>(p));
+	}END_FOR
 	mParticleLocator->update(mParticles);
 	computeParticleDensity(1.0f);
 	mMaxDensity = 0.0;
@@ -301,9 +299,9 @@ bool FluidSimulation::init() {
 	// Place Fluid Particles And Walls
 	double w = mFluidParticleDiameter * mWallThickness;
 
-	for (int i = 0; i < mGridSize / mFluidParticleDiameter; i++) {
-		for (int j = 0; j < mGridSize / mFluidParticleDiameter; j++) {
-			for (int k = 0; k < mGridSize / mFluidParticleDiameter; k++) {
+	for (int i = 0; i < mGridSize[0] / mFluidParticleDiameter; i++) {
+		for (int j = 0; j < mGridSize[1] / mFluidParticleDiameter; j++) {
+			for (int k = 0; k < mGridSize[2] / mFluidParticleDiameter; k++) {
 				double x = i * w + w / 2.0;
 				double y = j * w + w / 2.0;
 				double z = k * w + w / 2.0;
@@ -320,10 +318,10 @@ bool FluidSimulation::init() {
 		}
 	}
 	// Place Wall Particles And Walls
-	w = 2*mFluidParticleDiameter / mGridSize;
-	for (int i = 0; i < mGridSize; i++) {
-		for (int j = 0; j < mGridSize; j++) {
-			for (int k = 0; k < mGridSize; k++) {
+	w = 2*mFluidParticleDiameter *mVoxelSize;
+	for (int i = 0; i < mGridSize[0]; i++) {
+		for (int j = 0; j < mGridSize[1]; j++) {
+			for (int k = 0; k < mGridSize[2]; k++) {
 				double x = i * w + w*0.5;
 				double y = j * w + w*0.5;
 				double z = k * w + w*0.5;
@@ -341,9 +339,9 @@ bool FluidSimulation::init() {
 			iter++;
 			continue;
 		}
-		int i = clamp(mGridSize*p->mLocation[0],0.0f,mGridSize-1.0f);
-		int j = clamp(mGridSize*p->mLocation[1],0.0f,mGridSize-1.0f);
-		int k = clamp(mGridSize*p->mLocation[2],0.0f,mGridSize-1.0f);
+		int i = clamp((int)(mGridSize[0]*p->mLocation[0]),0,mGridSize[0]-1);
+		int j = clamp((int)(mGridSize[1]*p->mLocation[1]),0,mGridSize[1]-1);
+		int k = clamp((int)(mGridSize[2]*p->mLocation[2]),0,mGridSize[2]-1);
 		if (mLabel(i,j,k) == WALL) {
 			iter = mParticles.erase(iter);
 		} else {
@@ -360,15 +358,15 @@ void FluidSimulation::pourWater( int limit ,float maxDensity) {
     Vec2f mPourPosition(0.0,0.0);
     float mPourRadius(0.12);
     int cnt = 0;
-	double w = mFluidParticleDiameter/mGridSize;
+	double w = mFluidParticleDiameter*mVoxelSize;
     for( float x=w+w/2.0; x < 1.0-w/2.0; x += w ) {
          for( float z=w+w/2.0; z < 1.0-w/2.0; z += w ) {
              if( hypot(x-mPourPosition[0],z-mPourPosition[1]) < mPourRadius ) {
                  FluidParticle *p = new FluidParticle;
-                 p->mLocation=Vec3f(x, 1.0 - mWallThickness - 2.5*mFluidParticleDiameter/mGridSize,z);
-                 p->mVelocity=Vec3f(0.0,-0.5*mFluidParticleDiameter/mGridSize/mTimeStep,0.0);
+                 p->mLocation=Vec3f(x, 1.0 - mWallThickness - 2.5*mFluidParticleDiameter*mVoxelSize,z);
+                 p->mVelocity=Vec3f(0.0,-0.5*mVoxelSize*mFluidParticleDiameter/mTimeStep,0.0);
                  p->mNormal=Vec3f(0.0);
-				 p->mThinParticle = 0;
+				 //p->mThinParticle = false;
                  p->mObjectType = FLUID;
                  p->mDensity = maxDensity;
                  p->mMass = 1.0;
@@ -390,7 +388,7 @@ void FluidSimulation::advectParticles() {
 		ParticlePtr& p=mParticles[n];
 		if(p->mObjectType == FLUID ) {
 			Vec3f vel;
-			fetchVelocity(p->mLocation, vel,mVelocity, mGridSize );
+			fetchVelocity(p->mLocation, vel,mVelocity);
 			p->mLocation += mTimeStep*vel;
 		}
 	}
@@ -404,16 +402,17 @@ void FluidSimulation::advectParticles() {
 				p->mLocation[k] = clamp(p->mLocation[k],r,1.0f-r);
 			}
 		}
+
 		if( p->mObjectType == FLUID ) {
-			int i = clamp(p->mLocation[0]*mGridSize,0.0f,mGridSize-1.0f);
-			int j = clamp(p->mLocation[1]*mGridSize,0.0f,mGridSize-1.0f);
-			int k = clamp(p->mLocation[2]*mGridSize,0.0f,mGridSize-1.0f);
+			int i = clamp((int)(p->mLocation[0]*mGridSize[0]),0,mGridSize[0]-1);
+			int j = clamp((int)(p->mLocation[1]*mGridSize[1]),0,mGridSize[1]-1);
+			int k = clamp((int)(p->mLocation[2]*mGridSize[2]),0,mGridSize[2]-1);
 			vector<FluidParticle*> neighbors = mParticleLocator->getNeigboringCellParticles(i,j,k,1,1,1);
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *np = neighbors[n];
-				double re = 1.5*mFluidParticleDiameter/mGridSize;
+				double re = 1.5*mFluidParticleDiameter*mVoxelSize;
 				if( np->mObjectType == WALL ) {
-					float dist = length(p->mLocation,np->mLocation);
+					float dist = Distance(p->mLocation,np->mLocation);
 					if( dist < re ) {
 						float normal[3] = { np->mNormal[0], np->mNormal[1], np->mNormal[2] };
 						if( normal[0] == 0.0 && normal[1] == 0.0 && normal[2] == 0.0 && dist ) {
@@ -434,26 +433,26 @@ void FluidSimulation::advectParticles() {
 	}
     // Remove Particles That Stuck On The Up-Down Wall Cells...
 	for(ParticlePtr& p:mParticles) {
-		p->mRemoveIndicator = 0;
+		p->mRemoveIndicator = false;
 		// Focus on Only Fluid Particle
 		if( p->mObjectType != FLUID ) {
 			continue;
 		}
 
+		int i = clamp((int)(p->mLocation[0]*mGridSize[0]),0,mGridSize[0]-1);
+		int j = clamp((int)(p->mLocation[1]*mGridSize[1]),0,mGridSize[1]-1);
+		int k = clamp((int)(p->mLocation[2]*mGridSize[2]),0,mGridSize[2]-1);
 		// If Stuck On Wall Cells Just Repositoin
-		if( mLabel
-				((int)clamp(p->mLocation[0]*mGridSize,0.0f,mGridSize-1.0f),
-				(int)clamp(p->mLocation[1]*mGridSize,0.0f,mGridSize-1.0f),
-				(int)clamp(p->mLocation[2]*mGridSize,0.0f,mGridSize-1.0f)) == WALL ) {
-			p->mRemoveIndicator = 1;
+		if( mLabel(i,j,k) == WALL ) {
+			p->mRemoveIndicator = true;
 		}
 
-        int i =clamp(p->mLocation[0]*mGridSize,2.0f,mGridSize-3.0f);
-        int j =clamp(p->mLocation[1]*mGridSize,2.0f,mGridSize-3.0f);
-        int k =clamp(p->mLocation[2]*mGridSize,2.0f,mGridSize-3.0f);
-        if( p->mDensity < 0.04 && (mLabel(i,max(0,j-1),k) == WALL || mLabel(i,min(mGridSize-1,j+1),k) == WALL) ) {
+		i = clamp((int)(p->mLocation[0]*mGridSize[0]),2,mGridSize[0]-3);
+		j = clamp((int)(p->mLocation[1]*mGridSize[1]),2,mGridSize[1]-3);
+		k = clamp((int)(p->mLocation[2]*mGridSize[2]),2,mGridSize[2]-3);
+        if( p->mDensity < 0.04 && (mLabel(i,max(0,j-1),k) == WALL || mLabel(i,min(mGridSize[1]-1,j+1),k) == WALL) ) {
 			// Put Into Reposition List
-			p->mRemoveIndicator = 1;
+			p->mRemoveIndicator = true;
         }
     }
 
@@ -462,7 +461,7 @@ void FluidSimulation::advectParticles() {
 	size_t n=0;
 	for(ParticlePtr& p:mParticles) {
 		if( p->mRemoveIndicator ) {
-			p->mRemoveIndicator = 0;
+			p->mRemoveIndicator = false;
 			reposition_indices.push_back(n);
 		}
 		n++;
@@ -481,7 +480,7 @@ bool FluidSimulation::step() {
 	addExternalForce();
     solvePicFlip();
 	advectParticles();
-	correctParticles(mParticleLocator.get(),mParticles,mTimeStep,mFluidParticleDiameter/mGridSize);
+	correctParticles(mParticleLocator.get(),mParticles,mTimeStep,mFluidParticleDiameter*mVoxelSize);
     // If Exceeds Max Step Exit
 	mSimulationIteration++;
 	mSimulationTime=mSimulationIteration*mTimeStep;
@@ -509,32 +508,32 @@ void FluidSimulation::subtractGrid() {
 
 void FluidSimulation::enforceBoundaryCondition() {
 	// Set Boundary Velocity Zero
-	FOR_EVERY_X_FLOW(mGridSize) {
-		if( i==0 || i==mGridSize ) mVelocity[0](i,j,k) = 0.0;
-		if( i<mGridSize && i>0 && isWallIndicator(mLabel(i,j,k))*isWallIndicator(mLabel(i-1,j,k)) < 0 ) {
+	FOR_EVERY_GRID_CELL(mVelocity[0]) {
+		if( i==0 || i==mGridSize[0] ) mVelocity[0](i,j,k) = 0.0;
+		if( i<mGridSize[0] && i>0 && isWallIndicator(mLabel(i,j,k))*isWallIndicator(mLabel(i-1,j,k)) < 0 ) {
 			mVelocity[0](i,j,k) = 0.0;
 		}
 	} END_FOR
 
-	FOR_EVERY_Y_FLOW(mGridSize) {
-		if( j==0 || j==mGridSize ) mVelocity[1](i,j,k) = 0.0;
-		if( j<mGridSize && j>0 && isWallIndicator(mLabel(i,j,k))*isWallIndicator(mLabel(i,j-1,k)) < 0 ) {
+	FOR_EVERY_GRID_CELL(mVelocity[1]) {
+		if( j==0 || j==mGridSize[1] ) mVelocity[1](i,j,k) = 0.0;
+		if( j<mGridSize[1] && j>0 && isWallIndicator(mLabel(i,j,k))*isWallIndicator(mLabel(i,j-1,k)) < 0 ) {
 			mVelocity[1](i,j,k) = 0.0;
 		}
 	} END_FOR
 
-	FOR_EVERY_Z_FLOW(mGridSize) {
-		if( k==0 || k==mGridSize ) mVelocity[2](i,j,k) = 0.0;
-		if( k<mGridSize && k>0 && isWallIndicator(mLabel(i,j,k))*isWallIndicator(mLabel(i,j,k-1)) < 0 ) {
+	FOR_EVERY_GRID_CELL(mVelocity[2]) {
+		if( k==0 || k==mGridSize[2] ) mVelocity[2](i,j,k) = 0.0;
+		if( k<mGridSize[2] && k>0 && isWallIndicator(mLabel(i,j,k))*isWallIndicator(mLabel(i,j,k-1)) < 0 ) {
 			mVelocity[2](i,j,k) = 0.0;
 		}
 	} END_FOR
 }
 void FluidSimulation::project() {
 	// Cell Width
-	float h = 1.0/mGridSize;
+	float h = mVoxelSize;
 	// Compute Divergence
-	FOR_EVERY_CELL(mGridSize) {
+	OPENMP_FOR FOR_EVERY_GRID_CELL(mLabel) {
 		if( mLabel(i,j,k) == FLUID ) {
 			mDivergence(i,j,k) =
 						   (mVelocity[0](i+1,j,k)-mVelocity[0](i,j,k)+
@@ -544,14 +543,14 @@ void FluidSimulation::project() {
 	} END_FOR;
 
 	// Compute LevelSet
-	FOR_EVERY_CELL(mGridSize) {
+	OPENMP_FOR FOR_EVERY_GRID_CELL(mLaplacian) {
 		mLaplacian(i,j,k) = mParticleLocator->getLevelSetValue(i,j,k,mWallWeight,mFluidParticleDiameter);
 	} END_FOR;
-	laplace_solve(mLabel, mLaplacian, mPressure, mDivergence, mGridSize );
+	laplace_solve(mLabel, mLaplacian, mPressure, mDivergence);
 
 	// Subtract Pressure Gradient
-	FOR_EVERY_X_FLOW(mGridSize) {
-		if( i>0 && i<mGridSize ) {
+	FOR_EVERY_GRID_CELL(mVelocity[0]) {
+		if( i>0 && i<mGridSize[0] ) {
 			float pf = mPressure(i,j,k);
 			float pb = mPressure(i-1,j,k);
 			if(mLaplacian(i,j,k) * mLaplacian(i-1,j,k) < 0.0 ) {
@@ -562,8 +561,8 @@ void FluidSimulation::project() {
 		}
 	} END_FOR;
 
-	FOR_EVERY_Y_FLOW(mGridSize) {
-		if( j>0 && j<mGridSize ) {
+	FOR_EVERY_GRID_CELL(mVelocity[1]) {
+		if( j>0 && j<mGridSize[1] ) {
 			float pf = mPressure(i,j,k);
 			float pb = mPressure(i,j-1,k);
 			if(mLaplacian(i,j,k) * mLaplacian(i,j-1,k) < 0.0 ) {
@@ -574,8 +573,8 @@ void FluidSimulation::project() {
 		}
 	} END_FOR;
 
-	FOR_EVERY_Z_FLOW(mGridSize) {
-		if( k>0 && k<mGridSize ) {
+	FOR_EVERY_GRID_CELL(mVelocity[2]) {
+		if( k>0 && k<mGridSize[2] ) {
 			float pf = mPressure(i,j,k);
 			float pb = mPressure(i,j,k-1);
 			if(mLaplacian(i,j,k) * mLaplacian(i,j,k-1) < 0.0 ) {
@@ -588,36 +587,36 @@ void FluidSimulation::project() {
 }
 void FluidSimulation::extrapolateVelocity() {
 	// Mark Fluid Cell Face
-	MACGrid<char> mark(Coord(mGridSize),Coord(0),0);
-	MACGrid<char> wall_mark(Coord(mGridSize),Coord(0),0);
-	OPENMP_FOR FOR_EVERY_X_FLOW(mGridSize) {
-		mark[0](i,j,k) = (i>0 && mLabel(i-1,j,k)==FLUID) || (i<mGridSize && mLabel(i,j,k)==FLUID);
-		wall_mark[0](i,j,k) = (i<=0 || mLabel(i-1,j,k)==WALL) && (i>=mGridSize || mLabel(i,j,k)==WALL);
+	MACGrid<char> mark(mGridSize,mVoxelSize);
+	MACGrid<char> wall_mark(mGridSize,mVoxelSize);
+	OPENMP_FOR FOR_EVERY_GRID_CELL(mark[0]) {
+		mark[0](i,j,k) = (i>0 && mLabel(i-1,j,k)==FLUID) || (i<mGridSize[0] && mLabel(i,j,k)==FLUID);
+		wall_mark[0](i,j,k) = (i<=0 || mLabel(i-1,j,k)==WALL) && (i>=mGridSize[0] || mLabel(i,j,k)==WALL);
 	} END_FOR;
 
-	OPENMP_FOR FOR_EVERY_Y_FLOW(mGridSize) {
-		mark[1](i,j,k) = (j>0 && mLabel(i,j-1,k)==FLUID) || (j<mGridSize && mLabel(i,j,k)==FLUID);
-		wall_mark[1](i,j,k) = (j<=0 || mLabel(i,j-1,k)==WALL) && (j>=mGridSize || mLabel(i,j,k)==WALL);
+	OPENMP_FOR FOR_EVERY_GRID_CELL(mark[1]) {
+		mark[1](i,j,k) = (j>0 && mLabel(i,j-1,k)==FLUID) || (j<mGridSize[1] && mLabel(i,j,k)==FLUID);
+		wall_mark[1](i,j,k) = (j<=0 || mLabel(i,j-1,k)==WALL) && (j>=mGridSize[1] || mLabel(i,j,k)==WALL);
 	} END_FOR;
 
-	OPENMP_FOR FOR_EVERY_Z_FLOW(mGridSize) {
-		mark[2](i,j,k) = (k>0 && mLabel(i,j,k-1)==FLUID) || (k<mGridSize && mLabel(i,j,k)==FLUID);
-		wall_mark[2](i,j,k) = (k<=0 || mLabel(i,j,k-1)==WALL) && (k>=mGridSize || mLabel(i,j,k)==WALL);
+	OPENMP_FOR FOR_EVERY_GRID_CELL(mark[2]) {
+		mark[2](i,j,k) = (k>0 && mLabel(i,j,k-1)==FLUID) || (k<mGridSize[2] && mLabel(i,j,k)==FLUID);
+		wall_mark[2](i,j,k) = (k<=0 || mLabel(i,j,k-1)==WALL) && (k>=mGridSize[2] || mLabel(i,j,k)==WALL);
 	} END_FOR;
 
 	// Now Extrapolate
-	OPENMP_FOR FOR_EVERY_CELL(mGridSize+1) {
+	OPENMP_FOR FOR_EVERY_CELL(mGridSize[0]+1,mGridSize[1]+1,mGridSize[2]+1) {
 		for( int n=0; n<3; n++ ) {
-			if( n!=0 && i>mGridSize-1 ) continue;
-			if( n!=1 && j>mGridSize-1 ) continue;
-			if( n!=2 && k>mGridSize-1 ) continue;
+			if( n!=0 && i>mGridSize[0]-1 ) continue;
+			if( n!=1 && j>mGridSize[1]-1 ) continue;
+			if( n!=2 && k>mGridSize[2]-1 ) continue;
 
 			if( ! mark[n](i,j,k) && wall_mark[n](i,j,k) ) {
 				int wsum = 0;
 				float sum = 0.0;
 				int q[][3] = { {i-1,j,k}, {i+1,j,k}, {i,j-1,k}, {i,j+1,k}, {i,j,k-1}, {i,j,k+1} };
 				for( int qk=0; qk<6; qk++ ) {
-					if( q[qk][0]>=0 && q[qk][0]<mGridSize+(n==0) && q[qk][1]>=0 && q[qk][1]<mGridSize+(n==1) && q[qk][2]>=0 && q[qk][2]<mGridSize+(n==2) ) {
+					if( q[qk][0]>=0 && q[qk][0]<mGridSize[0]+((n==0)?1:0) && q[qk][1]>=0 && q[qk][1]<mGridSize[1]+((n==1)?1:0)  && q[qk][2]>=0 && q[qk][2]<mGridSize[2]+((n==2)?1:0)  ) {
 						if( mark[n](q[qk][0],q[qk][1],q[qk][2]) ) {
 							wsum ++;
 							sum += mVelocity[n](q[qk][0],q[qk][1],q[qk][2]);
@@ -632,7 +631,7 @@ void FluidSimulation::extrapolateVelocity() {
 void FluidSimulation::solvePicFlip() {
     // Map Particles Onto Grid
 	mParticleLocator->update(mParticles);
-	mapParticlesToGrid(mParticleLocator.get(),mParticles,mVelocity,mGridSize);
+	MapParticlesToGrid(mParticleLocator.get(),mParticles,mVelocity);
 	mParticleLocator->markAsWater(mLabel,mWallWeight,mFluidParticleDiameter);
 	// Solve Fluid Velocity On Grid
 	copyGridToBuffer();
@@ -647,14 +646,14 @@ void FluidSimulation::solvePicFlip() {
 		p->mTmp[0] = p->mVelocity;
 	}
 	// Map Changes Back To Particles
-	mapGridToParticles(mParticles,mVelocityLast,mGridSize);
+	MapGridToParticles(mParticles,mVelocityLast);
 	// Set Tmp As FLIP Velocity
 	OPENMP_FOR for(int n=0;n<mParticles.size();n++) {
 		ParticlePtr& p=mParticles[n];
 		p->mTmp[0] = p->mVelocity + p->mTmp[0];
 	}
 	// Set u[] As PIC Velocity
-	mapGridToParticles(mParticles,mVelocity,mGridSize);
+	MapGridToParticles(mParticles,mVelocity);
 	// Interpolate
 	OPENMP_FOR for(int n=0;n<mParticles.size();n++) {
 		ParticlePtr& p=mParticles[n];
@@ -666,18 +665,18 @@ void FluidSimulation::getParticles(ParticleVolume& pv){
 }
 void FluidSimulation::createLevelSet() {
 	// Create Density Field
-	OPENMP_FOR FOR_EVERY_CELL(mGridSize) {
-		double h = 1.0/(double)(mGridSize);
-		double x = i*h;
-		double y = j*h;
-		double z = k*h;
+	OPENMP_FOR FOR_EVERY_GRID_CELL(mLevelSet) {
+
+		double x = i*mVoxelSize;
+		double y = j*mVoxelSize;
+		double z = k*mVoxelSize;
 		Vec3f p( x, y, z);
         double value = implicit_func( mParticleLocator.get(), p, mFluidParticleDiameter);
-        if( i==0 || i==mGridSize-1 || j==0 || j==mGridSize-1 || k==0 || k==mGridSize-1 ) {
+        if( i==0 || i==mGridSize[0]-1 || j==0 || j==mGridSize[1]-1 || k==0 || k==mGridSize[2]-1 ) {
             //value = max(value,0.01);
         	mLevelSet(i,j,k)=0.001;
         } else{
-        	mLevelSet(i,j,k) = value*mGridSize;
+        	mLevelSet(i,j,k) = value/mVoxelSize;
         }
 	} END_FOR
 	int N=mParticles.size();
@@ -686,7 +685,7 @@ void FluidSimulation::createLevelSet() {
 	for(int n=0;n<N;n++){
 		FluidParticle* p=mParticles[n].get();
 		if(p->mObjectType==ObjectType::FLUID){
-			Vec3s l=mGridSize*p->mLocation;
+			Vec3s l=p->mLocation/mVoxelSize;
 			Vec4s v(l[0],l[1],l[2],0.5f*mFluidParticleDiameter);
 			mSource.mParticleVolume.mParticles.push_back(v);
 		}
@@ -702,16 +701,16 @@ void FluidSimulation::createLevelSet() {
 		mSource.mParticleVolume.mColors[n]=color;
 		*/
 	}
-	mSource.mParticleVolume.setBoundingBox(BBoxd(Vec3d(0,0,0),Vec3d(mGridSize,mGridSize,mGridSize)));
+	mSource.mParticleVolume.setBoundingBox(BBoxd(Vec3d(0,0,0),Vec3d(mGridSize[0],mGridSize[1],mGridSize[2])));
 }
 void FluidSimulation::computeWallNormals() {
 	// Sort Particles
 	mParticleLocator->update(mParticles);
 	// Compute Wall Normal
 	for (ParticlePtr& p:mParticles) {
-		int i = clamp(p->mLocation[0] * mGridSize,0.0f,mGridSize-1.0f);
-		int j = clamp(p->mLocation[1] * mGridSize,0.0f,mGridSize-1.0f);
-		int k = clamp(p->mLocation[2] * mGridSize,0.0f,mGridSize-1.0f);
+		int i = clamp((int)(p->mLocation[0]*mGridSize[0]),0,mGridSize[0]-1);
+		int j = clamp((int)(p->mLocation[1]*mGridSize[1]),0,mGridSize[1]-1);
+		int k = clamp((int)(p->mLocation[2]*mGridSize[2]),0,mGridSize[2]-1);
 		mWallNormal(i,j,k) = Vec3f(0.0f);
 		p->mNormal= Vec3f(0.0);
 		if (p->mObjectType == WALL) {
@@ -740,7 +739,7 @@ void FluidSimulation::computeWallNormals() {
 				for (int n = 0; n < neighbors.size(); n++) {
 					FluidParticle *np = neighbors[n];
 					if (p.get() != np && np->mObjectType == WALL) {
-						float d = length(p->mLocation, np->mLocation);
+						float d = Distance(p->mLocation, np->mLocation);
 						float w = 1.0 / d;
 						p->mNormal += w * (p->mLocation - np->mLocation) / d;
 					}
@@ -755,7 +754,7 @@ void FluidSimulation::computeWallNormals() {
 	mParticleLocator->markAsWater(mLabel, mWallWeight, mFluidParticleDiameter);
 
 	// Compute Perimeter Normal
-	FOR_EVERY_CELL(mGridSize)
+	FOR_EVERY_GRID_CELL(mWallNormal)
 		{
 			mWallWeight(i,j,k) = 0.0;
 			if (mLabel(i,j,k) != WALL) {
@@ -769,9 +768,9 @@ void FluidSimulation::computeWallNormals() {
 					int si = neighbors[m][0];
 					int sj = neighbors[m][1];
 					int sk = neighbors[m][2];
-					if (si < 0 || si > mGridSize - 1 || sj < 0
-							|| sj > mGridSize - 1 || sk < 0
-							|| sk > mGridSize - 1)
+					if (si < 0 || si > mGridSize[0] - 1 || sj < 0
+							|| sj > mGridSize[1] - 1 || sk < 0
+							|| sk > mGridSize[2] - 1)
 						continue;
 					if (mLabel(si,sj,sk) == WALL) {
 						sum++;

@@ -39,7 +39,7 @@ ParticleLocator::~ParticleLocator() {
 
 void ParticleLocator::update( std::vector<ParticlePtr >& particles ) {
 	// Clear All Cells
-	FOR_EVERY_GRID_CELL(cells) {
+	OPENMP_FOR FOR_EVERY_GRID_CELL(cells) {
 		cells(i,j,k).clear();
 	} END_FOR
 	// Store Into The Cells
@@ -92,16 +92,18 @@ float ParticleLocator::getLevelSetValue( int i, int j, int k, RegularGrid<float>
 			return 1.0;
 		}
 	}
-	float n0 = 1.0/(density*density*density);
-	return 0.2*n0-accm;
+	float MAX_VOLUME = 1.0/(density*density*density);
+	const float alpha=0.2f;
+	return alpha*MAX_VOLUME-accm;
 }
 
 void ParticleLocator::markAsWater(RegularGrid<char>& A, RegularGrid<float>& halfwall, float density ) {
 	FOR_EVERY_GRID_CELL(cells) {
 		A(i,j,k) = AIR;
-		for( int a=0; a<cells(i,j,k).size(); a++ ) {
-			if( cells(i,j,k)[a]->mObjectType == WALL ) {
+		for(FluidParticle* p:cells(i,j,k)) {
+			if(p->mObjectType == WALL ) {
 				A(i,j,k) = WALL;
+				break;
 			}
 		}
 		if( A(i,j,k) != WALL ) A(i,j,k) = getLevelSetValue( i, j, k, halfwall, density ) < 0.0 ? FLUID : AIR;

@@ -61,14 +61,13 @@ bool SimulationPlayback::init(){
 
 	mSimulationIteration=0;
 	Mesh c;
-	std::cout<<"INT OPEN ["<<mConstellationFiles[mSimulationIteration]<<"]"<<std::endl;
-	if(c.openMesh(mConstellationFiles[mSimulationIteration])){
+	if(mConstellationFiles[mSimulationIteration].length()>0&&c.openMesh(mConstellationFiles[mSimulationIteration])){
 		mSource.mConstellation.create(&c);
 		mSource.mConstellation.updateVertexNormals();
 	}
-
-	std::cout<<"INT OPEN 2 ["<<mIsoSurfaceFiles[mSimulationIteration]<<"]"<<std::endl;
-	if(mSource.mIsoSurface.openMesh(mIsoSurfaceFiles[mSimulationIteration])){
+	if(mParticleVolumeFiles[mSimulationIteration].length()>0&&mSource.mParticleVolume.open(mParticleVolumeFiles[mSimulationIteration])){
+	}
+	if(mIsoSurfaceFiles[mSimulationIteration].length()>0&&mSource.mIsoSurface.openMesh(mIsoSurfaceFiles[mSimulationIteration])){
 		mSource.mIsoSurface.updateVertexNormals(4);
 		return true;
 	} else {

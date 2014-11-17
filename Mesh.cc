@@ -247,8 +247,9 @@ bool Mesh::openMesh(const std::string& file) {
 			|| find_property(elem, "z", &index) == NULL
 			|| (elem = find_element(ply, "face")) == NULL
 			|| find_property(elem, "vertex_indices", &index) == NULL) {
-		std::cerr << "Cannot read geometry" << std::endl;
+		std::cerr << "Cannot read geometry ["<<file<<"]" << std::endl;
 		close_ply(ply);
+		free_ply(ply);
 		return false;
 	}
 

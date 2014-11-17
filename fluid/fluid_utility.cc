@@ -160,7 +160,6 @@ void fetchVelocity(openvdb::Vec3f& p,openvdb::Vec3f& u, MACGrid<float>& grid) {
 void resampleParticles( ParticleLocator *sort, openvdb::Vec3f& p,openvdb::Vec3f& u, float re ) {
 	// Variables for Neighboring Particles
 	std::vector<FluidParticle*> neighbors;
-
 	openvdb::Coord cell_size = sort->getCellSize();
 	float wsum = 0.0;
 	openvdb::Vec3f save(u);
@@ -170,8 +169,7 @@ void resampleParticles( ParticleLocator *sort, openvdb::Vec3f& p,openvdb::Vec3f&
 	int k = clamp((int)(p[2]*cell_size[2]),0,cell_size[2]-1);
 	// Gather Neighboring Particles
 	neighbors = sort->getNeigboringCellParticles(i,j,k,1,1,1);
-	for( int n=0; n<neighbors.size(); n++ ) {
-		FluidParticle *np = neighbors[n];
+	for(FluidParticle *np:neighbors) {
 		if( np->mObjectType == FLUID ) {
 			float dist2 = DistanceSquared(p,np->mLocation);
 			float w = np->mMass * SharpKernel(dist2,re);
@@ -192,7 +190,7 @@ void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle
 	sort->update(particles);
 
 	// Compute Pseudo Moved Point
-	OPENMP_FOR for( int n=0; n<particles.size(); n++ ) {
+	OPENMP_FOR FOR_EVERY_PARTICLE(particles) {
 		if( particles[n]->mObjectType == FLUID ) {
 			FluidParticle *p = particles[n].get();
 			openvdb::Vec3f spring(0.0);
@@ -220,7 +218,7 @@ void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle
 		}
 	}
 	// Resample New Velocity
-	OPENMP_FOR for( int n=0; n<particles.size(); n++ ) {
+	OPENMP_FOR FOR_EVERY_PARTICLE(particles) {
 		if( particles[n]->mObjectType == FLUID ) {
 			FluidParticle *p = particles[n].get();
 			p->mTmp[1] = p->mVelocity;
@@ -230,7 +228,7 @@ void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle
 	}
 
 	// Update
-	OPENMP_FOR for( int n=0; n<particles.size(); n++ ) {
+	OPENMP_FOR FOR_EVERY_PARTICLE(particles) {
 		if( particles[n]->mObjectType == FLUID ) {
 			FluidParticle *p = particles[n].get();
 			p->mLocation = p->mTmp[0];
@@ -239,25 +237,10 @@ void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle
 	}
 }
 void MapGridToParticles(std::vector<ParticlePtr>& particles,MACGrid<float>& grid) {
-	OPENMP_FOR for(int n=0;n<particles.size();n++){
+	OPENMP_FOR FOR_EVERY_PARTICLE(particles){
 		ParticlePtr& p=particles[n];
 		fetchVelocity( p->mLocation, p->mVelocity, grid);
 	}
-}
-static double implicit_func( vector<ParticlePtr> &neighbors,openvdb::Vec3f& p, float density, int gn) {
-	double phi = 8.0*density/gn;
-	for( int m=0; m<neighbors.size(); m++ ) {
-		FluidParticle &np = *neighbors[m];
-		if( np.mObjectType == WALL ) {
-			if( Distance(np.mLocation,p) < density/gn ) return 4.5*density/gn;
-			continue;
-		}
-		double d = Distance(np.mLocation,p);
-		if( d < phi ) {
-			phi = d;
-		}
-	}
-	return phi - density/gn;
 }
 static double implicit_func( vector<FluidParticle*> &neighbors,openvdb::Vec3f& p, float density,float voxelSize) {
 	double phi = 8.0*density*voxelSize;

@@ -38,7 +38,7 @@ class SimulationVisualizer: public SimulationListener {
 private:
     GLEnvironmentalShader mIsoSurfaceShader;
     GLFluidParticleShader mParticleShader;
-
+    bool mShowParticles;
     std::unique_ptr<GLFrameBuffer> mMiniViewTexture;
     std::unique_ptr<GLFrameBuffer> mParticleTexture;
 	GLShader mMiniViewShader;

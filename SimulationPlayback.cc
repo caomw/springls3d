@@ -61,13 +61,13 @@ bool SimulationPlayback::init(){
 
 	mSimulationIteration=0;
 	Mesh c;
-	if(mConstellationFiles[mSimulationIteration].length()>0&&c.openMesh(mConstellationFiles[mSimulationIteration])){
+	if(mConstellationFiles[mSimulationIteration].length()>0&&c.openMesh(mDirectory+GetFileName(mConstellationFiles[mSimulationIteration]))){
 		mSource.mConstellation.create(&c);
 		mSource.mConstellation.updateVertexNormals();
 	}
-	if(mParticleVolumeFiles[mSimulationIteration].length()>0&&mSource.mParticleVolume.open(mParticleVolumeFiles[mSimulationIteration])){
+	if(mParticleVolumeFiles[mSimulationIteration].length()>0&&mSource.mParticleVolume.open(mDirectory+GetFileName(mParticleVolumeFiles[mSimulationIteration]))){
 	}
-	if(mIsoSurfaceFiles[mSimulationIteration].length()>0&&mSource.mIsoSurface.openMesh(mIsoSurfaceFiles[mSimulationIteration])){
+	if(mIsoSurfaceFiles[mSimulationIteration].length()>0&&mSource.mIsoSurface.openMesh(mDirectory+GetFileName(mIsoSurfaceFiles[mSimulationIteration]))){
 		mSource.mIsoSurface.updateVertexNormals(4);
 		return true;
 	} else {

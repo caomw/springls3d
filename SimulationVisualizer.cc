@@ -108,6 +108,7 @@ SimulationVisualizer::SimulationVisualizer()
 	, mMiniCamera(new Camera())
 	, mWin(NULL)
 	, mSimulation(NULL)
+	, mShowParticles(false)
 	, mOutputDirectory("./")
 {
 }
@@ -327,18 +328,19 @@ SimulationVisualizer::render()
 
 
     if(hasParticles){
-
 		mParticleTexture->begin();
+		if(mShowParticles){
 			mParticleShader.begin();
 				mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mParticleShader);
 				mSimulation->getSource().mParticleVolume.draw();
 			mParticleShader.end();
+		} else {
 			mIsoSurfaceShader.begin();
 				mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mIsoSurfaceShader);
 				mSimulation->getSource().mIsoSurface.draw();
 			mIsoSurfaceShader.end();
+		}
 		mParticleTexture->end();
-
     } else {
 		mMiniViewTexture->begin();
 			mIsoSurfaceShader.begin();
@@ -394,6 +396,8 @@ SimulationVisualizer::keyCallback(GLFWwindow* win,int key, int action,int mod)
 				std::cout<<"############# START #############"<<std::endl;
 				resume();
 			}
+		} else if(key=='P'){
+			mShowParticles=!mShowParticles;
 		}
     }
     mCamera->setNeedsDisplay(true);

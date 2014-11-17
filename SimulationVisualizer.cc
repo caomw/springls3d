@@ -272,11 +272,11 @@ SimulationVisualizer::render()
 	bool hasParticles=(mSimulation->getSource().mParticleVolume.mParticles.size()>0);
     const openvdb::BBoxd renderBBox=BBoxd(Vec3s(-0.5,-0.5,-0.5),Vec3s(0.5,0.5,0.5));
     if(mSimulation->getSimulationIteration()==0){
-    	if(hasParticles){
-    		mOriginalBoundingBox=mSimulation->getSource().mParticleVolume.getBoundingBox();
-    	} else {
+    	//if(hasParticles){
+    	//	mOriginalBoundingBox=mSimulation->getSource().mParticleVolume.getBoundingBox();
+    	//} else {
     		mOriginalBoundingBox=mSimulation->getSource().mIsoSurface.getBoundingBox();
-    	}
+    	//}
     }
     openvdb::BBoxd bbox=mOriginalBoundingBox;
     openvdb::Vec3d extents = bbox.extents();
@@ -329,22 +329,22 @@ SimulationVisualizer::render()
     if(hasParticles){
 
 		mParticleTexture->begin();
-		mParticleShader.begin();
-		mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mParticleShader);
-		mSimulation->getSource().mParticleVolume.draw();
-		mParticleShader.end();
-		mIsoSurfaceShader.begin();
-		mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mIsoSurfaceShader);
-		mSimulation->getSource().mIsoSurface.draw();
-		mIsoSurfaceShader.end();
+			mParticleShader.begin();
+				mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mParticleShader);
+				mSimulation->getSource().mParticleVolume.draw();
+			mParticleShader.end();
+			mIsoSurfaceShader.begin();
+				mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mIsoSurfaceShader);
+				mSimulation->getSource().mIsoSurface.draw();
+			mIsoSurfaceShader.end();
 		mParticleTexture->end();
 
     } else {
 		mMiniViewTexture->begin();
-		mIsoSurfaceShader.begin();
-		mMiniCamera->aim(0,0,mMiniViewTexture->w,mMiniViewTexture->h,mIsoSurfaceShader);
-		mSimulation->getSource().mIsoSurface.draw();
-		mIsoSurfaceShader.end();
+			mIsoSurfaceShader.begin();
+				mMiniCamera->aim(0,0,mMiniViewTexture->w,mMiniViewTexture->h,mIsoSurfaceShader);
+				mSimulation->getSource().mIsoSurface.draw();
+			mIsoSurfaceShader.end();
 		mMiniViewTexture->end();
     }
 	mSpringlElementsShader->compute(mWin);

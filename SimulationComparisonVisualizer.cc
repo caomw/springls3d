@@ -388,7 +388,7 @@ SimulationComparisonVisualizer::render()
 
 	if(isRunning()){
 		std::stringstream ostr1,ostr2,ostr3;
-		ostr1 << mOutputDirectory<<"sim_screenshot_"<<std::setw(4)<<std::setfill('0')<< mSimulation1->getSimulationIteration() << ".png";
+		ostr1 << mOutputDirectory<<"sim_screenshot_"<<std::setw(8)<<std::setfill('0')<< mSimulation1->getSimulationIteration() << ".png";
 		std::vector<RGBA> tmp1(width*height);
 		std::vector<RGBA> tmp2(width*height);
 		glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &tmp1[0]);

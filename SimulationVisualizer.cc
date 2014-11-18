@@ -360,10 +360,9 @@ SimulationVisualizer::render()
 		mSpringlElementsShader->render(mWin);
 		mMiniViewTexture->render(mWin);
 	}
-	/*
-	if(mSimulation->isRunning()){
+	if(isRunning()){
 		std::stringstream ostr1,ostr2,ostr3;
-		ostr1 <<  rootFile<<std::setw(4)<<std::setfill('0')<< (simulationIteration+1) << "_composite.png";
+		ostr1 << mOutputDirectory<<"sim_screenshot_"<<std::setw(4)<<std::setfill('0')<< mSimulation->getSimulationIteration() << ".png";
 		std::vector<RGBA> tmp1(width*height);
 		std::vector<RGBA> tmp2(width*height);
 		glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &tmp1[0]);
@@ -376,7 +375,7 @@ SimulationVisualizer::render()
 		}
 		WriteImageToFile(ostr1.str(),tmp2,width,height);
 	}
-	*/
+
 	mDrawLock.unlock();
 }
 

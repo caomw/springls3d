@@ -245,6 +245,7 @@ static void conjGrad(RegularGrid<char>& A, RegularGrid<double>& P,
 		op(A, r, z, r, -alpha);			// r = r - alpha*z;
 		float error2 = product(A, r, r);	// error2 = r . r
 		error2_0 = fmax(error2_0, error2);
+		//std::cout<<"ERROR "<<error2<<" "<<error2_0<<std::endl;
 		// Dump Progress
 		double rate = 1.0
 				- max(0.0, min(1.0, (error2 - eps) / (error2_0 - eps)));

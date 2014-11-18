@@ -250,7 +250,7 @@ struct CollisionObject {
 	MaterialType material;
 	bool mVisible;
 	float mRadius;
-	openvdb::Vec3f mColor;
+	openvdb::Vec3f mCenter;
 	openvdb::Vec3f mBounds[2];
 };
 

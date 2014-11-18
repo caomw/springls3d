@@ -77,7 +77,7 @@ class FluidSimulation :public Simulation{
 		void pourWater(int limit,float maxDensity);
 		void extrapolateVelocity();
 		void repositionParticles(std::vector<int>& indices) ;
-		void addParticle( double x, double y, double z, char type );
+		void addParticle( openvdb::Vec3s pt, openvdb::Vec3s center,char type );
 		void project();
 		void createLevelSet();
 		void enforceBoundaryCondition();

@@ -31,7 +31,7 @@
 #include <sys/time.h>
 
 const float RELAXATION_KERNEL_WIDTH=1.4;
-const float SPRING_CONSTANT=50.0;
+const float SPRING_STIFFNESS=50.0;
 
 using namespace std;
 
@@ -67,8 +67,10 @@ float SharpKernel( float r2, float h ) {
 void MapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& particles, MACGrid<float>& grid) {
 
 	// Compute Mapping
+
 	openvdb::Coord dims(grid.rows(),grid.cols(),grid.slices());
-	OPENMP_FOR FOR_EVERY_CELL(dims[0]+1,dims[1]+1,dims[2]+1) {
+//OPENMP_FOR
+	FOR_EVERY_CELL(dims[0]+1,dims[1]+1,dims[2]+1) {
 		// Variales for Particle Sorter
 		vector<FluidParticle*> neighbors;
 
@@ -78,6 +80,7 @@ void MapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 			float sumw = 0.0;
 			float sumx = 0.0;
 			neighbors = sort->getNeigboringWallParticles(i,j,k,1,2,2);
+
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
 				if( p->mObjectType == FLUID ) {
@@ -105,7 +108,7 @@ void MapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
 					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
 					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
-					float pos[3] = { x, y, z };
+					openvdb::Vec3s pos( x, y, z );
 					float w = p->mMass * SharpKernel(DistanceSquared(pos,py),RELAXATION_KERNEL_WIDTH);
 					sumy += w*p->mVelocity[1];
 					sumw += w;
@@ -126,7 +129,7 @@ void MapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
 					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
 					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
-					float pos[3] = { x, y, z };
+					openvdb::Vec3s pos( x, y, z );
 					float w = p->mMass * SharpKernel(DistanceSquared(pos,pz),RELAXATION_KERNEL_WIDTH);
 					sumz += w*p->mVelocity[2];
 					sumw += w;
@@ -202,7 +205,7 @@ void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle
 				FluidParticle *np = neighbors[n];
 				if( p != np ) {
 					float dist = Distance(p->mLocation,np->mLocation);
-					float w = SPRING_CONSTANT * np->mMass * SmoothKernel(dist*dist,re);
+					float w = SPRING_STIFFNESS * np->mMass * SmoothKernel(dist*dist,re);
 					if( dist > 0.1*re ) {
 						spring += w * (p->mLocation-np->mLocation) / dist * re;
 					} else {

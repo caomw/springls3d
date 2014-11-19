@@ -55,7 +55,7 @@ const float SpringLevelSet::MIN_ASPECT_RATIO = 0.1f;
 MotionScheme DecodeMotionScheme(const std::string& name) {
 	if (name == "implicit" || name == "IMPLICIT") {
 		return MotionScheme::IMPLICIT;
-	} else if (name == "semi-implicit" || name == "SEMI_IMPLICIT") {
+	} else if (name == "semi-implicit" || name == "SEMI_IMPLICIT"|| name == "semi_implicit") {
 		return MotionScheme::SEMI_IMPLICIT;
 	} else if (name == "explicit" || name == "EXPLICIT") {
 		return MotionScheme::EXPLICIT;

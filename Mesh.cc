@@ -32,11 +32,9 @@ using namespace openvdb;
 
 PlyProperty MeshVertProps[] = { // property information for a vertex
 		{ "x", Float32, Float32, static_cast<int>(offsetof(plyVertex, x)), 0, 0,
-				0, 0 },
-		{ "y", Float32, Float32,
+				0, 0 }, { "y", Float32, Float32,
 				static_cast<int>(offsetof(plyVertex, x) + sizeof(float)), 0, 0,
-				0, 0 },
-				{ "z", Float32, Float32,
+				0, 0 }, { "z", Float32, Float32,
 				static_cast<int>(offsetof(plyVertex, x) + sizeof(float)
 						+ sizeof(float)), 0, 0, 0, 0 }, { "red", Uint8, Uint8,
 				static_cast<int>(offsetof(plyVertex, red)), 0, 0, 0, 0 }, {
@@ -47,20 +45,21 @@ PlyProperty MeshVertProps[] = { // property information for a vertex
 						alpha)), 0, 0, 0, 0 }, };
 
 PlyProperty MeshFaceProps[] = { // property information for a face
-	{ "vertex_indices", Int32, Int32, static_cast<int>(offsetof(plyFace, verts)), 1, Uint8, Uint8, static_cast<int>(offsetof(plyFace, nverts)) },
-	{ "vertex_indices", Int32, Int32, static_cast<int>(offsetof(plyFaceTexutre, verts)), 1, Uint8, Uint8, static_cast<int>(offsetof(plyFaceTexutre, nverts)) },
-	{ "texcoord", Float32, Float32, static_cast<int>(offsetof(plyFaceTexutre, uvs)), 1, Uint8, Uint8, static_cast<int>(offsetof(plyFaceTexutre, uvcount)) },
-};
+		{ "vertex_indices", Int32, Int32, static_cast<int>(offsetof(plyFace,
+				verts)), 1, Uint8, Uint8, static_cast<int>(offsetof(plyFace,
+				nverts)) }, { "vertex_indices", Int32, Int32,
+				static_cast<int>(offsetof(plyFaceTexutre, verts)), 1, Uint8,
+				Uint8, static_cast<int>(offsetof(plyFaceTexutre, nverts)) }, {
+				"texcoord", Float32, Float32, static_cast<int>(offsetof(
+						plyFaceTexutre, uvs)), 1, Uint8, Uint8,
+				static_cast<int>(offsetof(plyFaceTexutre, uvcount)) }, };
 
 Mesh::Mesh() :
-		mGL(),
-		mQuadIndexCount(0),
-		mParticleCount(0),
-		mTriangleIndexCount(0),
-		mPose(openvdb::math::Mat4f::identity()),
-		mQuadCount(0),mTriangleCount(0) {
+		mGL(), mQuadIndexCount(0), mParticleCount(0), mTriangleIndexCount(0), mPose(
+				openvdb::math::Mat4f::identity()), mQuadCount(0), mTriangleCount(
+				0) {
 }
-void Mesh::reset(){
+void Mesh::reset() {
 	mVertexes.clear();
 	mVertexNormals.clear();
 	mParticleNormals.clear();
@@ -71,33 +70,34 @@ void Mesh::reset(){
 	mVertexAuxBuffer.clear();
 }
 bool Mesh::save(const std::string& f) {
-	if(mVertexes.size()==0)return false;
-	char* elemNames[]={"vertex","face","normal"};
+	if (mVertexes.size() == 0)
+		return false;
+	char* elemNames[] = { "vertex", "face", "normal" };
 
-	std::cout<<"Saving "<<f<<" ... ";
+	std::cout << "Saving " << f << " ... ";
 	int i, j, idx;
 	const char* fileName = f.c_str();
-	bool usingTexture=(uvMap.size()>0);
+	bool usingTexture = (uvMap.size() > 0);
 
 	PlyFile *ply;
 
 	// Get input and check data
 	ply = open_for_writing_ply(fileName, 2, elemNames, PLY_BINARY_LE);
 
-	if (ply == NULL){
-		std::cout<<"Failed. "<<std::endl;
+	if (ply == NULL) {
+		std::cout << "Failed. " << std::endl;
 		return false;
 	}
 
 	// compute colors, if any
 	int numPts = mVertexes.size();
 
-	int numPolys =mQuadIndexes.size()/4+mTriIndexes.size()/3;
+	int numPolys = mQuadIndexes.size() / 4 + mTriIndexes.size() / 3;
 
 	std::vector<unsigned char> pointColors;
 
 	if (mColors.size() > 0) {
-		size_t inc=0;
+		size_t inc = 0;
 		pointColors.resize(3 * mColors.size());
 		for (i = 0; i < numPts; i++) {
 			Vec3s d = mColors[i];
@@ -121,7 +121,7 @@ bool Mesh::save(const std::string& f) {
 	}
 	element_count_ply(ply, "face", numPolys);
 
-	if (usingTexture){
+	if (usingTexture) {
 		ply_describe_property(ply, "face", &MeshFaceProps[1]);
 		ply_describe_property(ply, "face", &MeshFaceProps[2]);
 	} else {
@@ -130,9 +130,9 @@ bool Mesh::save(const std::string& f) {
 
 	// write a comment and an object information field
 	append_comment_ply(ply, "PLY File");
-	if (usingTexture){
+	if (usingTexture) {
 		std::string comment = "TextureFile texture.png";
-		append_comment_ply(ply, (char*)comment.c_str());
+		append_comment_ply(ply, (char*) comment.c_str());
 	}
 	append_obj_info_ply(ply, "ImageSci");
 
@@ -148,11 +148,11 @@ bool Mesh::save(const std::string& f) {
 		vert.x[0] = pt[0];
 		vert.x[1] = pt[1];
 		vert.x[2] = pt[2];
-		if (pointColors.size()>0) {
+		if (pointColors.size() > 0) {
 			idx = 3 * i;
 			vert.red = pointColors[idx];
-			vert.green = pointColors[idx+1];
-			vert.blue = pointColors[idx+2];
+			vert.green = pointColors[idx + 1];
+			vert.blue = pointColors[idx + 2];
 		}
 		put_element_ply(ply, (void *) &vert);
 	}
@@ -163,23 +163,23 @@ bool Mesh::save(const std::string& f) {
 	Vec2s uvs[3];
 	face.verts = verts;
 	faceT.verts = verts;
-	faceT.uvs = (float*)uvs;
+	faceT.uvs = (float*) uvs;
 	put_element_setup_ply(ply, "face");
-	if (usingTexture){
-		int sz=mQuadIndexes.size()/4;
+	if (usingTexture) {
+		int sz = mQuadIndexes.size() / 4;
 		for (int i = 0; i < sz; i++) {
-			faceT.nverts =4;
-			faceT.uvcount=8;
+			faceT.nverts = 4;
+			faceT.uvcount = 8;
 			for (j = 0; j < 4; j++) {
 				faceT.verts[j] = mQuadIndexes[4 * i + j];
-				uvs[j] = uvMap[4*i+j];
+				uvs[j] = uvMap[4 * i + j];
 			}
 			put_element_ply(ply, (void *) &faceT);
 		}
-		sz=mTriIndexes.size()/3;
+		sz = mTriIndexes.size() / 3;
 		for (int i = 0; i < sz; i++) {
-			faceT.nverts =3;
-			faceT.uvcount=6;
+			faceT.nverts = 3;
+			faceT.uvcount = 6;
 			for (j = 0; j < 3; j++) {
 				faceT.verts[j] = mTriIndexes[3 * i + j];
 				uvs[j] = uvMap[3 * i + j];
@@ -187,18 +187,18 @@ bool Mesh::save(const std::string& f) {
 			put_element_ply(ply, (void *) &faceT);
 		}
 	} else {
-		int sz=mQuadIndexes.size()/4;
+		int sz = mQuadIndexes.size() / 4;
 		for (int i = 0; i < sz; i++) {
 			for (j = 0; j < 4; j++) {
-				face.nverts =4;
+				face.nverts = 4;
 				face.verts[j] = mQuadIndexes[4 * i + j];
 			}
 			put_element_ply(ply, (void *) &face);
 		}
-		sz=mTriIndexes.size()/3;
+		sz = mTriIndexes.size() / 3;
 		for (int i = 0; i < sz; i++) {
 			for (j = 0; j < 3; j++) {
-				face.nverts =3;
+				face.nverts = 3;
 				face.verts[j] = mTriIndexes[3 * i + j];
 			}
 			put_element_ply(ply, (void *) &face);
@@ -207,7 +207,7 @@ bool Mesh::save(const std::string& f) {
 	// close the PLY file
 	close_ply(ply);
 	free_ply(ply);
-	std::cout<<"Done."<<std::endl;
+	std::cout << "Done." << std::endl;
 	return true;
 }
 bool Mesh::openGrid(const std::string& fileName) {
@@ -218,10 +218,11 @@ bool Mesh::openGrid(const std::string& fileName) {
 	openvdb::GridPtrVec allGrids;
 	allGrids.insert(allGrids.end(), grids->begin(), grids->end());
 	GridBase::Ptr ptr = allGrids[0];
-	if(ptr.get()!=nullptr){
+	if (ptr.get() != nullptr) {
 		create(boost::static_pointer_cast<FloatGrid>(ptr));
 		return true;
-	} else return false;
+	} else
+		return false;
 }
 bool Mesh::openMesh(const std::string& file) {
 	int i, j, k;
@@ -234,7 +235,7 @@ bool Mesh::openMesh(const std::string& file) {
 	float version;
 	if (!(ply = ply_open_for_reading(file.c_str(), &nelems, &elist, &fileType,
 			&version))) {
-		std::cout << "Could not open ply file. ["<<file<<"]" << std::endl;
+		std::cout << "Could not open ply file. [" << file << "]" << std::endl;
 		free_ply(ply);
 		return false;
 	}
@@ -247,7 +248,7 @@ bool Mesh::openMesh(const std::string& file) {
 			|| find_property(elem, "z", &index) == NULL
 			|| (elem = find_element(ply, "face")) == NULL
 			|| find_property(elem, "vertex_indices", &index) == NULL) {
-		std::cerr << "Cannot read geometry ["<<file<<"]" << std::endl;
+		std::cerr << "Cannot read geometry [" << file << "]" << std::endl;
 		close_ply(ply);
 		free_ply(ply);
 		return false;
@@ -284,7 +285,7 @@ bool Mesh::openMesh(const std::string& file) {
 		if (elemName && !strcmp("vertex", elemName)) {
 			// Create a list of points
 			numPts = numElems;
-			this->mVertexes.resize(numPts,Vec3s(0.0f));
+			this->mVertexes.resize(numPts, Vec3s(0.0f));
 			// Setup to read the PLY elements
 			ply_get_property(ply, elemName, &MeshVertProps[0]);
 			ply_get_property(ply, elemName, &MeshVertProps[1]);
@@ -298,7 +299,8 @@ bool Mesh::openMesh(const std::string& file) {
 			}
 			for (j = 0; j < numPts; j++) {
 				get_element_ply(ply, &vertex);
-				this->mVertexes[j] = Vec3s(vertex.x[0], vertex.x[1], vertex.x[2]);
+				this->mVertexes[j] = Vec3s(vertex.x[0], vertex.x[1],
+						vertex.x[2]);
 				if (RGBPointsAvailable) {
 					this->mColors[j] = Vec3s(vertex.red / 255.0f,
 							vertex.green / 255.0f, vertex.blue / 255.0f);
@@ -316,16 +318,20 @@ bool Mesh::openMesh(const std::string& file) {
 				face.verts = &verts[0];
 				get_element_ply(ply, &face);
 
-				if(face.nverts==4){
+				if (face.nverts == 4) {
 					for (k = 0; k < face.nverts; k++) {
 						this->mQuadIndexes.push_back(face.verts[k]);
 					}
-					this->mFaces.push_back(openvdb::Vec4I(face.verts[0],face.verts[1],face.verts[2],face.verts[3]));
-				} else if(face.nverts==3){
+					this->mFaces.push_back(
+							openvdb::Vec4I(face.verts[0], face.verts[1],
+									face.verts[2], face.verts[3]));
+				} else if (face.nverts == 3) {
 					for (k = 0; k < face.nverts; k++) {
 						this->mTriIndexes.push_back(face.verts[k]);
 					}
-					this->mFaces.push_back(openvdb::Vec4I(face.verts[0],face.verts[1],face.verts[2],openvdb::util::INVALID_IDX));
+					this->mFaces.push_back(
+							openvdb::Vec4I(face.verts[0], face.verts[1],
+									face.verts[2], openvdb::util::INVALID_IDX));
 				}
 			}
 		}							//if face
@@ -333,7 +339,7 @@ bool Mesh::openMesh(const std::string& file) {
 		//free(elist[i]); //allocated by ply_open_for_reading
 
 	} //for all elements of the PLY file
-	//free(elist); //allocated by ply_open_for_reading
+	  //free(elist); //allocated by ply_open_for_reading
 	close_ply(ply);
 	free_ply(ply);
 	if (this->mVertexes.size() > 0) {
@@ -343,7 +349,8 @@ bool Mesh::openMesh(const std::string& file) {
 		return false;
 	}
 }
-void Mesh::create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr grid){
+void Mesh::create(openvdb::tools::VolumeToMesh& mesher,
+		openvdb::FloatGrid::Ptr grid) {
 	// Copy points and generate point normals.
 	openvdb::math::GenericMap map(grid->transform());
 	mVertexes.clear();
@@ -354,7 +361,7 @@ void Mesh::create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr g
 	mVertexes.resize(mesher.pointListSize());
 	Index64 N = mesher.pointListSize();
 	for (Index64 n = 0; n < N; ++n) {
-		mVertexes[n] = mesher.pointList()[n];//map.applyInverseMap(
+		mVertexes[n] = mesher.pointList()[n];	//map.applyInverseMap(
 	}
 	// Copy primitives
 	openvdb::tools::PolygonPoolList& polygonPoolList = mesher.polygonPoolList();
@@ -363,7 +370,8 @@ void Mesh::create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr g
 		//std::cout << "Polygon " << polygons.numTriangles() << " "<< polygons.numQuads() << std::endl;
 		for (Index64 i = 0, I = polygons.numQuads(); i < I; ++i) {
 			const openvdb::Vec4I& quad = polygons.quad(i);
-			mFaces.push_back(openvdb::Vec4I(quad[3],quad[2],quad[1],quad[0]));
+			mFaces.push_back(
+					openvdb::Vec4I(quad[3], quad[2], quad[1], quad[0]));
 			mQuadIndexes.push_back(quad[3]);
 			mQuadIndexes.push_back(quad[2]);
 			mQuadIndexes.push_back(quad[1]);
@@ -371,7 +379,9 @@ void Mesh::create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr g
 		}
 		for (Index64 i = 0, I = polygons.numTriangles(); i < I; ++i) {
 			const openvdb::Vec3I& quad = polygons.triangle(i);
-			mFaces.push_back(openvdb::Vec4I(quad[2],quad[1],quad[0],openvdb::util::INVALID_IDX));
+			mFaces.push_back(
+					openvdb::Vec4I(quad[2], quad[1], quad[0],
+							openvdb::util::INVALID_IDX));
 			mTriIndexes.push_back(quad[2]);
 			mTriIndexes.push_back(quad[1]);
 			mTriIndexes.push_back(quad[0]);
@@ -402,7 +412,8 @@ void Mesh::create(FloatGrid::Ptr grid) {
 		//std::cout << "Polygon " << polygons.numTriangles() << " "<< polygons.numQuads() << std::endl;
 		for (Index64 i = 0, I = polygons.numQuads(); i < I; ++i) {
 			const openvdb::Vec4I& quad = polygons.quad(i);
-			mFaces.push_back(openvdb::Vec4I(quad[3],quad[2],quad[1],quad[0]));
+			mFaces.push_back(
+					openvdb::Vec4I(quad[3], quad[2], quad[1], quad[0]));
 			mQuadIndexes.push_back(quad[3]);
 			mQuadIndexes.push_back(quad[2]);
 			mQuadIndexes.push_back(quad[1]);
@@ -410,7 +421,9 @@ void Mesh::create(FloatGrid::Ptr grid) {
 		}
 		for (Index64 i = 0, I = polygons.numTriangles(); i < I; ++i) {
 			const openvdb::Vec3I& quad = polygons.triangle(i);
-			mFaces.push_back(openvdb::Vec4I(quad[2],quad[1],quad[0],openvdb::util::INVALID_IDX));
+			mFaces.push_back(
+					openvdb::Vec4I(quad[2], quad[1], quad[0],
+							openvdb::util::INVALID_IDX));
 			mTriIndexes.push_back(quad[2]);
 			mTriIndexes.push_back(quad[1]);
 			mTriIndexes.push_back(quad[0]);
@@ -419,57 +432,55 @@ void Mesh::create(FloatGrid::Ptr grid) {
 	updateVertexNormals(4);
 	updateBoundingBox();
 }
-void Mesh::dilate(float distance){
-	int vertCount=mVertexes.size();
+void Mesh::dilate(float distance) {
+	int vertCount = mVertexes.size();
 	Vec3s norm;
-	for(int i=0;i<vertCount;i++){
-		norm=mVertexNormals[i];
-		mVertexes[i]+=norm*distance;
+	for (int i = 0; i < vertCount; i++) {
+		norm = mVertexNormals[i];
+		mVertexes[i] += norm * distance;
 	}
 }
-void Mesh::updateVertexNormals(int SMOOTH_ITERATIONS,float DOT_TOLERANCE){
+void Mesh::updateVertexNormals(int SMOOTH_ITERATIONS, float DOT_TOLERANCE) {
 
-	Index32 sz=mTriIndexes.size();
-	Vec3s pt,norm;
-	mVertexNormals.resize(mVertexes.size(),Vec3f(0.0f));
+	Index32 sz = mTriIndexes.size();
+	Vec3s pt;
+	mVertexNormals.resize(mVertexes.size(), Vec3f(0.0f));
 	for (Index32 i = 0; i < sz; i += 3) {
 		Vec3s v1 = mVertexes[mTriIndexes[i]];
 		Vec3s v2 = mVertexes[mTriIndexes[i + 1]];
 		Vec3s v3 = mVertexes[mTriIndexes[i + 2]];
-		norm=(v2-v1).cross(v3-v1);
-		mVertexNormals[mTriIndexes[i]]+=norm;
-		mVertexNormals[mTriIndexes[i+1]]+=norm;
-		mVertexNormals[mTriIndexes[i+2]]+=norm;
+		Vec3f norm = (v2 - v1).cross(v3 - v1);
+		mVertexNormals[mTriIndexes[i]] += norm;
+		mVertexNormals[mTriIndexes[i + 1]] += norm;
+		mVertexNormals[mTriIndexes[i + 2]] += norm;
 	}
-	sz=mQuadIndexes.size();
+	sz = mQuadIndexes.size();
 	for (int i = 0; i < sz; i += 4) {
 		Vec3s v1 = mVertexes[mQuadIndexes[i]];
 		Vec3s v2 = mVertexes[mQuadIndexes[i + 1]];
 		Vec3s v3 = mVertexes[mQuadIndexes[i + 2]];
 		Vec3s v4 = mVertexes[mQuadIndexes[i + 3]];
-		norm =(v1-pt).cross(v2-pt);
-		norm+=(v2-pt).cross(v3-pt);
-		norm+=(v3-pt).cross(v4-pt);
-		norm+=(v4-pt).cross(v1-pt);
-		mVertexNormals[mQuadIndexes[i]]+=norm;
-		mVertexNormals[mQuadIndexes[i+1]]+=norm;
-		mVertexNormals[mQuadIndexes[i+2]]+=norm;
-		mVertexNormals[mQuadIndexes[i+3]]+=norm;
+		Vec3f norm = (v1 - pt).cross(v2 - pt);
+		norm += (v2 - pt).cross(v3 - pt);
+		norm += (v3 - pt).cross(v4 - pt);
+		norm += (v4 - pt).cross(v1 - pt);
+		mVertexNormals[mQuadIndexes[i]] += norm;
+		mVertexNormals[mQuadIndexes[i + 1]] += norm;
+		mVertexNormals[mQuadIndexes[i + 2]] += norm;
+		mVertexNormals[mQuadIndexes[i + 3]] += norm;
 	}
-	for (Vec3s& norm : mVertexNormals) {
-		norm.normalize(1E-6f);
+#pragma omp for
+	for (size_t n=0;n<mVertexNormals.size();n++) {
+		mVertexNormals[n].normalize(1E-6f);
 	}
-
-	if(SMOOTH_ITERATIONS>0){
-		int vertCount=mVertexes.size();
-
+	if (SMOOTH_ITERATIONS > 0) {
+		int vertCount = mVertexes.size();
 		std::vector<Vec3f> tmp(vertCount);
-
 		std::vector<std::list<int>> vertNbrs(vertCount);
 		int indexCount = mQuadIndexes.size();
-		int v1, v2, v3,v4;
-		Vec3s nnorm;
-		for (int i = 0; i < indexCount; i += 4){
+		int v1, v2, v3, v4;
+
+		for (int i = 0; i < indexCount; i += 4) {
 			int v1 = mQuadIndexes[i];
 			int v2 = mQuadIndexes[i + 1];
 			int v3 = mQuadIndexes[i + 2];
@@ -483,23 +494,24 @@ void Mesh::updateVertexNormals(int SMOOTH_ITERATIONS,float DOT_TOLERANCE){
 			vertNbrs[v4].push_back(v1);
 			vertNbrs[v1].push_back(v3);
 		}
-		Vec3f avg;
-		for(int iter=0;iter<SMOOTH_ITERATIONS;iter++){
-			for(int i=0;i<vertCount;i++){
-				norm=mVertexNormals[i];
-				avg=Vec3f(0.0f);
-				for(int nbr:vertNbrs[i]){
-					nnorm=mVertexNormals[nbr];;
-					if(norm.dot(nnorm)>DOT_TOLERANCE){
-						avg+=nnorm;
+		for (int iter = 0; iter < SMOOTH_ITERATIONS; iter++) {
+#pragma omp for
+			for (int i = 0; i < vertCount; i++) {
+				Vec3f norm = mVertexNormals[i];
+				Vec3f avg = Vec3f(0.0f);
+				for (int nbr : vertNbrs[i]) {
+					Vec3s nnorm = mVertexNormals[nbr];
+					;
+					if (norm.dot(nnorm) > DOT_TOLERANCE) {
+						avg += nnorm;
 					} else {
-						avg+=norm;
+						avg += norm;
 					}
 				}
 				avg.normalize();
-				tmp[i]=avg;
+				tmp[i] = avg;
 			}
-			mVertexNormals=tmp;
+			mVertexNormals = tmp;
 		}
 	}
 }
@@ -507,60 +519,60 @@ float Mesh::estimateVoxelSize(int stride) {
 	int count = 0;
 	//float maxLength = 0.0f;
 	int sz = mTriIndexes.size();
-	static float mEstimatedVoxelSize=0.0f;
-	#pragma omp for reduction(+:mEstimatedVoxelSize)
-		for (int i = 0; i < sz; i += 3 * stride) {
-			Vec3s v1 = mVertexes[mTriIndexes[i]];
-			Vec3s v2 = mVertexes[mTriIndexes[i + 1]];
-			Vec3s v3 = mVertexes[mTriIndexes[i + 2]];
-			float e1 = (v1 - v2).length();
-			float e2 = (v1 - v3).length();
-			float e3 = (v2 - v3).length();
-			//maxLength = std::max(std::max(e1, e2), std::max(maxLength, e3));
-			mEstimatedVoxelSize += e1 + e2 + e3;
-		}
-		count=sz/stride;
-		sz=mQuadIndexes.size();
-	#pragma omp for reduction(+:mEstimatedVoxelSize)
-		for (int i = 0; i < sz; i += 4 * stride) {
-			Vec3s v1 = mVertexes[mQuadIndexes[i]];
-			Vec3s v2 = mVertexes[mQuadIndexes[i + 1]];
-			Vec3s v3 = mVertexes[mQuadIndexes[i + 2]];
-			Vec3s v4 = mVertexes[mQuadIndexes[i + 3]];
-			float e1 = (v1 - v2).length();
-			float e2 = (v2 - v3).length();
-			float e3 = (v3 - v4).length();
-			float e4 = (v4 - v1).length();
-			//maxLength = std::max(maxLength,std::max(std::max(e1, e2), std::max(e3, e4)));
-			mEstimatedVoxelSize += e1 + e2 + e3 + e4;
-		}
-		count+=sz/stride;
-		mEstimatedVoxelSize/=count;
+	float mEstimatedVoxelSize = 0.0f;
+	for (int i = 0; i < sz; i += 3 * stride) {
+		Vec3s v1 = mVertexes[mTriIndexes[i]];
+		Vec3s v2 = mVertexes[mTriIndexes[i + 1]];
+		Vec3s v3 = mVertexes[mTriIndexes[i + 2]];
+		float e1 = (v1 - v2).length();
+		float e2 = (v1 - v3).length();
+		float e3 = (v2 - v3).length();
+		//maxLength = std::max(std::max(e1, e2), std::max(maxLength, e3));
+		mEstimatedVoxelSize += e1 + e2 + e3;
+	}
+	count = sz / stride;
+	sz = mQuadIndexes.size();
+	for (int i = 0; i < sz; i += 4 * stride) {
+		Vec3s v1 = mVertexes[mQuadIndexes[i]];
+		Vec3s v2 = mVertexes[mQuadIndexes[i + 1]];
+		Vec3s v3 = mVertexes[mQuadIndexes[i + 2]];
+		Vec3s v4 = mVertexes[mQuadIndexes[i + 3]];
+		float e1 = (v1 - v2).length();
+		float e2 = (v2 - v3).length();
+		float e3 = (v3 - v4).length();
+		float e4 = (v4 - v1).length();
+		//maxLength = std::max(maxLength,std::max(std::max(e1, e2), std::max(e3, e4)));
+		mEstimatedVoxelSize += e1 + e2 + e3 + e4;
+	}
+	count += sz / stride;
+	mEstimatedVoxelSize /= count;
 
-	std::cout << "Average Edge Length=" << mEstimatedVoxelSize<<std::endl;
+	std::cout << "Estimated voxel size =" << mEstimatedVoxelSize << std::endl;
 	return mEstimatedVoxelSize;
 }
 openvdb::math::BBox<openvdb::Vec3d>& Mesh::updateBoundingBox() {
-	const int BATCHES=32;
+	const int BATCHES = 32;
 	Vec3s minPt(std::numeric_limits<float>::max(),
 			std::numeric_limits<float>::max(),
 			std::numeric_limits<float>::max());
-	std::vector<Vec3s> minPtBatch(BATCHES,Vec3s(std::numeric_limits<float>::max(),
-			std::numeric_limits<float>::max(),
-			std::numeric_limits<float>::max()));
+	std::vector<Vec3s> minPtBatch(BATCHES,
+			Vec3s(std::numeric_limits<float>::max(),
+					std::numeric_limits<float>::max(),
+					std::numeric_limits<float>::max()));
 	Vec3s maxPt(std::numeric_limits<float>::min(),
 			std::numeric_limits<float>::min(),
 			std::numeric_limits<float>::min());
-	std::vector<Vec3s> maxPtBatch(BATCHES,Vec3s(std::numeric_limits<float>::min(),
-			std::numeric_limits<float>::min(),
-			std::numeric_limits<float>::min()));
-	int SZ=mVertexes.size();
-	int batchSize=(SZ%BATCHES==0)?SZ/BATCHES:SZ/BATCHES+1;
+	std::vector<Vec3s> maxPtBatch(BATCHES,
+			Vec3s(std::numeric_limits<float>::min(),
+					std::numeric_limits<float>::min(),
+					std::numeric_limits<float>::min()));
+	int SZ = mVertexes.size();
+	int batchSize = (SZ % BATCHES == 0) ? SZ / BATCHES : SZ / BATCHES + 1;
 #pragma omp for
-	for(int b=0;b<BATCHES;b++){
-		int sz=std::min(SZ,batchSize*(b+1));
-		for (Index32 idx=b*batchSize;idx<sz;idx++) {
-			Vec3s& pt=mVertexes[idx];
+	for (int b = 0; b < BATCHES; b++) {
+		int sz = std::min(SZ, batchSize * (b + 1));
+		for (Index32 idx = b * batchSize; idx < sz; idx++) {
+			Vec3s& pt = mVertexes[idx];
 			minPtBatch[b][0] = std::min(minPtBatch[b][0], pt[0]);
 			minPtBatch[b][1] = std::min(minPtBatch[b][1], pt[1]);
 			minPtBatch[b][2] = std::min(minPtBatch[b][2], pt[2]);
@@ -571,7 +583,7 @@ openvdb::math::BBox<openvdb::Vec3d>& Mesh::updateBoundingBox() {
 		}
 	}
 
-	for(int b=0;b<BATCHES;b++){
+	for (int b = 0; b < BATCHES; b++) {
 		minPt[0] = std::min(minPtBatch[b][0], minPt[0]);
 		minPt[1] = std::min(minPtBatch[b][1], minPt[1]);
 		minPt[2] = std::min(minPtBatch[b][2], minPt[2]);
@@ -585,7 +597,7 @@ openvdb::math::BBox<openvdb::Vec3d>& Mesh::updateBoundingBox() {
 }
 void Mesh::scale(float sc) {
 #pragma omp for
-	for (size_t i=0;i<mVertexes.size();i++) {
+	for (size_t i = 0; i < mVertexes.size(); i++) {
 		mVertexes[i] *= sc;
 	}
 	mBoundingBox.min() *= static_cast<double>(sc);
@@ -595,21 +607,21 @@ void Mesh::scale(float sc) {
 void Mesh::mapIntoBoundingBox(float voxelSize) {
 	Vec3s minPt = mBoundingBox.min();
 #pragma omp for
-	for (size_t i=0;i<mVertexes.size();i++) {
-		Vec3s& pt=mVertexes[i];
+	for (size_t i = 0; i < mVertexes.size(); i++) {
+		Vec3s& pt = mVertexes[i];
 		pt = (pt - minPt) / voxelSize;
 	}
 }
 void Mesh::mapOutOfBoundingBox(float voxelSize) {
 	Vec3s minPt = mBoundingBox.min();
 #pragma omp for
-	for (size_t i=0;i<mVertexes.size();i++) {
-		Vec3s& pt=mVertexes[i];
+	for (size_t i = 0; i < mVertexes.size(); i++) {
+		Vec3s& pt = mVertexes[i];
 		pt = pt * voxelSize + minPt;
 	}
 }
 void Mesh::draw() {
-	glBindVertexArray (mGL.mVao);
+	glBindVertexArray(mGL.mVao);
 	if (mGL.mVertexBuffer > 0) {
 		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, mGL.mVertexBuffer);
@@ -629,33 +641,35 @@ void Mesh::draw() {
 	if (mQuadIndexCount > 0) {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mGL.mQuadIndexBuffer);
 		glDrawElements(GL_TRIANGLES, mQuadIndexCount, GL_UNSIGNED_INT, NULL);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
-	}  else if(mQuadCount>0){
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	} else if (mQuadCount > 0) {
 		glDrawArrays(GL_TRIANGLES, 0, mQuadCount);
 	}
 	if (mTriangleIndexCount > 0) {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mGL.mTriIndexBuffer);
-		glDrawElements(GL_TRIANGLES, mTriangleIndexCount, GL_UNSIGNED_INT, NULL);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,0);
-	} else if(mTriangleCount>0){
+		glDrawElements(GL_TRIANGLES, mTriangleIndexCount, GL_UNSIGNED_INT,
+				NULL);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	} else if (mTriangleCount > 0) {
 		glDrawArrays(GL_TRIANGLES, 0, mTriangleCount);
 	}
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(2);
 
-	glBindBuffer(GL_ARRAY_BUFFER,0);
-	glBindVertexArray (0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 }
 
 void Mesh::updateGL() {
-	mQuadCount=0;
-	mTriangleCount=0;
-	mTriangleIndexCount=0;
-	mQuadIndexCount=0;
-	mParticleCount=0;
+	mQuadCount = 0;
+	mTriangleCount = 0;
+	mTriangleIndexCount = 0;
+	mQuadIndexCount = 0;
+	mParticleCount = 0;
 
-	if(mGL.mVao==0)glGenVertexArrays (1, &mGL.mVao);
+	if (mGL.mVao == 0)
+		glGenVertexArrays(1, &mGL.mVao);
 
 	if (mVertexes.size() > 0) {
 		if (glIsBuffer(mGL.mVertexBuffer) == GL_TRUE)
@@ -678,8 +692,8 @@ void Mesh::updateGL() {
 			throw Exception("Error: Unable to create particle buffer");
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * mParticles.size(),
 				&mParticles[0], GL_STATIC_DRAW);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-		mParticleCount=mParticles.size();
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		mParticleCount = mParticles.size();
 	}
 	if (mColors.size() > 0) {
 		if (glIsBuffer(mGL.mColorBuffer) == GL_TRUE)
@@ -695,8 +709,8 @@ void Mesh::updateGL() {
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
-	if(mLines.size()>0){
-		std::cout<<"Update lines "<<mLines.size()<<std::endl;
+	if (mLines.size() > 0) {
+		std::cout << "Update lines " << mLines.size() << std::endl;
 		// clear old buffer
 		if (glIsBuffer(mGL.mLineBuffer) == GL_TRUE)
 			glDeleteBuffers(1, &mGL.mLineBuffer);
@@ -706,11 +720,11 @@ void Mesh::updateGL() {
 		if (glIsBuffer(mGL.mLineBuffer) == GL_FALSE)
 			throw Exception("Error: Unable to create index buffer");
 		// upload data
-		glBufferData(GL_ARRAY_BUFFER,  sizeof(GLfloat) * 3  * mLines.size(),
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * mLines.size(),
 				&mLines[0], GL_STATIC_DRAW); // upload data
 		// release buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-		std::cout<<"Disable Lines "<<std::endl;
+		std::cout << "Disable Lines " << std::endl;
 	}
 	if (mTriIndexes.size() > 0) {
 		// clear old buffer
@@ -724,9 +738,9 @@ void Mesh::updateGL() {
 			throw Exception("Error: Unable to create index buffer");
 
 		// upload data
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * mTriIndexes.size(),
-				&mTriIndexes[0], GL_STATIC_DRAW); // upload data
-
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+				sizeof(GLuint) * mTriIndexes.size(), &mTriIndexes[0],
+				GL_STATIC_DRAW); // upload data
 
 		mTriangleIndexCount = mTriIndexes.size();
 		// release buffer
@@ -744,27 +758,26 @@ void Mesh::updateGL() {
 			throw Exception("Error: Unable to create index buffer");
 
 		// upload data
-		int sz=mQuadIndexes.size();
-		std::vector<GLuint> tmp(12*(mQuadIndexes.size()/4));
+		int sz = mQuadIndexes.size();
+		std::vector<GLuint> tmp(12 * (mQuadIndexes.size() / 4));
 #pragma omp for
-		for(unsigned int i=0;i<sz;i+=4){
-			int offset=12*(i/4);
-			tmp[offset++]=mQuadIndexes[i+1];
-			tmp[offset++]=mQuadIndexes[i+2];
-			tmp[offset++]=mQuadIndexes[i+0];
-			tmp[offset++]=mQuadIndexes[i+2];
-			tmp[offset++]=mQuadIndexes[i+3];
-			tmp[offset++]=mQuadIndexes[i+1];
-			tmp[offset++]=mQuadIndexes[i+0];
-			tmp[offset++]=mQuadIndexes[i+1];
-			tmp[offset++]=mQuadIndexes[i+3];
-			tmp[offset++]=mQuadIndexes[i+3];
-			tmp[offset++]=mQuadIndexes[i];
-			tmp[offset++]=mQuadIndexes[i+2];
+		for (unsigned int i = 0; i < sz; i += 4) {
+			int offset = 12 * (i / 4);
+			tmp[offset++] = mQuadIndexes[i + 1];
+			tmp[offset++] = mQuadIndexes[i + 2];
+			tmp[offset++] = mQuadIndexes[i + 0];
+			tmp[offset++] = mQuadIndexes[i + 2];
+			tmp[offset++] = mQuadIndexes[i + 3];
+			tmp[offset++] = mQuadIndexes[i + 1];
+			tmp[offset++] = mQuadIndexes[i + 0];
+			tmp[offset++] = mQuadIndexes[i + 1];
+			tmp[offset++] = mQuadIndexes[i + 3];
+			tmp[offset++] = mQuadIndexes[i + 3];
+			tmp[offset++] = mQuadIndexes[i];
+			tmp[offset++] = mQuadIndexes[i + 2];
 		}
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * tmp.size(),
 				&tmp[0], GL_STATIC_DRAW); // upload data
-
 
 		mQuadIndexCount = tmp.size();
 		// release buffer
@@ -794,8 +807,9 @@ void Mesh::updateGL() {
 		if (glIsBuffer(mGL.mNormalBuffer) == GL_FALSE)
 			throw Exception("Error: Unable to create normal buffer");
 
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * mVertexNormals.size(),
-				&mVertexNormals[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER,
+				sizeof(GLfloat) * 3 * mVertexNormals.size(), &mVertexNormals[0],
+				GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}

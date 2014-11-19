@@ -100,6 +100,9 @@ int main(int argc, char *argv[]) {
 					if(i+1<args.size()){
 						dim=atoi(args[++i].c_str());
 					}
+					if(scheme==MotionScheme::UNDEFINED){
+						break;
+					}
 					EnrightSimulation sim(dim,scheme);
 					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
 					status=EXIT_SUCCESS;
@@ -116,6 +119,9 @@ int main(int argc, char *argv[]) {
 							sourceFileName=args[++i];
 						}
 					}
+					if(scheme==MotionScheme::UNDEFINED){
+						break;
+					}
 					SplashSimulation sim(sourceFileName,dim,scheme);
 					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_HEIGHT,WIN_HEIGHT,dirName);
 					status=EXIT_SUCCESS;
@@ -130,6 +136,9 @@ int main(int argc, char *argv[]) {
 					if(i+1<args.size()){
 						sourceFileName=args[++i];
 					}
+				}
+				if(scheme==MotionScheme::UNDEFINED){
+					break;
 				}
 				ArmadilloTwist sim(sourceFileName,cycles,scheme);
 				SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);

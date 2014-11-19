@@ -805,7 +805,7 @@ void FluidSimulation::createLevelSet() {
 				//value = max(value,0.01);
 				mLevelSet(i, j, k) = 0.001;
 			} else {
-				mLevelSet(i, j, k) = value / mVoxelSize;
+				mLevelSet(i, j, k) = clamp(value / mVoxelSize,-openvdb::LEVEL_SET_HALF_WIDTH,openvdb::LEVEL_SET_HALF_WIDTH);
 			}
 		}END_FOR
 //WriteToRawFile(mLevelSet,"/home/blake/tmp/levelset");

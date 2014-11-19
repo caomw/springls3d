@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
 				MotionScheme scheme=DecodeMotionScheme(args[++i]);
 				double cycles=1.0f;
 				if(i+1<args.size()){
-					cycles=atof(args[++i].c_str());
+					cycles=std::max(1.0,atof(args[++i].c_str()));
 					if(i+1<args.size()){
 						sourceFileName=args[++i];
 					}

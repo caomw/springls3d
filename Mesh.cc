@@ -504,10 +504,11 @@ void Mesh::updateVertexNormals(int SMOOTH_ITERATIONS,float DOT_TOLERANCE){
 	}
 }
 float Mesh::estimateVoxelSize(int stride) {
-	float avg = 0.0f;
 	int count = 0;
-	float maxLength = 0.0f;
+	//float maxLength = 0.0f;
 	int sz = mTriIndexes.size();
+	static float mEstimatedVoxelSize=0.0f;
+	#pragma omp for reduction(+:mEstimatedVoxelSize)
 		for (int i = 0; i < sz; i += 3 * stride) {
 			Vec3s v1 = mVertexes[mTriIndexes[i]];
 			Vec3s v2 = mVertexes[mTriIndexes[i + 1]];
@@ -515,11 +516,12 @@ float Mesh::estimateVoxelSize(int stride) {
 			float e1 = (v1 - v2).length();
 			float e2 = (v1 - v3).length();
 			float e3 = (v2 - v3).length();
-			maxLength = std::max(std::max(e1, e2), std::max(maxLength, e3));
-			avg += e1 + e2 + e3;
-			count += 3;
+			//maxLength = std::max(std::max(e1, e2), std::max(maxLength, e3));
+			mEstimatedVoxelSize += e1 + e2 + e3;
 		}
+		count=sz/stride;
 		sz=mQuadIndexes.size();
+	#pragma omp for reduction(+:mEstimatedVoxelSize)
 		for (int i = 0; i < sz; i += 4 * stride) {
 			Vec3s v1 = mVertexes[mQuadIndexes[i]];
 			Vec3s v2 = mVertexes[mQuadIndexes[i + 1]];
@@ -529,43 +531,62 @@ float Mesh::estimateVoxelSize(int stride) {
 			float e2 = (v2 - v3).length();
 			float e3 = (v3 - v4).length();
 			float e4 = (v4 - v1).length();
-
-			maxLength = std::max(maxLength,
-					std::max(std::max(e1, e2), std::max(e3, e4)));
-			avg += e1 + e2 + e3 + e4;
-			count += 4;
+			//maxLength = std::max(maxLength,std::max(std::max(e1, e2), std::max(e3, e4)));
+			mEstimatedVoxelSize += e1 + e2 + e3 + e4;
 		}
-	avg /= count;
+		count+=sz/stride;
+		mEstimatedVoxelSize/=count;
 
-	std::cout << "Average Edge Length=" << avg << " Max Edge Length="
-			<< maxLength << std::endl;
-	return avg;
+	std::cout << "Average Edge Length=" << mEstimatedVoxelSize<<std::endl;
+	return mEstimatedVoxelSize;
 }
 openvdb::math::BBox<openvdb::Vec3d>& Mesh::updateBoundingBox() {
+	const int BATCHES=32;
 	Vec3s minPt(std::numeric_limits<float>::max(),
 			std::numeric_limits<float>::max(),
 			std::numeric_limits<float>::max());
+	std::vector<Vec3s> minPtBatch(BATCHES,Vec3s(std::numeric_limits<float>::max(),
+			std::numeric_limits<float>::max(),
+			std::numeric_limits<float>::max()));
 	Vec3s maxPt(std::numeric_limits<float>::min(),
 			std::numeric_limits<float>::min(),
 			std::numeric_limits<float>::min());
-	const int SAMPLE_STRIDE=8;
-	Index32 SZ=mVertexes.size();
-	for (Index32 idx=0;idx<SZ;idx+=SAMPLE_STRIDE) {
-		Vec3s& pt=mVertexes[idx];
-		minPt[0] = std::min(minPt[0], pt[0]);
-		minPt[1] = std::min(minPt[1], pt[1]);
-		minPt[2] = std::min(minPt[2], pt[2]);
+	std::vector<Vec3s> maxPtBatch(BATCHES,Vec3s(std::numeric_limits<float>::min(),
+			std::numeric_limits<float>::min(),
+			std::numeric_limits<float>::min()));
+	int SZ=mVertexes.size();
+	int batchSize=(SZ%BATCHES==0)?SZ/BATCHES:SZ/BATCHES+1;
+#pragma omp for
+	for(int b=0;b<BATCHES;b++){
+		int sz=std::min(SZ,batchSize*(b+1));
+		for (Index32 idx=b*batchSize;idx<sz;idx++) {
+			Vec3s& pt=mVertexes[idx];
+			minPtBatch[b][0] = std::min(minPtBatch[b][0], pt[0]);
+			minPtBatch[b][1] = std::min(minPtBatch[b][1], pt[1]);
+			minPtBatch[b][2] = std::min(minPtBatch[b][2], pt[2]);
 
-		maxPt[0] = std::max(maxPt[0], pt[0]);
-		maxPt[1] = std::max(maxPt[1], pt[1]);
-		maxPt[2] = std::max(maxPt[2], pt[2]);
+			maxPtBatch[b][0] = std::max(maxPtBatch[b][0], pt[0]);
+			maxPtBatch[b][1] = std::max(maxPtBatch[b][1], pt[1]);
+			maxPtBatch[b][2] = std::max(maxPtBatch[b][2], pt[2]);
+		}
+	}
+
+	for(int b=0;b<BATCHES;b++){
+		minPt[0] = std::min(minPtBatch[b][0], minPt[0]);
+		minPt[1] = std::min(minPtBatch[b][1], minPt[1]);
+		minPt[2] = std::min(minPtBatch[b][2], minPt[2]);
+
+		maxPt[0] = std::max(maxPtBatch[b][0], maxPt[0]);
+		maxPt[1] = std::max(maxPtBatch[b][1], maxPt[1]);
+		maxPt[2] = std::max(maxPtBatch[b][2], maxPt[2]);
 	}
 	mBoundingBox = openvdb::math::BBox<openvdb::Vec3d>(minPt, maxPt);
 	return mBoundingBox;
 }
 void Mesh::scale(float sc) {
-	for (Vec3s& pt : mVertexes) {
-		pt *= sc;
+#pragma omp for
+	for (size_t i=0;i<mVertexes.size();i++) {
+		mVertexes[i] *= sc;
 	}
 	mBoundingBox.min() *= static_cast<double>(sc);
 	mBoundingBox.max() *= static_cast<double>(sc);
@@ -573,13 +594,17 @@ void Mesh::scale(float sc) {
 }
 void Mesh::mapIntoBoundingBox(float voxelSize) {
 	Vec3s minPt = mBoundingBox.min();
-	for (Vec3s& pt : mVertexes) {
+#pragma omp for
+	for (size_t i=0;i<mVertexes.size();i++) {
+		Vec3s& pt=mVertexes[i];
 		pt = (pt - minPt) / voxelSize;
 	}
 }
 void Mesh::mapOutOfBoundingBox(float voxelSize) {
 	Vec3s minPt = mBoundingBox.min();
-	for (Vec3s& pt : mVertexes) {
+#pragma omp for
+	for (size_t i=0;i<mVertexes.size();i++) {
+		Vec3s& pt=mVertexes[i];
 		pt = pt * voxelSize + minPt;
 	}
 }
@@ -721,26 +746,21 @@ void Mesh::updateGL() {
 		// upload data
 		int sz=mQuadIndexes.size();
 		std::vector<GLuint> tmp(12*(mQuadIndexes.size()/4));
-		int offset=0;
+#pragma omp for
 		for(unsigned int i=0;i<sz;i+=4){
+			int offset=12*(i/4);
 			tmp[offset++]=mQuadIndexes[i+1];
 			tmp[offset++]=mQuadIndexes[i+2];
 			tmp[offset++]=mQuadIndexes[i+0];
-
-
 			tmp[offset++]=mQuadIndexes[i+2];
 			tmp[offset++]=mQuadIndexes[i+3];
 			tmp[offset++]=mQuadIndexes[i+1];
-
 			tmp[offset++]=mQuadIndexes[i+0];
 			tmp[offset++]=mQuadIndexes[i+1];
 			tmp[offset++]=mQuadIndexes[i+3];
-
-
 			tmp[offset++]=mQuadIndexes[i+3];
 			tmp[offset++]=mQuadIndexes[i];
 			tmp[offset++]=mQuadIndexes[i+2];
-
 		}
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * tmp.size(),
 				&tmp[0], GL_STATIC_DRAW); // upload data

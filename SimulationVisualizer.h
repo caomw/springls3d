@@ -79,7 +79,7 @@ public:
 	void windowRefreshCallback();
 	void start();
 	void stop();
-	bool isRunning(){return mSimulation->isRunning();}
+	bool isRunning(){return (mSimulation!=NULL&&mSimulation->isRunning());}
 	~SimulationVisualizer();
 };
 

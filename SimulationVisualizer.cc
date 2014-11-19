@@ -124,14 +124,12 @@ void SimulationVisualizer::start(){
 		mMiniCamera->loadConfig();
 		mSimulation->start();
 	}
-	render();
 }
 void SimulationVisualizer::resume(){
 	if(mSimulation!=NULL){
 		mMiniCamera->loadConfig();
 		mSimulation->start();
 	}
-	render();
 }
 SimulationVisualizer::~SimulationVisualizer(){
 	if(mSimulation!=NULL)mSimulation->stop();
@@ -140,6 +138,7 @@ void SimulationVisualizer::stop(){
 	if(mSimulation!=NULL)mSimulation->stop();
 }
 void SimulationVisualizer::SimulationEvent(Simulation* simulation,int mSimulationIteration,double time){
+	//std::cout<<"Stashing ..."<<std::endl;
 	simulation->stash(mOutputDirectory);
 }
 bool SimulationVisualizer::run(int width,int height){
@@ -174,7 +173,6 @@ bool SimulationVisualizer::run(int width,int height){
 
     mMiniCamera->loadConfig();
     mCamera->loadConfig();
-
     std::list<std::string> attrib;
 	attrib.push_back("vp");
 	attrib.push_back("vn");
@@ -373,9 +371,11 @@ SimulationVisualizer::render()
 				tmp2[j*width+i]=c;
 			}
 		}
-		WriteImageToFile(ostr1.str(),tmp2,width,height);
+		if(WriteImageToFile(ostr1.str(),tmp2,width,height)){
+			std::cout<<"Wrote "<<ostr1.str()<<std::endl;
+		}
 	}
-
+	mCamera->setNeedsDisplay(false);
 	mDrawLock.unlock();
 }
 

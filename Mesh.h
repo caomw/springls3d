@@ -56,6 +56,7 @@ public:
 };
 class Mesh{
 	private:
+
 	GLMesh mGL;
 	openvdb::math::Mat4f mPose;
 	openvdb::math::BBox<openvdb::Vec3d> mBoundingBox;

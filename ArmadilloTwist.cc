@@ -31,7 +31,7 @@ ArmadilloTwist::~ArmadilloTwist() {
 bool ArmadilloTwist::init(){
 	Mesh mesh;
 	if(!mesh.openMesh(mSourceFileName))return false;
-	mesh.mapIntoBoundingBox(mesh.estimateVoxelSize());
+	mesh.mapIntoBoundingBox(2.0f*mesh.estimateVoxelSize());
 	mesh.updateBoundingBox();
     openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
     mSource.create(&mesh);
@@ -76,6 +76,7 @@ bool ArmadilloTwist::step(){
 	mIsMeshDirty=true;
 	mSimulationIteration++;
 	mSimulationTime=mTimeStep*mSimulationIteration;
+
 	if(mSimulationTime<=mSimulationDuration&&mRunning){
 		return true;
 	} else {

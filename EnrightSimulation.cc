@@ -31,14 +31,15 @@ EnrightSimulation::EnrightSimulation(int gridSize,MotionScheme scheme):Simulatio
 bool EnrightSimulation::init(){
 	const float radius = 0.15f;
 	const openvdb::Vec3f center(0.35f, 0.35f, 0.35f);
-	float voxelSize = 1 / (float) (mGridSize - 1);
+	float voxelSize = 1.0f / (float) (mGridSize - 1);
 	FloatGrid::Ptr mSignedLevelSet =openvdb::tools::createLevelSetSphere<FloatGrid>(radius,center, voxelSize);
 	mSource.create(*mSignedLevelSet);
-    mSource.mIsoSurface.updateBoundingBox();
-	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,mField,mMotionScheme));
+	//Important! re-normalize distance to be in voxel units.
+    BBoxd bbox=mSource.mIsoSurface.updateBoundingBox();
+    mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,mField,mMotionScheme));
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
 	mSimulationDuration=3.0f;
-	mTimeStep=0.005*128.0/mGridSize;
+	mTimeStep=0.5*voxelSize;
 	mIsMeshDirty=true;
 	return true;
 }
@@ -50,7 +51,6 @@ bool EnrightSimulation::step(){
 	mIsMeshDirty=true;
 	mSimulationIteration++;
 	mSimulationTime=mTimeStep*mSimulationIteration;
-
 	if(mSimulationTime<=mSimulationDuration&&mRunning){
 		return true;
 	} else {

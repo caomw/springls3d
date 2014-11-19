@@ -322,16 +322,15 @@ class MaxVelocityOperator {
 public:
 	double mMaxAbsV;
 	SpringLevelSet& mGrid;
-	bool mIsMaster;
 	MaxVelocityOperator(SpringLevelSet& grid, const FieldT& field, double t,
 			InterruptT* _interrupt) :
-			mIsMaster(true), mGrid(grid), mField(field), mTime(t), mInterrupt(
+			mGrid(grid), mField(field), mTime(t), mInterrupt(
 					_interrupt), mMaxAbsV(std::numeric_limits<double>::min()) {
 
 	}
 	MaxVelocityOperator(MaxVelocityOperator& other, tbb::split) :
 			mGrid(other.mGrid), mMaxAbsV(other.mMaxAbsV), mField(other.mField), mTime(
-					other.mTime), mIsMaster(false), mInterrupt(
+					other.mTime), mInterrupt(
 			NULL) {
 	}
 	virtual ~MaxVelocityOperator() {

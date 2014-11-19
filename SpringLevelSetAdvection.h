@@ -36,6 +36,8 @@ private:
 	SpringLevelSet& mGrid;
 	const FieldT& mField;
 	bool mResample;
+	int mTotalSignChanges;
+	std::mutex mSignChangeLock;
 public:
 	typedef FloatGrid GridType;
 	typedef LevelSetTracker<FloatGrid, InterruptT> TrackerT;
@@ -50,11 +52,10 @@ public:
 	imagesci::TemporalIntegrationScheme mTemporalScheme;
 	imagesci::MotionScheme mMotionScheme;
 	InterruptT* mInterrupt;
-	double mMaxDelta;
 	// disallow copy by assignment
 	void operator=(const SpringLevelSetAdvection& other){}
 	/// Main constructor
-	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,imagesci::MotionScheme scheme=imagesci::MotionScheme::SEMI_IMPLICIT,InterruptT* interrupt = NULL) :mMotionScheme(scheme),mMaxDelta(0.0),mGrid(grid), mField(field), mInterrupt(interrupt), mTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b),mResample(true) {
+	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,imagesci::MotionScheme scheme=imagesci::MotionScheme::SEMI_IMPLICIT,InterruptT* interrupt = NULL) :mTotalSignChanges(0),mMotionScheme(scheme),mGrid(grid), mField(field), mInterrupt(interrupt), mTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b),mResample(true) {
 		if(scheme==IMPLICIT){
 			mImplicitAdvection=std::unique_ptr<ImplicitAdvectionT>(new ImplicitAdvectionT(*grid.mSignedLevelSet,field,interrupt));
 			mImplicitAdvection->setSpatialScheme(openvdb::math::HJWENO5_BIAS);
@@ -80,13 +81,11 @@ public:
 	}
 	size_t advect(double  startTime, double endTime) {
 		if(mMotionScheme==IMPLICIT){
-			const double MAX_TIME_STEP=0.005;
-			double dt=std::min(endTime-startTime,MAX_TIME_STEP);
+			double dt=endTime-startTime;
 			for(double time=startTime;time<endTime;time+=dt){
 				mGrid.mSignedLevelSet->setTransform(mGrid.transformPtr());
 				double et=std::min(time+dt,endTime);
 				mImplicitAdvection->advect(time,et);
-				//std::cout<<"Implicit Advect ["<<time<<","<<et<<"]"<<std::endl;
 				mGrid.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0f));
 			}
 			mGrid.updateIsoSurface();
@@ -116,11 +115,11 @@ public:
 			mGrid.relax(RELAX_INNER_ITERS);
 		}
 
-		if(mMotionScheme==MotionScheme::IMPLICIT){
+		if(mMotionScheme==MotionScheme::SEMI_IMPLICIT){
 			mGrid.updateUnSignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
 			mGrid.updateGradient();
 			TrackerT mTracker(*mGrid.mSignedLevelSet,mInterrupt);
-			SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,32,0.3);
+			SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,32,0.01);
 			evolve.process();
 		} else if(mMotionScheme==MotionScheme::EXPLICIT){
 			if(resample){
@@ -130,7 +129,7 @@ public:
 				mGrid.updateUnSignedLevelSet(2.5*openvdb::LEVEL_SET_HALF_WIDTH);
 				mGrid.updateGradient();
 				TrackerT mTracker(*mGrid.mSignedLevelSet,mInterrupt);
-				SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,128,0.3);
+				SpringLevelSetEvolve<MapT> evolve(*this,mTracker,time,0.75,128,0.05);
 				evolve.process();
 			}
 		}
@@ -180,40 +179,48 @@ public:
 	template<typename MapT> class SpringLevelSetEvolve {
 	public:
 		SpringLevelSetAdvection& mParent;
-		typename TrackerT::LeafManagerType& leafs;
+		typename TrackerT::LeafManagerType& mLeafs;
+		TrackerT& mTracker;
+		DiscreteField<openvdb::VectorGrid> mDiscreteField;
 		const MapT* mMap;
 		ScalarType mDt;
 		double mTime;
 		double mTolerance;
 		int mIterations;
-		TrackerT& mTracker;
-		DiscreteField<openvdb::VectorGrid> mField;
+		bool mIsMaster;
 		SpringLevelSetEvolve(SpringLevelSetAdvection& parent,TrackerT& tracker,double time, double dt,int iterations,double tolerance) :
 				mMap(NULL),
+				mIsMaster(true),
 				mParent(parent),
 				mTracker(tracker),
 				mIterations(iterations),
-				mField(DiscreteField<openvdb::VectorGrid>(*(mParent.mGrid.mGradient))),
-				mTime(time), mDt(dt),mTolerance(tolerance),leafs(tracker.leafs()) {
-
+				mDiscreteField(*parent.mGrid.mGradient),
+				mTime(time), mDt(dt),mTolerance(tolerance),mLeafs(tracker.leafs()) {
+			mParent.mTotalSignChanges=0;
 		}
 		void process(bool threaded=true) {
 			mMap= (mTracker.grid().transform().template constMap<MapT>().get());
 			if (mParent.mInterrupt)
 				mParent.mInterrupt->start("Processing voxels");
+			mParent.mTotalSignChanges=0;
+			int maxSignChanges=32;
 			for(int iter=0;iter<mIterations;iter++){
-				leafs.rebuildAuxBuffers(1);
-				mParent.mMaxDelta=0;
+				mLeafs.rebuildAuxBuffers(1);
+				mParent.mTotalSignChanges=0;
 				if (threaded) {
-					tbb::parallel_for(leafs.getRange(mTracker.getGrainSize()), *this);
+					tbb::parallel_for(mLeafs.getRange(mTracker.getGrainSize()), *this);
 				} else {
-					(*this)(leafs.getRange(mTracker.getGrainSize()));
+					(*this)(mLeafs.getRange(mTracker.getGrainSize()));
 				}
-				leafs.swapLeafBuffer(1, mTracker.getGrainSize()==0);
-				leafs.removeAuxBuffers();
+				mLeafs.swapLeafBuffer(1, mTracker.getGrainSize()==0);
+				mLeafs.removeAuxBuffers();
 				mTracker.track();
-				//std::cout<<"Track "<<iter<<":: "<<mParent.mMaxDelta<<std::endl;
-				//if(mParent.mMaxDelta<mTolerance)break;
+				maxSignChanges=std::max(mParent.mTotalSignChanges,maxSignChanges);
+				float ratio=(mParent.mTotalSignChanges/(float)maxSignChanges);
+				if(ratio<=mTolerance){
+					//std::cout<<"Finished early :: iter="<<iter<<" ratio="<<ratio<<" sign changes="<<mParent.mTotalSignChanges<<std::endl;
+					break;
+				}
 			}
 
 			if (mParent.mInterrupt){
@@ -228,26 +235,25 @@ public:
 			typedef typename LeafType::ValueOnCIter VoxelIterT;
 			const MapT& map = *mMap;
 			Stencil stencil(mTracker.grid());
-			double maxChange=0.0;
 			int count=0;
+			int signChanges=0;
 			for (size_t n=range.begin(), e=range.end(); n != e; ++n) {
-				BufferType& result = leafs.getBuffer(n, 1);
-				for (VoxelIterT iter = leafs.leaf(n).cbeginValueOn(); iter;++iter) {
+				BufferType& result = mLeafs.getBuffer(n, 1);
+				for (VoxelIterT iter = mLeafs.leaf(n).cbeginValueOn(); iter;++iter) {
 					stencil.moveTo(iter);
-					const VectorType V = mField(map.applyMap(iter.getCoord().asVec3d()), mTime);
+					const VectorType V = mDiscreteField(map.applyMap(iter.getCoord().asVec3d()), mTime);
 					const VectorType G = math::GradientBiased<MapT,BiasedGradientScheme::FIRST_BIAS>::result(map, stencil, V);
 					ScalarType delta=mDt * V.dot(G);
 					ScalarType old=*iter;
-					//if(fabs(old)<1.5){
-						//maxChange+=delta;
-						//count++;
-					//}
+					if(old*(old-delta)<0){
+						signChanges++;
+					}
 					result.setValue(iter.pos(), old -  delta);
 				}
 			}
-			if(count>0)maxChange/=count;
-			//This is thread unsafe! Don't care that much though since we're only using it to check convergence.
-			mParent.mMaxDelta=std::max(fabs(maxChange),mParent.mMaxDelta);
+			mParent.mSignChangeLock.lock();
+				mParent.mTotalSignChanges+=signChanges;
+			mParent.mSignChangeLock.unlock();
 		}
 	};
 

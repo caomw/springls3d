@@ -50,11 +50,12 @@ Simulation::Simulation(const std::string& name,MotionScheme scheme):mName(name),
 bool Simulation::stash(const std::string& directory){
 	SimulationTimeStepDescription simDesc=getDescription();
 	SpringLevelSetDescription springlDesc;
-	std::stringstream constFile,isoFile,signedFile,descFile,fluidFile;
+	std::stringstream constFile,isoFile,signedFile,descFile,fluidFile,rawFile;
 	constFile<< directory<<mName<<"_sls_" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".ply";
 	isoFile<< directory<<mName<<"_iso_" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".ply";
 	fluidFile<< directory<<mName<<"_fluid_" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".ply";
 	signedFile<< directory<<mName<<"_signed_"<<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".vdb";
+	//rawFile<< directory<<mName<<"_signed_"<<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
 	descFile<< directory<<mName<<"_"<<std::setw(8)<<std::setfill('0')<< mSimulationIteration << ".sim";
 
 	springlDesc.mMetricValues["Elements"]=mSource.mConstellation.getNumSpringls();
@@ -63,9 +64,11 @@ bool Simulation::stash(const std::string& directory){
 	if(mSource.mConstellation.save(constFile.str())){
 		springlDesc.mConstellationFile=constFile.str();
 	}
+	//WriteToRawFile(mSource.mSignedLevelSet,rawFile.str());
 	try {
 		openvdb::io::File file(signedFile.str());
 		openvdb::GridPtrVec grids;
+		//GridBase::Ptr ptr=mSource.mSignedLevelSet->copyGrid(CopyPolicy::CP_COPY);
 		mSource.mSignedLevelSet->transform()=mSource.transform();
 		grids.push_back(mSource.mSignedLevelSet);
 		file.write(grids);
@@ -171,7 +174,6 @@ void Simulation::reset(){
 
 }
 bool Simulation::stop(){
-	if(!mRunning)return true;
 	mRunning=false;
 	if(mSimulationThread.joinable()){
 		mSimulationThread.join();

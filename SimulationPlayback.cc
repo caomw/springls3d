@@ -108,7 +108,7 @@ bool SimulationPlayback::step(){
 	mTimeStep=simDesc.mTimeStep;
 	mSimulationDuration=simDesc.mSimulationDuration;
 	mName=simDesc.mSimulationName;
-
+	mComputeTimeSeconds=simDesc.mComputeTimeSeconds;
 	mSimulationIteration++;
 	mIsMeshDirty=true;
 

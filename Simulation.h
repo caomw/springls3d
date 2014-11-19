@@ -25,6 +25,7 @@
 #include "SpringLevelSet.h"
 #include <thread>
 #include <mutex>
+#include <chrono>
 #include "json/JsonSerializable.h"
 namespace imagesci {
 class Simulation;
@@ -38,6 +39,7 @@ public:
 	double mSimulationTime;
 	double mTimeStep;
 	double mSimulationDuration;
+	double mComputeTimeSeconds;
 	MotionScheme mMotionScheme;
 	static bool load(const std::string& file, SimulationTimeStepDescription* out);
 	bool save(const std::string& file);
@@ -55,6 +57,7 @@ protected:
 	double mSimulationTime;
 	double mTimeStep;
 	double mSimulationDuration;
+	double mComputeTimeSeconds;
 	long mSimulationIteration;
 	bool mRunning;
 	bool mIsMeshDirty;
@@ -63,6 +66,7 @@ protected:
 	std::thread mSimulationThread;
 	std::list<SimulationListener*> mListeners;
 public:
+	typedef std::chrono::high_resolution_clock Clock;
 	SimulationTimeStepDescription getDescription();
 	inline void addListener(SimulationListener* listener){
 		mListeners.push_back(listener);
@@ -77,12 +81,14 @@ public:
 	void saveParameters(const std::string& paramFile);
 	bool setSource(const std::string& sourceFileName);
 	inline bool isRunning(){return mRunning;}
+	inline bool isDirty(){return mIsMeshDirty;}
 	inline SpringLevelSet& getSource(){return mSource;}
 	inline const std::string& getName(){return mName;}
 	inline void setName(const std::string& name){mName=name;}
 	inline double getSimulationTime(){return mSimulationTime;}
 	inline double getSimulationDuration(){return mSimulationDuration;}
 	inline long getSimulationIteration(){return mSimulationIteration;}
+	inline double getComputeTimePerFrame(){return mComputeTimeSeconds;}
 	virtual bool init()=0;
 	virtual bool step()=0;
 	virtual void cleanup()=0;

@@ -20,7 +20,7 @@
  */
 
 #include "ArmadilloTwist.h"
-
+#include <chrono>
 namespace imagesci {
 
 ArmadilloTwist::ArmadilloTwist(const std::string& fileName,double cycles,MotionScheme scheme):Simulation("Twist",scheme),mCycles(cycles),mSourceFileName(fileName) {
@@ -72,7 +72,10 @@ bool ArmadilloTwist::init(){
 	return true;
 }
 bool ArmadilloTwist::step(){
+	Clock::time_point t0 = Clock::now();
 	mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
+    Clock::time_point t1 = Clock::now();
+    mComputeTimeSeconds= 1E-6*std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
 	mIsMeshDirty=true;
 	mSimulationIteration++;
 	mSimulationTime=mTimeStep*mSimulationIteration;

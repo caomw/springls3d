@@ -68,9 +68,12 @@ void SplashSimulation::cleanup(){
 	FluidSimulation::cleanup();
 }
 bool SplashSimulation::step(){
+	Clock::time_point t0 = Clock::now();
 	bool ret=FluidSimulation::step();
 	copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25f);
 	mSource.updateIsoSurface();
+	Clock::time_point t1 = Clock::now();
+	mComputeTimeSeconds= 1E-6*std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
 
 	//mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
 	mIsMeshDirty=true;

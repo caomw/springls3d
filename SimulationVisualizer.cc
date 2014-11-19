@@ -140,6 +140,9 @@ void SimulationVisualizer::stop(){
 void SimulationVisualizer::SimulationEvent(Simulation* simulation,int mSimulationIteration,double time){
 	//std::cout<<"Stashing ..."<<std::endl;
 	simulation->stash(mOutputDirectory);
+	while(mSimulation->isDirty()){
+		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	}
 }
 bool SimulationVisualizer::run(int width,int height){
     if (glfwInit() != GL_TRUE) {
@@ -227,7 +230,6 @@ bool SimulationVisualizer::run(int width,int height){
     		mSimulation->getSource().mConstellation.updateBoundingBox();
 			render();
         } else {
-
     		if( mCamera->needsDisplay()){
     			render();
     		}
@@ -255,7 +257,7 @@ SimulationVisualizer::setWindowTitle(double fps)
 {
     std::ostringstream ss;
     if(mSimulation!=NULL){
-    	ss  << mSimulation->getName()<<":: time="<<mSimulation->getSimulationTime()<<" iteration="<<mSimulation->getSimulationIteration();
+    	ss  << mSimulation->getName()<<std::setprecision(6)<<" [SIMULATION TIME="<<mSimulation->getSimulationTime()<<"] [IITERATION="<<mSimulation->getSimulationIteration()<<"] [FRAME TIME="<<(mSimulation->getComputeTimePerFrame()*1000.0f)<<" msec]";
     	glfwSetWindowTitle(mWin,ss.str().c_str());
     }
 }

@@ -43,7 +43,7 @@ void ExecuteSimulation(Simulation* sim){
 SimulationListener::~SimulationListener(){
 
 }
-Simulation::Simulation(const std::string& name,MotionScheme scheme):mName(name),mMotionScheme(scheme),mIsInitialized(false),mIsMeshDirty(false),mRunning(false),mTimeStep(0),mSimulationDuration(0),mSimulationTime(0),mSimulationIteration(0) {
+Simulation::Simulation(const std::string& name,MotionScheme scheme):mComputeTimeSeconds(0.0),mName(name),mMotionScheme(scheme),mIsInitialized(false),mIsMeshDirty(false),mRunning(false),mTimeStep(0),mSimulationDuration(0),mSimulationTime(0),mSimulationIteration(0) {
 	// TODO Auto-generated constructor stub
 
 }
@@ -162,6 +162,7 @@ SimulationTimeStepDescription Simulation::getDescription(){
 	desc.mSimulationTime=mSimulationTime;
 	desc.mTimeStep=mTimeStep;
 	desc.mSimulationName=mName;
+	desc.mComputeTimeSeconds=mComputeTimeSeconds;
 	return desc;
 }
 void Simulation::reset(){
@@ -207,6 +208,7 @@ void SimulationTimeStepDescription::serialize(Json::Value& root_in)
 	root["Time"] = mSimulationTime;
 	root["TimeStep"] = mTimeStep;
 	root["Duration"] = mSimulationDuration;
+	root["ComputeTimeSeconds"]=mComputeTimeSeconds;
 
 }
 void SimulationTimeStepDescription::deserialize(Json::Value& root_in)
@@ -218,6 +220,7 @@ void SimulationTimeStepDescription::deserialize(Json::Value& root_in)
 	mSimulationTime=root.get("Time",0.0).asDouble();
 	mTimeStep=root.get("TimeStep",0.0).asDouble();
 	mSimulationDuration=root.get("Duration",0.0).asDouble();
+	mComputeTimeSeconds=root.get("ComputeTimeSeconds",0.0).asDouble();
 }
 
 bool SimulationTimeStepDescription::load(const std::string& file, SimulationTimeStepDescription* out){

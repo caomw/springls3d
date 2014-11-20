@@ -63,7 +63,6 @@ class FluidSimulation :public Simulation{
 		std::unique_ptr<ParticleLocator> mParticleLocator;
 		std::vector<CollisionObject> mCollisionObjects;
 		std::vector<ParticlePtr> mParticles;
-		void getParticles(ParticleVolume& pv);
 		void copyGridToBuffer();
 		void subtractGrid();
 		void placeObjects();

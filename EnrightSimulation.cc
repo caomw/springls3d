@@ -50,6 +50,7 @@ bool EnrightSimulation::step(){
 	Clock::time_point t0 = Clock::now();
 	mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
     Clock::time_point t1 = Clock::now();
+
     mComputeTimeSeconds= 1E-6*std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
 	mIsMeshDirty=true;
 	mSimulationIteration++;

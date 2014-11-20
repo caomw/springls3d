@@ -280,7 +280,7 @@ struct FluidParticle {
 	char mObjectType;
 	//char mVisible;
 	bool mRemoveIndicator;
-	//openvdb::Vec3f mTmp[2];
+	openvdb::Vec3f mTmp[2];
 	float mMass;
 	float mDensity;
 };

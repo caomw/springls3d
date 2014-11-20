@@ -290,7 +290,7 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 		//p->mThinParticle = 0;
 		p->mDensity = 10.0;
 		p->mObjectType = inside_obj->type;
-		p->mVisible = inside_obj->mVisible;
+		//p->mVisible = inside_obj->mVisible;
 		p->mMass = 1.0;
 		mParticles.push_back(ParticlePtr(p));
 	}
@@ -749,39 +749,21 @@ void FluidSimulation::extrapolateVelocity() {
 		}END_FOR;
 }
 void FluidSimulation::solvePicFlip() {
-// Map Particles Onto Grid
 	mParticleLocator->update(mParticles);
 	MapParticlesToGrid(mParticleLocator.get(), mParticles, mVelocity);
 	mParticleLocator->markAsWater(mLabel, mWallWeight, mFluidParticleDiameter);
-// Solve Fluid Velocity On Grid
 	copyGridToBuffer();
 	enforceBoundaryCondition();
 	project();
 	enforceBoundaryCondition();
 	extrapolateVelocity();
-	subtractGrid();
-// Copy Current Velocity
 	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles)
 	{
 		ParticlePtr& p = mParticles[n];
-		p->mTmp[0] = p->mVelocity;
-	}
-// Map Changes Back To Particles
-	MapGridToParticles(mParticles, mVelocityLast);
-// Set Tmp As FLIP Velocity
-	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles)
-	{
-		ParticlePtr& p = mParticles[n];
-		p->mTmp[0] = p->mVelocity + p->mTmp[0];
-	}
-// Set u[] As PIC Velocity
-	MapGridToParticles(mParticles, mVelocity);
-// Interpolate
-	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles)
-	{
-		ParticlePtr& p = mParticles[n];
-		p->mVelocity = (1.0 - mPicFlipBlendWeight) * p->mVelocity
-				+ mPicFlipBlendWeight * p->mTmp[0];
+		openvdb::Vec3s currentVelocity=mVelocity.interpolate(p->mLocation);
+		openvdb::Vec3s delta=currentVelocity-mVelocityLast.interpolate(p->mLocation);
+		openvdb::Vec3s velocity=p->mVelocity+delta;
+		p->mVelocity = (1.0 - mPicFlipBlendWeight) *currentVelocity  + mPicFlipBlendWeight * velocity;
 	}
 }
 
@@ -837,6 +819,7 @@ void FluidSimulation::computeWallNormals() {
 				mGridSize[2] - 1);
 		mWallNormal(i, j, k) = Vec3f(0.0f);
 		p->mNormal = Vec3f(0.0);
+
 		if (p->mObjectType == WALL) {
 			if (p->mLocation[0] <= 1.1 * mWallThickness) {
 				p->mNormal[0] = 1.0;

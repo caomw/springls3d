@@ -101,6 +101,17 @@ public:
 	inline const float voxelSize() const {
 		return mVoxelSize;
 	}
+	inline float interpolate(float x, float y, float z) {
+		x = clamp(x,0.0f,(float)mRows);
+		y = clamp(y,0.0f,(float)mCols);
+		z = clamp(z,0.0f,(float)mSlices);
+		int i = std::min((int)x,(int)mRows-1);
+		int j = std::min((int)y,(int)mCols-1);
+		int k = std::min((int)z,(int)mSlices-1);
+		RegularGrid<ValueT>& q=*this;
+		return	(k+1-z)*(((i+1-x)*q(i,j,k)+(x-i)*q(i+1,j,k))*(j+1-y) + ((i+1-x)*q(i,j+1,k)+(x-i)*q(i+1,j+1,k))*(y-j)) +
+				(z-k)*(((i+1-x)*q(i,j,k+1)+(x-i)*q(i+1,j,k+1))*(j+1-y) + ((i+1-x)*q(i,j+1,k+1)+(x-i)*q(i+1,j+1,k+1))*(y-j));
+	}
 	void copyTo(RegularGrid<ValueT>& out) {
 		ValueT* src = this->data();
 		ValueT* dest = out.data();
@@ -227,6 +238,14 @@ public:
 	inline const float voxelSize() const {
 		return mVoxelSize;
 	}
+	inline openvdb::Vec3s interpolate(const openvdb::Vec3s& p) {
+		openvdb::Vec3s u;
+		u[0] = mX.interpolate(mRows*p[0], mCols*p[1]-0.5, mSlices*p[2]-0.5);
+		u[1] = mY.interpolate(mRows*p[0]-0.5, mCols*p[1], mSlices*p[2]-0.5);
+		u[2] = mZ.interpolate(mRows*p[0]-0.5, mCols*p[1]-0.5, mSlices*p[2]);
+		return u;
+	}
+
 };
 inline bool WriteToRawFile(MACGrid<float>& mac, const std::string& fileName) {
 	bool r1 = WriteToRawFile(mac[0], fileName + "_x");
@@ -259,9 +278,9 @@ struct FluidParticle {
 	openvdb::Vec3f mVelocity;
 	openvdb::Vec3f mNormal;
 	char mObjectType;
-	char mVisible;
+	//char mVisible;
 	bool mRemoveIndicator;
-	openvdb::Vec3f mTmp[2];
+	//openvdb::Vec3f mTmp[2];
 	float mMass;
 	float mDensity;
 };

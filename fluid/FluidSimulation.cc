@@ -82,11 +82,9 @@ void FluidSimulation::computeParticleDensity(float maxDensity) {
 		}
 		p->mDensity = wsum / maxDensity;
 	}
-
 }
 void FluidSimulation::placeWalls() {
 	CollisionObject obj;
-
 	// Left Wall
 	obj.type = WALL;
 	obj.shape = BOX;
@@ -156,9 +154,9 @@ void FluidSimulation::damBreakTest() {
 	obj.mBounds[0] = Vec3f(mWallThickness, mWallThickness, mWallThickness);
 	obj.mBounds[1] = Vec3f(1.0 - mWallThickness, 0.06, 1.0 - mWallThickness);
 	mCollisionObjects.push_back(obj);
+
 }
 void FluidSimulation::placeObjects() {
-	// Place Object Wall
 	placeWalls();
 	damBreakTest();
 }
@@ -196,7 +194,6 @@ void FluidSimulation::repositionParticles(vector<int>& indices) {
 		if (waters.empty())
 			return;
 	}
-
 	// Shuffle
 	ShuffleCoordinates(waters);
 	for (int n = 0; n < indices.size(); n++) {
@@ -208,9 +205,7 @@ void FluidSimulation::repositionParticles(vector<int>& indices) {
 		p->mLocation[2] = mVoxelSize
 				* (waters[n][2] + 0.25 + 0.5 * (rand() % 101) / 100);
 	}
-
 	mParticleLocator->update(mParticles);
-
 	for (int n = 0; n < indices.size(); n++) {
 		ParticlePtr &p = mParticles[indices[n]];
 		Vec3f u(0.0);
@@ -268,7 +263,6 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 				}
 			}
 		}
-
 		if (found) {
 			if (obj.type == type) {
 				inside_obj = &obj; // Found
@@ -380,10 +374,16 @@ bool FluidSimulation::init() {
 			iter++;
 		}
 	}
-
 // Comput Normal for Walls
 	computeWallNormals();
 	createLevelSet();
+	updateParticleVolume();
+	mField=std::unique_ptr<FieldT>(new FluidVelocityField<float>(mVelocity));
+	mSource.create(mLevelSet);
+	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField,mMotionScheme));
+	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
+	mAdvect->setResampleEnabled(true);
+	//imagesci::WriteToRawFile(mSource.mSignedLevelSet,"/home/blake/tmp/levelset");
 	return true;
 }
 void FluidSimulation::pourWater(int limit, float maxDensity) {
@@ -405,7 +405,6 @@ void FluidSimulation::pourWater(int limit, float maxDensity) {
 						-0.5 * mVoxelSize * mFluidParticleDiameter / mTimeStep,
 						0.0);
 				p->mNormal = Vec3f(0.0);
-				//p->mThinParticle = false;
 				p->mObjectType = FLUID;
 				p->mDensity = maxDensity;
 				p->mMass = 1.0;
@@ -422,6 +421,9 @@ void FluidSimulation::addExternalForce() {
 		if (mParticles[n]->mObjectType == FLUID)
 			mParticles[n]->mVelocity[1] += velocity;
 	}
+	//for(ParticlePtr& p:mParticles){
+	//	if (p->mObjectType == FLUID)std::cout<<"PARTICLE "<<p->mLocation<<" : "<<p->mMass<<" "<<p->mVelocity<<" "<<p->mDensity<<std::endl;
+	//}
 }
 
 void FluidSimulation::advectParticles() {
@@ -430,12 +432,9 @@ void FluidSimulation::advectParticles() {
 	{
 		ParticlePtr& p = mParticles[n];
 		if (p->mObjectType == FLUID) {
-			Vec3f vel;
-			fetchVelocity(p->mLocation, vel, mVelocity);
-			p->mLocation += mTimeStep * vel;
+			p->mLocation += mTimeStep * mVelocity.interpolate(p->mLocation);
 		}
 	}
-// Sort
 	mParticleLocator->update(mParticles);
 // Constraint Outer Wall
 	for (ParticlePtr& p : mParticles) {
@@ -537,13 +536,10 @@ bool FluidSimulation::step() {
 	advectParticles();
 	correctParticles(mParticleLocator.get(), mParticles, mTimeStep,
 			mFluidParticleDiameter * mVoxelSize);
-// If Exceeds Max Step Exit
+	updateParticleVolume();
+	mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
 	mSimulationIteration++;
 	mSimulationTime = mSimulationIteration * mTimeStep;
-	createLevelSet();
-//std::stringstream ostr;
-//ostr<<"/home/blake/tmp/levelset"<<std::setw(8)<<std::setfill('0')<<mSimulationIteration;
-//WriteToRawFile(mLevelSet,ostr.str());
 	if (mSimulationTime <= mSimulationDuration && mRunning) {
 		return true;
 	} else {
@@ -616,8 +612,11 @@ void FluidSimulation::project() {
 			mLaplacian(i, j, k) = mParticleLocator->getLevelSetValue(i, j, k,
 					mWallWeight, mFluidParticleDiameter);
 		}END_FOR;
-	laplace_solve(mLabel, mLaplacian, mPressure, mDivergence);
+	//WriteToRawFile(mPressure,"/home/blake/tmp/pressure");
+	//WriteToRawFile(mDivergence,"/home/blake/tmp/divergence");
+	//WriteToRawFile(mVelocity,"/home/blake/tmp/velocity");
 
+	laplace_solve(mLabel, mLaplacian, mPressure, mDivergence);
 // Subtract Pressure Gradient
 	OPENMP_FOR FOR_EVERY_GRID_CELL(mVelocity[0])
 		{
@@ -751,6 +750,7 @@ void FluidSimulation::extrapolateVelocity() {
 void FluidSimulation::solvePicFlip() {
 	mParticleLocator->update(mParticles);
 	MapParticlesToGrid(mParticleLocator.get(), mParticles, mVelocity);
+	//WriteToRawFile(mVelocity,"/home/blake/tmp/velocity");
 	mParticleLocator->markAsWater(mLabel, mWallWeight, mFluidParticleDiameter);
 	copyGridToBuffer();
 	enforceBoundaryCondition();
@@ -761,19 +761,35 @@ void FluidSimulation::solvePicFlip() {
 	{
 		ParticlePtr& p = mParticles[n];
 		openvdb::Vec3s currentVelocity=mVelocity.interpolate(p->mLocation);
-		openvdb::Vec3s delta=currentVelocity-mVelocityLast.interpolate(p->mLocation);
-		openvdb::Vec3s velocity=p->mVelocity+delta;
+		openvdb::Vec3s velocity=p->mVelocity+currentVelocity-mVelocityLast.interpolate(p->mLocation);
 		p->mVelocity = (1.0 - mPicFlipBlendWeight) *currentVelocity  + mPicFlipBlendWeight * velocity;
 	}
 }
+void FluidSimulation::updateParticleVolume(){
+	//WriteToRawFile(mLevelSet,"/home/blake/tmp/levelset");
+	float voxelSize = mLevelSet.voxelSize();
+		mSource.mParticleVolume.mParticles.clear();
+		float scale = mVoxelSize / voxelSize;
+		FOR_EVERY_PARTICLE(mParticles)
+		{
+			FluidParticle* p = mParticles[n].get();
+			if (p->mObjectType == ObjectType::FLUID) {
+				Vec3s l = p->mLocation / voxelSize;
+				Vec4s v(l[0], l[1], l[2], scale * 0.5f * mFluidParticleDiameter);
+				mSource.mParticleVolume.mParticles.push_back(v);
+			}
 
+		}
+		Coord dims(mLevelSet.rows(), mLevelSet.cols(), mLevelSet.slices());
+		mSource.mParticleVolume.setBoundingBox(
+				BBoxd(Vec3d(0, 0, 0), Vec3d(dims[0], dims[1], dims[2])));
+}
 void FluidSimulation::createLevelSet() {
 // Create Density Field
 	Coord dims(mLevelSet.rows(), mLevelSet.cols(), mLevelSet.slices());
 	float voxelSize = mLevelSet.voxelSize();
 	OPENMP_FOR FOR_EVERY_GRID_CELL(mLevelSet)
 		{
-
 			double x = i * voxelSize;
 			double y = j * voxelSize;
 			double z = k * voxelSize;
@@ -790,21 +806,8 @@ void FluidSimulation::createLevelSet() {
 						openvdb::LEVEL_SET_HALF_WIDTH);
 			}
 		}END_FOR
-//WriteToRawFile(mLevelSet,"/home/blake/tmp/levelset");
-	mSource.mParticleVolume.mParticles.clear();
-	float scale = mVoxelSize / voxelSize;
-	FOR_EVERY_PARTICLE(mParticles)
-	{
-		FluidParticle* p = mParticles[n].get();
-		if (p->mObjectType == ObjectType::FLUID) {
-			Vec3s l = p->mLocation / voxelSize;
-			Vec4s v(l[0], l[1], l[2], scale * 0.5f * mFluidParticleDiameter);
-			mSource.mParticleVolume.mParticles.push_back(v);
-		}
+	mLevelSet.setTrasnfrom(Transform::createLinearTransform(mVoxelSize));
 
-	}
-	mSource.mParticleVolume.setBoundingBox(
-			BBoxd(Vec3d(0, 0, 0), Vec3d(dims[0], dims[1], dims[2])));
 }
 void FluidSimulation::computeWallNormals() {
 // Sort Particles

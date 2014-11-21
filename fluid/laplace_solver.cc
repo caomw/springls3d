@@ -35,7 +35,6 @@ using namespace std;
 namespace imagesci {
 namespace fluid {
 #define FOR_EVERY_COMP(N) for( int gn=0; gn<(N)*(N)*(N); gn++ ) { int i=(gn%((N)*(N)))%(N); int j=(gn%((N)*(N)))/(N); int k = gn/((N)*(N)); 
-
 // Clamped Fetch
 static float x_ref(RegularGrid<char>& A, RegularGrid<float>& L,
 		RegularGrid<float>& x, int fi, int fj, int fk, int i, int j, int k) {

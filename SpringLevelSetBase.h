@@ -218,7 +218,7 @@ public:
 	void create(Mesh* mesh, openvdb::math::Transform::Ptr transform =
 			openvdb::math::Transform::createLinearTransform());
 	void create(FloatGrid& grid);
-
+	void create(RegularGrid<float>& grid);
 	SpringLevelSet() :
 			mCleanCount(0),mFillCount(0),mVolToMesh(0.0), mTransform(
 					openvdb::math::Transform::createLinearTransform(1.0)) {

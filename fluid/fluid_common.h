@@ -32,116 +32,6 @@
 #include <memory>
 namespace imagesci {
 namespace fluid {
-template<typename ValueT> class RegularGrid: public openvdb::tools::Dense<
-		ValueT, openvdb::tools::MemoryLayout::LayoutZYX> {
-private:
-	ValueT* mPtr;
-	const size_t mStrideX;
-	const size_t mStrideY;
-	const size_t mRows;
-	const size_t mCols;
-	const size_t mSlices;
-	const float mVoxelSize;
-	const openvdb::BBoxd mBoundingBox;
-public:
-	RegularGrid(const openvdb::Coord& dims, const openvdb::BBoxd& boundingBox,
-			ValueT value=0.0) :
-			openvdb::tools::Dense<ValueT,
-					openvdb::tools::MemoryLayout::LayoutZYX>(dims, openvdb::Coord(0)),mBoundingBox(boundingBox) {
-		this->fill(value);
-		mPtr = this->data();
-		mStrideX = this->xStride();
-		mStrideY = this->yStride();
-		mRows = dims[0];
-		mCols = dims[1];
-		mSlices = dims[2];
-		//Assume isotropic voxels!
-		mVoxelSize=(boundingBox.max()-boundingBox.min())[0]/dims[0];
-	}
-	RegularGrid(int rows, int cols, int slices,float voxelSize,ValueT value=0.0) :
-			openvdb::tools::Dense<ValueT,
-					openvdb::tools::MemoryLayout::LayoutZYX>(
-					openvdb::Coord(rows, cols, slices), openvdb::Coord(0)),
-					mStrideX(this->xStride()),
-					mStrideY(this->yStride()),
-					mRows(rows),
-					mCols(cols),
-					mSlices(slices),
-					mVoxelSize(voxelSize),
-					mBoundingBox(openvdb::Vec3d(0,0,0),openvdb::Vec3d(voxelSize*rows,voxelSize*cols,voxelSize*slices)) {
-		mPtr = this->data();
-		this->fill(value);
-	}
-	RegularGrid(const openvdb::Coord& dims,float voxelSize,ValueT value=0.0):RegularGrid(dims[0],dims[1],dims[2],voxelSize,value){
-
-	}
-
-
-	ValueT& operator()(size_t i, size_t j, size_t k) {
-		return mPtr[i * mStrideX + j * mStrideY + k];
-	}
-	const ValueT& operator()(size_t i, size_t j, size_t k) const {
-		return mPtr[i * mStrideX + j * mStrideY + k];
-	}
-	const openvdb::BBoxd& getBoundingBox() const {
-		return mBoundingBox;
-	}
-	inline const size_t size() const {
-		return mRows * mCols * mSlices;
-	}
-	inline const size_t rows() const {
-		return mRows;
-	}
-	inline const size_t cols() const {
-		return mCols;
-	}
-	inline const size_t slices() const {
-		return mSlices;
-	}
-	inline const float voxelSize() const {
-		return mVoxelSize;
-	}
-	inline float interpolate(float x, float y, float z) {
-		x = clamp(x,0.0f,(float)mRows);
-		y = clamp(y,0.0f,(float)mCols);
-		z = clamp(z,0.0f,(float)mSlices);
-		int i = std::min((int)x,(int)mRows-1);
-		int j = std::min((int)y,(int)mCols-1);
-		int k = std::min((int)z,(int)mSlices-1);
-		RegularGrid<ValueT>& q=*this;
-		return	(k+1-z)*(((i+1-x)*q(i,j,k)+(x-i)*q(i+1,j,k))*(j+1-y) + ((i+1-x)*q(i,j+1,k)+(x-i)*q(i+1,j+1,k))*(y-j)) +
-				(z-k)*(((i+1-x)*q(i,j,k+1)+(x-i)*q(i+1,j,k+1))*(j+1-y) + ((i+1-x)*q(i,j+1,k+1)+(x-i)*q(i+1,j+1,k+1))*(y-j));
-	}
-	void copyTo(RegularGrid<ValueT>& out) {
-		ValueT* src = this->data();
-		ValueT* dest = out.data();
-		memcpy(dest, src, sizeof(ValueT) * size());
-	}
-	void add(RegularGrid<ValueT>& out) {
-		ValueT* src = this->data();
-		ValueT* dest = out.data();
-		size_t N = size();
-		OPENMP_FOR for (size_t n = 0; n < N; n++) {
-			src[n] += dest[n];
-		}
-	}
-	void subtract(RegularGrid<ValueT>& out) {
-		ValueT* src = this->data();
-		ValueT* dest = out.data();
-		size_t N = size();
-		OPENMP_FOR for (size_t n = 0; n < N; n++) {
-			src[n] -= dest[n];
-		}
-	}
-	void subtractFrom(RegularGrid<ValueT>& out) {
-		ValueT* src = this->data();
-		ValueT* dest = out.data();
-		size_t N = size();
-		OPENMP_FOR for (size_t n = 0; n < N; n++) {
-			src[n] = dest[n] - src[n];
-		}
-	}
-};
 inline bool WriteToRawFile(RegularGrid<float>& dense,
 		const std::string& fileName) {
 	std::ostringstream vstr;
@@ -212,17 +102,27 @@ protected:
 	const size_t mCols;
 	const size_t mSlices;
 	const float mVoxelSize;
+	openvdb::math::Transform::Ptr mTransform;
 public:
 
 	MACGrid(const openvdb::Coord& dim, float voxelSize,ValueT value=0.0) :
 			mX(dim[0] + 1, dim[1], dim[2], voxelSize,value),
 			mY(dim[0], dim[1] + 1, dim[2], voxelSize ,value),
 			mZ(dim[0], dim[1], dim[2] + 1, voxelSize ,value),mRows(dim[0]),mCols(dim[1]),mSlices(dim[2]),mVoxelSize(voxelSize) {
+		mTransform=openvdb::math::Transform::createLinearTransform(mVoxelSize);
 	}
 	RegularGrid<ValueT>& operator[](size_t i) {
 		return (&mX)[i];
 	}
-
+	inline openvdb::math::Transform& transform() {
+		return *mTransform;
+	}
+	inline openvdb::math::Transform::Ptr transformPtr() {
+		return mTransform;
+	}
+	inline void setTrasnfrom(openvdb::math::Transform::Ptr transform){
+		mTransform=transform;
+	}
 	inline const size_t size() const {
 		return mRows * mCols * mSlices;
 	}

@@ -28,10 +28,13 @@
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/Dense.h>
 #include <openvdb/tools/DenseSparseTools.h>
+
 #include "fluid_common.h"
 #include "fluid_sorter.h"
 #include "../ParticleVolume.h"
 #include "../Simulation.h"
+#include "../SpringLevelSetAdvection.h"
+#include "FluidVelocityField.h"
 #undef OPENVDB_REQUIRE_VERSION_NAME
 
 
@@ -41,7 +44,11 @@ namespace fluid{
  *
  */
 class FluidSimulation :public Simulation{
+	typedef FluidVelocityField<float> FieldT;
+	typedef SpringLevelSetAdvection<FieldT> AdvectT;
 	protected:
+		std::unique_ptr<FieldT> mField;
+		std::unique_ptr<AdvectT> mAdvect;
 		//Constant, even though gravity really isn't constant on earth.
 		const static float GRAVITY ;
 		float mMaxDensity;
@@ -79,6 +86,7 @@ class FluidSimulation :public Simulation{
 		void addParticle( openvdb::Vec3s pt, openvdb::Vec3s center,char type );
 		void project();
 		void createLevelSet();
+		void updateParticleVolume();
 		void enforceBoundaryCondition();
 		inline float isWallIndicator( char a ) {
 			return ((a == WALL) ? 1.0f : -1.0f);

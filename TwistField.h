@@ -44,7 +44,7 @@ public:
     /// @return const reference to the identity transfrom between world and index space
     /// @note Use this method to determine if a client grid is
     /// aligned with the coordinate space of this velocity field
-    openvdb::math::Transform transform() const { return openvdb::math::Transform(); }
+    const openvdb::math::Transform& transform() const { return openvdb::math::Transform(); }
 
     /// @return the velocity in world units, evaluated at the world
     /// position xyz and at the specified time

@@ -24,6 +24,7 @@
  *  Visualization and Computer Graphics, IEEE Transactions on, 18(8), 1202-1214.
  */
 #include "fluid_common.h"
+#include "../ImageSciUtil.h"
 #include <vector>
 #ifndef _SORTER_H
 #define _SORTER_H

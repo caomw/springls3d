@@ -23,7 +23,7 @@
 #define FLUIDVELOCITYFIELD_H_
 
 #include <openvdb/openvdb.h>
-
+#include "fluid_common.h"
 #undef OPENVDB_REQUIRE_VERSION_NAME
 namespace imagesci {
 
@@ -35,35 +35,28 @@ protected:
 public:
     typedef ScalarT             ScalarType;
     typedef openvdb::math::Vec3<ScalarT> VectorType;
-   FluidVelocityField(void):mTwistPosition(0.0,0.0,0.0){
-
-    }
-
-    FluidVelocityField(const openvdb::Vec3d& twistPosition):mTwistPosition(twistPosition){
+    fluid::MACGrid<ScalarT>& mGrid;
+    double mGridRatio;
+    FluidVelocityField(fluid::MACGrid<ScalarT>& grid,float gridRatio=0.5):mGridRatio(gridRatio),mGrid(grid){
     }
 
     /// @return const reference to the identity transfrom between world and index space
     /// @note Use this method to determine if a client grid is
     /// aligned with the coordinate space of this velocity field
-    openvdb::math::Transform transform() const { return openvdb::math::Transform(); }
+    const openvdb::math::Transform& transform() const { return mGrid.transform(); }
 
     /// @return the velocity in world units, evaluated at the world
     /// position xyz and at the specified time
     inline VectorType operator()(const openvdb::Vec3d& pt, ScalarType time) const{
-       openvdb::Vec3d vel(0.0);
-       if(pt[1]>mTwistPosition[1]){
-    	  vel[0]=-(pt[2]-mTwistPosition[2]);
-    	  vel[1]=0.0;
-    	  vel[2]=pt[0]-mTwistPosition[0];
-       }
+    	openvdb::Vec3d vel=mGrid.interpolate(mGridRatio*pt);
        return vel;
     }
     /// @return the velocity at the coordinate space position ijk
     inline VectorType operator() (const openvdb::Coord& ijk, ScalarType time) const
     {
-        return (*this)(ijk.asVec3d(), time);
+        return (*this)(transform().indexToWorld(ijk), time);
     }
-}; // end of FluidVelocityField
+}; // end of TwistField
 
 } /* namespace imagesci */
 #endif /* FLUIDVELOCITYFIELD_H_ */

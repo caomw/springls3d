@@ -55,7 +55,6 @@ public:
 	// disallow copy by assignment
 	void operator=(const SpringLevelSetAdvection& other) {
 	}
-	/// Main constructor
 	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,
 			imagesci::MotionScheme scheme =
 					imagesci::MotionScheme::SEMI_IMPLICIT,
@@ -85,14 +84,18 @@ public:
 	void setTemporalScheme(imagesci::TemporalIntegrationScheme scheme) {
 		mTemporalScheme = scheme;
 	}
-
 	/// @brief Set enable resampling
 	void setResampleEnabled(bool resample) {
 		mResample = resample;
 	}
 	void advect(double startTime, double endTime) {
 		if (mMotionScheme == IMPLICIT) {
-			double dt = endTime - startTime;
+			MaxLevelSetVelocityOperator<FieldT, InterruptT> op(
+					*mGrid.mSignedLevelSet, mField,startTime,
+					mInterrupt);
+			double maxV = std::sqrt(op.process());
+			const float MAX_TIME_STEP=0.5;
+			double dt = clamp(MAX_TIME_STEP  / std::max(1E-30, maxV), 0.0,endTime - startTime);
 			for (double time = startTime; time < endTime; time += dt) {
 				mGrid.mSignedLevelSet->setTransform(mGrid.transformPtr());
 				double et = std::min(time + dt, endTime);

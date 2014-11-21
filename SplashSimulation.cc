@@ -28,38 +28,9 @@ SplashSimulation::SplashSimulation(const std::string& fileName,int gridSize,Moti
 }
 
 bool SplashSimulation::init(){
-/*
-	Mesh mesh;
-	if(!mesh.openMesh(mSourceFileName))return false;
-	mesh.mapIntoBoundingBox(4*mesh.estimateVoxelSize());
-	mesh.updateBoundingBox();
-    openvdb::math::Transform::Ptr trans=openvdb::math::Transform::createLinearTransform();
-    mSource.create(&mesh);
-    BBoxd bbox=mSource.mIsoSurface.updateBoundingBox();
-    trans=mSource.mSignedLevelSet->transformPtr();
-    Vec3d extents=bbox.extents();
-	double max_extent = std::max(extents[0], std::max(extents[1], extents[2]));
-	double scale=1.0/max_extent;
-    const openvdb::Vec3f center(0.0f,0.0f,0.0f);
-	Vec3s t=-0.5f*(bbox.min()+bbox.max());
-	trans=mSource.transformPtr();
-	trans->postTranslate(t);
-	trans->postScale(scale);
-	trans->postTranslate(center);
 
-	mField=std::unique_ptr<FieldT>(new FluidVelocityField<float>());
-	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField,mMotionScheme));
-	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK4b);
-	mAdvect->setResampleEnabled(true);
-*/
 	bool ret=FluidSimulation::init();
-	FloatGrid grid;
-	grid.setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
-	grid.setTransform(openvdb::math::Transform::createLinearTransform(1.0/mGridSize));
-	//createLevelSet();
-	copyFromDense(mLevelSet,grid,0.25f);
-	mSource.create(grid);
-	mSource.mConstellation.reset();
+	if(mMotionScheme==IMPLICIT)mSource.mConstellation.reset();
 	mIsMeshDirty=true;
 	return ret;
 }
@@ -70,12 +41,8 @@ void SplashSimulation::cleanup(){
 bool SplashSimulation::step(){
 	Clock::time_point t0 = Clock::now();
 	bool ret=FluidSimulation::step();
-	copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25f);
-	mSource.updateIsoSurface();
 	Clock::time_point t1 = Clock::now();
 	mComputeTimeSeconds= 1E-6*std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
-
-	//mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
 	mIsMeshDirty=true;
 	return ret;
 }

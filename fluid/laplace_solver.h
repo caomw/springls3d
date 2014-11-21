@@ -24,6 +24,7 @@
  *  Visualization and Computer Graphics, IEEE Transactions on, 18(8), 1202-1214.
  */
 #include "fluid_common.h"
+#include "../ImageSciUtil.h"
 namespace imagesci {
 namespace fluid {
 	void laplace_solve(RegularGrid<char>& A, RegularGrid<float>& L, RegularGrid<float>& x, RegularGrid<float>& b );

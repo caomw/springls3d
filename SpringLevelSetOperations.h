@@ -360,8 +360,7 @@ public:
 		OperatorT OpT;
 		for (typename SpringlRange::Iterator springl = range.begin(); springl;
 				++springl) {
-			mMaxAbsV = std::max(mMaxAbsV,
-					OpT.findTimeStep(*springl, mGrid, mField, mTime));
+			mMaxAbsV = std::max(mMaxAbsV,OpT.findTimeStep(*springl, mGrid, mField, mTime));
 		}
 	}
 
@@ -369,6 +368,57 @@ protected:
 	double mTime;
 	InterruptT* mInterrupt;
 	const FieldT& mField;
+};
+template<typename FieldT,
+		typename InterruptT = openvdb::util::NullInterrupter>
+class MaxLevelSetVelocityOperator {
+public:
+	double mMaxAbsV;
+	FloatGrid& mGrid;
+	typedef typename tree::LeafManager<FloatGrid::TreeType> LeafManagerType;
+	LeafManagerType mLeafs;
+	InterruptT* mInterrupt;
+	double mTime;
+	const FieldT& mField;
+	MaxLevelSetVelocityOperator(FloatGrid& grid, const FieldT& field, double t,
+			InterruptT* _interrupt) :
+			mGrid(grid), mField(field), mTime(t), mInterrupt(
+					_interrupt), mMaxAbsV(std::numeric_limits<double>::min()),mLeafs(LeafManagerType(grid.tree())) {
+	}
+	MaxLevelSetVelocityOperator(MaxLevelSetVelocityOperator& other, tbb::split) :
+			mGrid(other.mGrid), mMaxAbsV(other.mMaxAbsV),
+			mField(other.mField), mTime(other.mTime), mInterrupt(other.mInterrupt),
+			mLeafs(LeafManagerType(other.mGrid.tree())){
+	}
+	virtual ~MaxLevelSetVelocityOperator() {
+	}
+	double process(bool threaded = true) {
+		if (mInterrupt)
+			mInterrupt->start("Processing springls");
+		if (threaded) {
+			tbb::parallel_reduce(mLeafs.getRange(1), *this);
+		} else {
+			(*this)(mLeafs.getRange(1));
+		}
+		if (mInterrupt)
+			mInterrupt->end();
+		return mMaxAbsV;
+	}
+	void join(const MaxLevelSetVelocityOperator& other) {
+		mMaxAbsV = std::max(mMaxAbsV, other.mMaxAbsV);
+
+	}
+	void operator()(const typename LeafManagerType::RangeType& range) {
+		if (openvdb::util::wasInterrupted(mInterrupt))
+			tbb::task::self().cancel_group_execution();
+		typedef typename LeafManagerType::LeafType::ValueOnCIter VoxelIterT;
+		for (size_t n=range.begin(); n != range.end(); ++n) {
+			for (VoxelIterT iter = mLeafs.leaf(n).cbeginValueOn(); iter;++iter) {
+				const Vec3s V = mField(iter.getCoord(), mTime);
+				mMaxAbsV=std::max(mMaxAbsV,(double)V.lengthSqr());
+			}
+		}
+	}
 };
 template<typename OperatorT, typename FieldT,
 		typename InterruptT = openvdb::util::NullInterrupter>

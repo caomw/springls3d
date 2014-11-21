@@ -32,6 +32,7 @@
 #include <openvdb/tools/MeshToVolume.h>
 #include <openvdb/tools/VolumeToMesh.h>
 #include <openvdb/tools/LevelSetAdvect.h>
+#include <openvdb/tools/DenseSparseTools.h>
 #include <openvdb/openvdb.h>
 namespace imagesci {
 using namespace openvdb;
@@ -311,7 +312,6 @@ void NearestNeighborOperation::compute(Springl& springl, SpringLevelSet& mGrid,
 			Coord(std::floor(refPoint[0] + 0.5f),
 					std::floor(refPoint[1] + 0.5f),
 					std::floor(refPoint[2] + 0.5f)));
-
 	int sz = stencil.size();
 	if (sz == 0)
 		return;
@@ -526,7 +526,28 @@ void SpringLevelSet::create(FloatGrid& grid) {
 	}
 	updateGradient();
 }
-
+void SpringLevelSet::create(RegularGrid<float>& grid) {
+	this->mTransform = grid.transformPtr();
+	mSignedLevelSet = std::unique_ptr<FloatGrid>(new FloatGrid());
+	mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
+	mSignedLevelSet->setTransform(grid.transformPtr());
+	openvdb::tools::copyFromDense(grid,*mSignedLevelSet,0.25f);
+	mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
+	mIsoSurface.create(mSignedLevelSet);
+	updateSignedLevelSet();
+	mConstellation.create(&mIsoSurface);
+	updateIsoSurface();
+	for (int iter = 0; iter < 2; iter++) {
+		updateUnSignedLevelSet();
+		updateNearestNeighbors();
+		relax(10);
+		updateUnSignedLevelSet(2.5 * openvdb::LEVEL_SET_HALF_WIDTH);
+		clean();
+		updateUnSignedLevelSet();
+		fill();
+	}
+	updateGradient();
+}
 void SpringLevelSet::updateIsoSurface() {
 
 	mVolToMesh(*mSignedLevelSet);

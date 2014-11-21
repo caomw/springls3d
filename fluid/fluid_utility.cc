@@ -116,7 +116,6 @@ void MapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& partic
 			}
 			grid[1](i,j,k) = sumw ? sumy/sumw : 0.0;
 		}
-
 		// Map Z Grids
 		if( i < dims[0] && j < dims[1] ) {
 			openvdb::Vec3f pz(i+0.5, j+0.5, k);

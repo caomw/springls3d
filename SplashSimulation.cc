@@ -30,7 +30,6 @@ SplashSimulation::SplashSimulation(const std::string& fileName,int gridSize,Moti
 bool SplashSimulation::init(){
 
 	bool ret=FluidSimulation::init();
-	if(mMotionScheme==IMPLICIT)mSource.mConstellation.reset();
 	mIsMeshDirty=true;
 	return ret;
 }

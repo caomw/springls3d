@@ -387,6 +387,8 @@ bool FluidSimulation::init() {
 	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField,mMotionScheme));
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
 	mAdvect->setResampleEnabled(true);
+	//Not needed, so erase
+	if(mMotionScheme==IMPLICIT)mSource.mConstellation.reset();
 	//imagesci::WriteToRawFile(mLevelSet,"/home/blake/tmp/dense_levelset");
 	//imagesci::WriteToRawFile(mSource.mSignedLevelSet,"/home/blake/tmp/init_levelset");
 	return true;

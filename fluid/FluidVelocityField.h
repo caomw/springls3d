@@ -45,6 +45,7 @@ public:
     }
     void update(const FloatGrid& levelSet){
     	openvdb::VectorGrid::Ptr mClosestPoints=openvdb::tools::cpt(levelSet);
+    	mDenseMap.fill(Vec3s(0.0f));
     	openvdb::tools::copyToDense(*mClosestPoints, mDenseMap);
     }
     /// @return const reference to the identity transfrom between world and index space

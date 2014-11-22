@@ -64,6 +64,7 @@ class FluidSimulation :public Simulation{
 		RegularGrid<openvdb::Vec3s> mDenseMap;
 		RegularGrid<float> mWallWeight;
 		RegularGrid<float> mLevelSet;
+		openvdb::FloatGrid::Ptr mSparseLevelSet;
 		openvdb::Coord mGridSize;
 		int mStuckParticleCount;
 		float mVoxelSize;

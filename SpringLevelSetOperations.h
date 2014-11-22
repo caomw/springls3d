@@ -414,7 +414,9 @@ public:
 		typedef typename LeafManagerType::LeafType::ValueOnCIter VoxelIterT;
 		for (size_t n=range.begin(); n != range.end(); ++n) {
 			for (VoxelIterT iter = mLeafs.leaf(n).cbeginValueOn(); iter;++iter) {
-				const Vec3s V = mField(iter.getCoord(), mTime);
+				openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
+				Vec3d pt = trans->indexToWorld(iter.getCoord());
+				const Vec3s V = mField(pt, mTime);
 				mMaxAbsV=std::max(mMaxAbsV,(double)V.lengthSqr());
 			}
 		}

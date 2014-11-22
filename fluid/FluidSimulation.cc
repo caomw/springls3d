@@ -52,7 +52,7 @@ FluidSimulation::FluidSimulation(const openvdb::Coord& dims, float voxelSize,
 				voxelSize) {
 	mWallThickness = voxelSize;
 	srand(52372143L);
-	mTimeStep = 0.006 * 100 * mVoxelSize;
+	mTimeStep = 0.5 * mVoxelSize;
 	mSimulationDuration = 4.0f; //5 seconds max?
 }
 void FluidSimulation::computeParticleDensity(float maxDensity) {
@@ -379,18 +379,16 @@ bool FluidSimulation::init() {
 	}
 // Comput Normal for Walls
 	computeWallNormals();
-
 	createLevelSet();
 	updateParticleVolume();
-
 	mField=std::unique_ptr<FieldT>(new FluidVelocityField<float>(mVelocity,mDenseMap));
-
 	mSource.create(mLevelSet);
+	mSparseLevelSet=mSource.mSignedLevelSet->copy(CopyPolicy::CP_COPY);
 	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField,mMotionScheme));
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
 	mAdvect->setResampleEnabled(true);
-	imagesci::WriteToRawFile(mLevelSet,"/home/blake/tmp/dense_levelset");
-	imagesci::WriteToRawFile(mSource.mSignedLevelSet,"/home/blake/tmp/init_levelset");
+	//imagesci::WriteToRawFile(mLevelSet,"/home/blake/tmp/dense_levelset");
+	//imagesci::WriteToRawFile(mSource.mSignedLevelSet,"/home/blake/tmp/init_levelset");
 	return true;
 }
 void FluidSimulation::pourWater(int limit, float maxDensity) {
@@ -538,19 +536,25 @@ bool FluidSimulation::step() {
 	addExternalForce();
 	solvePicFlip();
 	advectParticles();
-
 	correctParticles(mParticleLocator.get(), mParticles, mTimeStep,
 			mFluidParticleDiameter * mVoxelSize);
 	updateParticleVolume();
-	//WriteToRawFile(mVelocity,"/home/blake/tmp/velocity");
-	std::stringstream levelFile,velFile,mapFile;
+	std::stringstream levelFile,velFile,mapFile,unsignedFile;
+	createLevelSet();
+	mSparseLevelSet->clear();
+	openvdb::tools::copyFromDense(mLevelSet,*mSparseLevelSet,0.25);
+	mField->update(*mSparseLevelSet);
 	mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
-	levelFile<<"/home/blake/tmp/levelset" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
-	mapFile<<"/home/blake/tmp/densemap" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
+
 	//velFile<<"/home/blake/tmp/velocity" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
-	mField->update(*mSource.mSignedLevelSet);
-	imagesci::WriteToRawFile(mSource.mSignedLevelSet,levelFile.str());
-	imagesci::WriteToRawFile(mDenseMap,mapFile.str());
+	//levelFile<<"/home/blake/tmp/levelset" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
+	//unsignedFile<<"/home/blake/tmp/unsigned" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
+	//mapFile<<"/home/blake/tmp/densemap" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
+	//WriteToRawFile(mVelocity,"/home/blake/tmp/velocity");
+
+	//imagesci::WriteToRawFile(mSource.mSignedLevelSet,levelFile.str());
+	//imagesci::WriteToRawFile(mSource.mUnsignedLevelSet,unsignedFile.str());
+	//imagesci::WriteToRawFile(mDenseMap,mapFile.str());
 	//imagesci::fluid::WriteToRawFile(mVelocity,velFile.str());
 	mSimulationIteration++;
 	mSimulationTime = mSimulationIteration * mTimeStep;
@@ -770,6 +774,15 @@ void FluidSimulation::solvePicFlip() {
 		openvdb::Vec3s velocity=p->mVelocity+currentVelocity-mVelocityLast.interpolate(p->mLocation);
 		p->mVelocity = (1.0 - mPicFlipBlendWeight) *currentVelocity  + mPicFlipBlendWeight * velocity;
 	}
+	/*
+	double maxVelocity=0.0f;
+	FOR_EVERY_PARTICLE(mParticles){
+		Vec3d vel=mParticles[n]->mVelocity;
+		maxVelocity=std::max(maxVelocity,vel.lengthSqr());
+	}
+	mTimeStep=0.5*mVoxelSize/std::max(1.0,sqrt(maxVelocity));
+	std::cout<<"New time step "<<mTimeStep<<std::endl;
+	*/
 }
 void FluidSimulation::updateParticleVolume(){
 	//WriteToRawFile(mLevelSet,"/home/blake/tmp/levelset");

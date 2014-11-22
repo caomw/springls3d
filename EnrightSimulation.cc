@@ -27,6 +27,7 @@
 namespace imagesci {
 
 EnrightSimulation::EnrightSimulation(int gridSize,MotionScheme scheme):Simulation("Enright",scheme),mGridSize(gridSize) {
+
 }
 bool EnrightSimulation::init(){
 	const float radius = 0.15f;

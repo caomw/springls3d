@@ -48,7 +48,6 @@ bool ArmadilloTwist::init(){
     		count++;
     	}
 	}
-
     twistPoint[0]/=count;
     twistPoint[2]/=count;
     trans=mSource.mSignedLevelSet->transformPtr();

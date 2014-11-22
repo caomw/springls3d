@@ -72,7 +72,14 @@ public:
 					openvdb::math::HJWENO5_BIAS);
 			mImplicitAdvection->setTrackerTemporalScheme(
 					openvdb::math::TVD_RK1);
-
+			/*
+			mImplicitAdvection->setSpatialScheme(openvdb::math::FIRST_BIAS);
+			mImplicitAdvection->setTemporalScheme(openvdb::math::TVD_RK2);
+			mImplicitAdvection->setTrackerSpatialScheme(
+					openvdb::math::FIRST_BIAS);
+			mImplicitAdvection->setTrackerTemporalScheme(
+					openvdb::math::TVD_RK1);
+			 */
 			grid.mConstellation.reset();
 		}
 	}
@@ -95,14 +102,15 @@ public:
 					mInterrupt);
 			double maxV = std::sqrt(op.process());
 			const float MAX_TIME_STEP=0.5;
-			double dt = clamp(MAX_TIME_STEP  / std::max(1E-30, maxV), 0.0,endTime - startTime);
+			double dt = MAX_TIME_STEP*(endTime-startTime)/std::max(1.0,maxV);//clamp(MAX_TIME_STEP  / std::max(1E-30, maxV), 0.0,endTime - startTime);
+			std::cout<<"Advect ["<<startTime<<","<<endTime<<"] "<<dt<<" <-> "<<maxV<<" <-> "<<(endTime - startTime)<<std::endl;
 			for (double time = startTime; time < endTime; time += dt) {
 				mGrid.mSignedLevelSet->setTransform(mGrid.transformPtr());
 				double et = std::min(time + dt, endTime);
 				mImplicitAdvection->advect(time, et);
-				mGrid.mSignedLevelSet->setTransform(
-						Transform::createLinearTransform(1.0f));
+				mGrid.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0f));
 			}
+
 			mGrid.updateIsoSurface();
 			mGrid.mConstellation.updateVertexNormals();
 		} else if (mMotionScheme == SEMI_IMPLICIT||mMotionScheme==EXPLICIT) {

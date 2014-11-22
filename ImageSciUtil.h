@@ -104,9 +104,15 @@ public:
 		mTransform=transform;
 	}
 	ValueT& operator()(size_t i, size_t j, size_t k) {
+		assert((i>=0&&i<mRows));
+		assert((j>=0&&j<mCols));
+		assert((k>=0&&k<mSlices));
 		return mPtr[i * mStrideX + j * mStrideY + k];
 	}
 	const ValueT& operator()(size_t i, size_t j, size_t k) const {
+		assert((i>=0&&i<mRows));
+		assert((j>=0&&j<mCols));
+		assert((k>=0&&k<mSlices));
 		return mPtr[i * mStrideX + j * mStrideY + k];
 	}
 	const openvdb::BBoxd& getBoundingBox() const {
@@ -127,14 +133,30 @@ public:
 	inline const float voxelSize() const {
 		return mVoxelSize;
 	}
-	inline float interpolate(float x, float y, float z) {
+
+	inline const openvdb::Coord dimensions() const {
+		return openvdb::Coord(mRows,mCols,mSlices);
+	}
+
+	inline ValueT interpolate(float x, float y, float z) const {
 		x = clamp(x,0.0f,(float)mRows);
 		y = clamp(y,0.0f,(float)mCols);
 		z = clamp(z,0.0f,(float)mSlices);
 		int i = std::min((int)x,(int)mRows-1);
 		int j = std::min((int)y,(int)mCols-1);
 		int k = std::min((int)z,(int)mSlices-1);
-		RegularGrid<ValueT>& q=*this;
+		const RegularGrid<ValueT>& q=*this;
+		return	(k+1-z)*(((i+1-x)*q(i,j,k)+(x-i)*q(i+1,j,k))*(j+1-y) + ((i+1-x)*q(i,j+1,k)+(x-i)*q(i+1,j+1,k))*(y-j)) +
+				(z-k)*(((i+1-x)*q(i,j,k+1)+(x-i)*q(i+1,j,k+1))*(j+1-y) + ((i+1-x)*q(i,j+1,k+1)+(x-i)*q(i+1,j+1,k+1))*(y-j));
+	}
+	inline ValueT interpolate(const openvdb::Vec3d& pt) const{
+		double x = clamp(pt[0],0.0,(double)mRows);
+		double y = clamp(pt[1],0.0,(double)mCols);
+		double z = clamp(pt[2],0.0,(double)mSlices);
+		int i = std::min((int)x,(int)mRows-1);
+		int j = std::min((int)y,(int)mCols-1);
+		int k = std::min((int)z,(int)mSlices-1);
+		const RegularGrid<ValueT>& q=*this;
 		return	(k+1-z)*(((i+1-x)*q(i,j,k)+(x-i)*q(i+1,j,k))*(j+1-y) + ((i+1-x)*q(i,j+1,k)+(x-i)*q(i+1,j+1,k))*(y-j)) +
 				(z-k)*(((i+1-x)*q(i,j,k+1)+(x-i)*q(i+1,j,k+1))*(j+1-y) + ((i+1-x)*q(i,j+1,k+1)+(x-i)*q(i+1,j+1,k+1))*(y-j));
 	}
@@ -250,6 +272,7 @@ bool WriteImageToFile(const std::string& file,
 		const std::vector<openvdb::math::Vec4s>& image,
 		const int w, const int h);
 bool WriteToRawFile(openvdb::FloatGrid::Ptr grid, const std::string& fileName);
+bool WriteToRawFile(openvdb::tools::Dense<openvdb::Vec3s,openvdb::tools::MemoryLayout::LayoutZYX>& dense, const std::string& fileName);
 bool WriteToRawFile(openvdb::tools::Dense<float,openvdb::tools::MemoryLayout::LayoutZYX>& grid, const std::string& fileName);
 bool WriteToRawFile(openvdb::VectorGrid::Ptr grid, const std::string& fileName);
 bool WriteToRawFile(openvdb::Int32Grid::Ptr grid, const std::string& fileName);

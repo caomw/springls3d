@@ -23,6 +23,8 @@
 #define FLUIDVELOCITYFIELD_H_
 
 #include <openvdb/openvdb.h>
+#include <openvdb/tools/GridOperators.h>
+#include <openvdb/tools/DenseSparseTools.h>
 #include "fluid_common.h"
 #undef OPENVDB_REQUIRE_VERSION_NAME
 namespace imagesci {
@@ -37,9 +39,14 @@ public:
     typedef openvdb::math::Vec3<ScalarT> VectorType;
     fluid::MACGrid<ScalarT>& mGrid;
     double mGridRatio;
-    FluidVelocityField(fluid::MACGrid<ScalarT>& grid,float gridRatio=0.5):mGridRatio(gridRatio),mGrid(grid){
+    double mGridRatioInverse;
+    RegularGrid<openvdb::Vec3s>& mDenseMap;
+    FluidVelocityField(fluid::MACGrid<ScalarT>& grid,RegularGrid<openvdb::Vec3s>& denseMap,float gridRatio=0.5):mDenseMap(denseMap),mGridRatio(gridRatio),mGridRatioInverse(1.0/gridRatio),mGrid(grid){
     }
-
+    void update(const FloatGrid& levelSet){
+    	openvdb::VectorGrid::Ptr mClosestPoints=openvdb::tools::cpt(levelSet);
+    	openvdb::tools::copyToDense(*mClosestPoints, mDenseMap);
+    }
     /// @return const reference to the identity transfrom between world and index space
     /// @note Use this method to determine if a client grid is
     /// aligned with the coordinate space of this velocity field
@@ -48,13 +55,15 @@ public:
     /// @return the velocity in world units, evaluated at the world
     /// position xyz and at the specified time
     inline VectorType operator()(const openvdb::Vec3d& pt, ScalarType time) const{
-    	openvdb::Vec3d vel=mGrid.interpolate(mGridRatio*pt);
-       return vel;
+    	openvdb::Vec3d xyz=transform().worldToIndex(pt);
+        openvdb::Vec3s cpt=mDenseMap.interpolate(xyz);
+    	return mGrid.interpolate(mGridRatio*transform().indexToWorld(cpt))*mGridRatioInverse;
     }
     /// @return the velocity at the coordinate space position ijk
     inline VectorType operator() (const openvdb::Coord& ijk, ScalarType time) const
     {
-        return (*this)(transform().indexToWorld(ijk), time);
+    	Vec3s cpt=mDenseMap.getValue(ijk);
+    	return mGrid.interpolate(mGridRatio*transform().indexToWorld(cpt))*mGridRatioInverse;
     }
 }; // end of TwistField
 

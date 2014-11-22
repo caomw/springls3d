@@ -27,9 +27,11 @@
 #include "fluid_utility.h"
 #include "laplace_solver.h"
 #include "../ImageSciUtil.h"
+
 #include <sstream>
 #include <openvdb/openvdb.h>
 #include <openvdb/math/Math.h>
+#include <openvdb/tools/GridOperators.h>
 using namespace openvdb;
 using namespace openvdb::tools;
 using namespace openvdb::math;
@@ -41,10 +43,10 @@ FluidSimulation::FluidSimulation(const openvdb::Coord& dims, float voxelSize,
 		MotionScheme scheme) :
 		Simulation("Fluid Simulation", scheme), mMaxDensity(0.0), mStuckParticleCount(
 				0), mPicFlipBlendWeight(0.95f), mFluidParticleDiameter(0.5f), mVoxelSize(
-				voxelSize), mGridSize(dims), mWallNormal(dims, voxelSize,
-				openvdb::Vec3s(0.0)), mLevelSet(
-				Coord(dims[0] * 2, dims[1] * 2, dims[2] * 2), 0.5f * voxelSize), mLabel(
-				dims, voxelSize), mLaplacian(dims, voxelSize), mDivergence(dims,
+				voxelSize), mGridSize(dims), mWallNormal(dims, voxelSize,openvdb::Vec3s(0.0)),
+				mLevelSet(Coord(dims[0] * 2, dims[1] * 2, dims[2] * 2), 0.5f * voxelSize,0.0f),
+				mDenseMap(Coord(dims[0] * 2, dims[1] * 2, dims[2] * 2), 0.5f * voxelSize,openvdb::Vec3s(0.0f)),
+				mLabel(dims, voxelSize), mLaplacian(dims, voxelSize), mDivergence(dims,
 				voxelSize), mPressure(dims, voxelSize), mVelocity(dims,
 				voxelSize), mVelocityLast(dims, voxelSize), mWallWeight(dims,
 				voxelSize) {
@@ -299,6 +301,7 @@ bool FluidSimulation::init() {
 	mParticleLocator = std::unique_ptr<ParticleLocator>(
 			new ParticleLocator(mGridSize, mVoxelSize));
 	placeObjects();
+
 	// This Is A Test Part. We Generate Pseudo Particles To Measure Maximum Particle Density
 	float h = mFluidParticleDiameter * mVoxelSize;
 	FOR_EVERY_CELL(10,10,10)
@@ -376,14 +379,18 @@ bool FluidSimulation::init() {
 	}
 // Comput Normal for Walls
 	computeWallNormals();
+
 	createLevelSet();
 	updateParticleVolume();
-	mField=std::unique_ptr<FieldT>(new FluidVelocityField<float>(mVelocity));
+
+	mField=std::unique_ptr<FieldT>(new FluidVelocityField<float>(mVelocity,mDenseMap));
+
 	mSource.create(mLevelSet);
 	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField,mMotionScheme));
 	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
 	mAdvect->setResampleEnabled(true);
-	//imagesci::WriteToRawFile(mSource.mSignedLevelSet,"/home/blake/tmp/levelset");
+	imagesci::WriteToRawFile(mLevelSet,"/home/blake/tmp/dense_levelset");
+	imagesci::WriteToRawFile(mSource.mSignedLevelSet,"/home/blake/tmp/init_levelset");
 	return true;
 }
 void FluidSimulation::pourWater(int limit, float maxDensity) {
@@ -421,9 +428,6 @@ void FluidSimulation::addExternalForce() {
 		if (mParticles[n]->mObjectType == FLUID)
 			mParticles[n]->mVelocity[1] += velocity;
 	}
-	//for(ParticlePtr& p:mParticles){
-	//	if (p->mObjectType == FLUID)std::cout<<"PARTICLE "<<p->mLocation<<" : "<<p->mMass<<" "<<p->mVelocity<<" "<<p->mDensity<<std::endl;
-	//}
 }
 
 void FluidSimulation::advectParticles() {
@@ -508,6 +512,7 @@ void FluidSimulation::advectParticles() {
 			// Put Into Reposition List
 			p->mRemoveIndicator = true;
 		}
+
 	}
 // Reposition If Neccessary
 	vector<int> reposition_indices;
@@ -519,6 +524,7 @@ void FluidSimulation::advectParticles() {
 		}
 		n++;
 	}
+
 // Store Stuck Particle Number
 	mStuckParticleCount = reposition_indices.size();
 	repositionParticles(reposition_indices);
@@ -527,17 +533,25 @@ void FluidSimulation::cleanup() {
 	mParticles.clear();
 }
 bool FluidSimulation::step() {
-//pourWater(pourTime);
-
 	mParticleLocator->update(mParticles);
 	computeParticleDensity(mMaxDensity);
 	addExternalForce();
 	solvePicFlip();
 	advectParticles();
+
 	correctParticles(mParticleLocator.get(), mParticles, mTimeStep,
 			mFluidParticleDiameter * mVoxelSize);
 	updateParticleVolume();
+	//WriteToRawFile(mVelocity,"/home/blake/tmp/velocity");
+	std::stringstream levelFile,velFile,mapFile;
 	mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
+	levelFile<<"/home/blake/tmp/levelset" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
+	mapFile<<"/home/blake/tmp/densemap" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
+	//velFile<<"/home/blake/tmp/velocity" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
+	mField->update(*mSource.mSignedLevelSet);
+	imagesci::WriteToRawFile(mSource.mSignedLevelSet,levelFile.str());
+	imagesci::WriteToRawFile(mDenseMap,mapFile.str());
+	//imagesci::fluid::WriteToRawFile(mVelocity,velFile.str());
 	mSimulationIteration++;
 	mSimulationTime = mSimulationIteration * mTimeStep;
 	if (mSimulationTime <= mSimulationDuration && mRunning) {
@@ -659,7 +673,6 @@ void FluidSimulation::project() {
 				mVelocity[1](i, j, k) -= (pf - pb) / mVoxelSize;
 			}
 		}END_FOR;
-
 	OPENMP_FOR FOR_EVERY_GRID_CELL(mVelocity[2])
 		{
 			if (k > 0 && k < mGridSize[2]) {
@@ -687,26 +700,20 @@ void FluidSimulation::extrapolateVelocity() {
 	MACGrid<char> wall_mark(mGridSize, mVoxelSize);
 	OPENMP_FOR FOR_EVERY_GRID_CELL(mark[0])
 		{
-			mark[0](i, j, k) = (i > 0 && mLabel(i - 1, j, k) == FLUID)
-					|| (i < mGridSize[0] && mLabel(i, j, k) == FLUID);
-			wall_mark[0](i, j, k) = (i <= 0 || mLabel(i - 1, j, k) == WALL)
-					&& (i >= mGridSize[0] || mLabel(i, j, k) == WALL);
+			mark[0](i, j, k) = (i > 0 && mLabel(i - 1, j, k) == FLUID)|| (i < mGridSize[0] && mLabel(i, j, k) == FLUID);
+			wall_mark[0](i, j, k) = (i <= 0 || mLabel(i - 1, j, k) == WALL)&& (i >= mGridSize[0] || mLabel(i, j, k) == WALL);
 		}END_FOR;
 
 	OPENMP_FOR FOR_EVERY_GRID_CELL(mark[1])
 		{
-			mark[1](i, j, k) = (j > 0 && mLabel(i, j - 1, k) == FLUID)
-					|| (j < mGridSize[1] && mLabel(i, j, k) == FLUID);
-			wall_mark[1](i, j, k) = (j <= 0 || mLabel(i, j - 1, k) == WALL)
-					&& (j >= mGridSize[1] || mLabel(i, j, k) == WALL);
+			mark[1](i, j, k) = (j > 0 && mLabel(i, j - 1, k) == FLUID)|| (j < mGridSize[1] && mLabel(i, j, k) == FLUID);
+			wall_mark[1](i, j, k) = (j <= 0 || mLabel(i, j - 1, k) == WALL)&& (j >= mGridSize[1] || mLabel(i, j, k) == WALL);
 		}END_FOR;
 
 	OPENMP_FOR FOR_EVERY_GRID_CELL(mark[2])
 		{
-			mark[2](i, j, k) = (k > 0 && mLabel(i, j, k - 1) == FLUID)
-					|| (k < mGridSize[2] && mLabel(i, j, k) == FLUID);
-			wall_mark[2](i, j, k) = (k <= 0 || mLabel(i, j, k - 1) == WALL)
-					&& (k >= mGridSize[2] || mLabel(i, j, k) == WALL);
+			mark[2](i, j, k) = (k > 0 && mLabel(i, j, k - 1) == FLUID)|| (k < mGridSize[2] && mLabel(i, j, k) == FLUID);
+			wall_mark[2](i, j, k) = (k <= 0 || mLabel(i, j, k - 1) == WALL)&& (k >= mGridSize[2] || mLabel(i, j, k) == WALL);
 		}END_FOR;
 
 // Now Extrapolate
@@ -719,7 +726,6 @@ void FluidSimulation::extrapolateVelocity() {
 					continue;
 				if (n != 2 && k > mGridSize[2] - 1)
 					continue;
-
 				if (!mark[n](i, j, k) && wall_mark[n](i, j, k)) {
 					int wsum = 0;
 					float sum = 0.0;
@@ -750,13 +756,13 @@ void FluidSimulation::extrapolateVelocity() {
 void FluidSimulation::solvePicFlip() {
 	mParticleLocator->update(mParticles);
 	MapParticlesToGrid(mParticleLocator.get(), mParticles, mVelocity);
-	//WriteToRawFile(mVelocity,"/home/blake/tmp/velocity");
 	mParticleLocator->markAsWater(mLabel, mWallWeight, mFluidParticleDiameter);
 	copyGridToBuffer();
 	enforceBoundaryCondition();
 	project();
 	enforceBoundaryCondition();
 	extrapolateVelocity();
+
 	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles)
 	{
 		ParticlePtr& p = mParticles[n];
@@ -778,7 +784,6 @@ void FluidSimulation::updateParticleVolume(){
 				Vec4s v(l[0], l[1], l[2], scale * 0.5f * mFluidParticleDiameter);
 				mSource.mParticleVolume.mParticles.push_back(v);
 			}
-
 		}
 		Coord dims(mLevelSet.rows(), mLevelSet.cols(), mLevelSet.slices());
 		mSource.mParticleVolume.setBoundingBox(
@@ -796,6 +801,7 @@ void FluidSimulation::createLevelSet() {
 			Vec3f p(x, y, z);
 			double value = implicit_func(mParticleLocator.get(), p,
 					mFluidParticleDiameter);
+			//std::cout<<i<<" "<<j<<" "<<k<<" P "<<p<<" "<<value<<std::endl;
 			if (i == 0 || i == dims[0] - 1 || j == 0 || j == dims[1] - 1
 					|| k == 0 || k == dims[2] - 1) {
 				//value = max(value,0.01);

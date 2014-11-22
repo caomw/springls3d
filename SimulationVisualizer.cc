@@ -27,7 +27,7 @@
 #include <openvdb/openvdb.h>
 
 #include <tbb/mutex.h>
-#include <iomanip> // for std::setprecision()
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -139,7 +139,7 @@ void SimulationVisualizer::stop(){
 }
 void SimulationVisualizer::SimulationEvent(Simulation* simulation,int mSimulationIteration,double time){
 	//std::cout<<"Stashing ..."<<std::endl;
-	simulation->stash(mOutputDirectory);
+	//simulation->stash(mOutputDirectory);
 	while(mSimulation->isDirty()){
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
 	}
@@ -360,6 +360,7 @@ SimulationVisualizer::render()
 		mSpringlElementsShader->render(mWin);
 		mMiniViewTexture->render(mWin);
 	}
+	/*
 	if(isRunning()){
 		std::stringstream ostr1,ostr2,ostr3;
 		ostr1 << mOutputDirectory<<"sim_screenshot_"<<std::setw(8)<<std::setfill('0')<< mSimulation->getSimulationIteration() << ".png";
@@ -377,6 +378,7 @@ SimulationVisualizer::render()
 			std::cout<<"Wrote "<<ostr1.str()<<std::endl;
 		}
 	}
+	*/
 	mCamera->setNeedsDisplay(false);
 	mDrawLock.unlock();
 }

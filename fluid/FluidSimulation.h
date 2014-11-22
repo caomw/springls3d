@@ -61,6 +61,7 @@ class FluidSimulation :public Simulation{
 		RegularGrid<float> mDivergence;
 		RegularGrid<float> mPressure;
 		RegularGrid<openvdb::Vec3s> mWallNormal;
+		RegularGrid<openvdb::Vec3s> mDenseMap;
 		RegularGrid<float> mWallWeight;
 		RegularGrid<float> mLevelSet;
 		openvdb::Coord mGridSize;

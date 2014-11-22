@@ -109,6 +109,8 @@ SimulationVisualizer::SimulationVisualizer()
 	, mWin(NULL)
 	, mSimulation(NULL)
 	, mShowParticles(false)
+	, mShowIsoSurface(true)
+	, mShowSpringls(false)
 	, mOutputDirectory("./")
 {
 }
@@ -180,14 +182,17 @@ bool SimulationVisualizer::run(int width,int height){
 	attrib.push_back("vp");
 	attrib.push_back("vn");
 	mIsoSurfaceShader.Init("./matcap/JG_Red.png");
+	mSpringlsShader.Init("./matcap/JG_Silver.png");
+
 	mParticleShader.Init();
 	std::vector<std::string> args;
 	args.push_back("vp");
 	args.push_back("uv");
 	int mainW=1200;
-	mSpringlElementsShader=std::unique_ptr<GLSpringlShader>(new GLSpringlShader(0,0,width,height));
-	mSpringlElementsShader->setMesh(mCamera.get(),&mSimulation->getSource(),"./matcap/JG_Red.png","./matcap/JG_Silver.png");
-	mSpringlElementsShader->updateGL();
+
+	mOverlayShader=std::unique_ptr<GLSpringlShader>(new GLSpringlShader(0,0,width,height));
+	mOverlayShader->setMesh(mCamera.get(),&mSimulation->getSource(),"./matcap/JG_Red.png","./matcap/JG_Silver.png");
+	mOverlayShader->updateGL();
 
 	mImageShader.Initialize(ReadTextFile("shaders/image_shader.vert"),ReadTextFile("shaders/image_shader.frag"),"",args);
 	mParticleTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(0,0,width,height,width,height));
@@ -334,11 +339,18 @@ SimulationVisualizer::render()
 				mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mParticleShader);
 				mSimulation->getSource().mParticleVolume.draw();
 			mParticleShader.end();
-		} else {
+		}
+		if(mShowIsoSurface){
 			mIsoSurfaceShader.begin();
 				mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mIsoSurfaceShader);
 				mSimulation->getSource().mIsoSurface.draw();
 			mIsoSurfaceShader.end();
+		}
+		if(mShowSpringls){
+			mSpringlsShader.begin();
+				mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mSpringlsShader);
+				mSimulation->getSource().mConstellation.draw();
+			mSpringlsShader.end();
 		}
 		mParticleTexture->end();
     } else {
@@ -348,8 +360,8 @@ SimulationVisualizer::render()
 				mSimulation->getSource().mIsoSurface.draw();
 			mIsoSurfaceShader.end();
 		mMiniViewTexture->end();
+		mOverlayShader->compute(mWin);
     }
-	mSpringlElementsShader->compute(mWin);
 	glViewport(0,0,width,height);
 	glDisable(GL_DEPTH_TEST);
 
@@ -357,7 +369,7 @@ SimulationVisualizer::render()
 	if(hasParticles){
 		mParticleTexture->render(mWin);
 	} else {
-		mSpringlElementsShader->render(mWin);
+		mOverlayShader->render(mWin);
 		mMiniViewTexture->render(mWin);
 	}
 	/*
@@ -401,6 +413,10 @@ SimulationVisualizer::keyCallback(GLFWwindow* win,int key, int action,int mod)
 			}
 		} else if(key=='P'){
 			mShowParticles=!mShowParticles;
+		}  else if(key=='S'){
+			mShowIsoSurface=!mShowIsoSurface;
+		}  else if(key=='E'){
+			mShowSpringls=!mShowSpringls;
 		}
     }
     mCamera->setNeedsDisplay(true);

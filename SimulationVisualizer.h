@@ -37,14 +37,18 @@ namespace imagesci {
 class SimulationVisualizer: public SimulationListener {
 private:
     GLEnvironmentalShader mIsoSurfaceShader;
+    GLEnvironmentalShader mSpringlsShader;
+
     GLFluidParticleShader mParticleShader;
     bool mShowParticles;
+    bool mShowIsoSurface;
+    bool mShowSpringls;
     std::unique_ptr<GLFrameBuffer> mMiniViewTexture;
     std::unique_ptr<GLFrameBuffer> mParticleTexture;
 	GLShader mMiniViewShader;
 	GLShader mImageShader;
 
-	std::unique_ptr<GLSpringlShader> mSpringlElementsShader;
+	std::unique_ptr<GLSpringlShader> mOverlayShader;
 	std::unique_ptr<Camera> mCamera;
 	std::unique_ptr<Camera> mMiniCamera;
 

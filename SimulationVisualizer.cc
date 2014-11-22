@@ -139,7 +139,7 @@ void SimulationVisualizer::stop(){
 }
 void SimulationVisualizer::SimulationEvent(Simulation* simulation,int mSimulationIteration,double time){
 	//std::cout<<"Stashing ..."<<std::endl;
-	//simulation->stash(mOutputDirectory);
+	simulation->stash(mOutputDirectory);
 	while(mSimulation->isDirty()){
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
 	}

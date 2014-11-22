@@ -413,7 +413,7 @@ SimulationVisualizer::keyCallback(GLFWwindow* win,int key, int action,int mod)
 			}
 		} else if(key=='P'){
 			mShowParticles=!mShowParticles;
-		}  else if(key=='S'){
+		}  else if(key=='I'){
 			mShowIsoSurface=!mShowIsoSurface;
 		}  else if(key=='E'){
 			mShowSpringls=!mShowSpringls;

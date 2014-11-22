@@ -74,6 +74,7 @@ public:
 	void setWindowTitle(double fps = 0.0);
 	void render();
 	void resume();
+
 	bool run(int width, int height);
 	void keyCallback(GLFWwindow* win,int key, int action,int mod);
 	void mouseButtonCallback(int button, int action);

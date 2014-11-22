@@ -34,6 +34,7 @@ void ExecuteSimulation(Simulation* sim){
 			sim->fireUpdateEvent();
 			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		}
+		if(sim->isRunning())sim->reset();
 	} catch (imagesci::Exception& e) {
 		std::cout << "ImageSci Error:: "<< e.what() << std::endl;
 	} catch (openvdb::Exception& e) {
@@ -170,9 +171,8 @@ void Simulation::reset(){
 	mSimulationIteration=0;
 	if(mIsInitialized){
 		cleanup();
+		init();
 	}
-	mIsInitialized=false;
-
 }
 bool Simulation::stop(){
 	mRunning=false;

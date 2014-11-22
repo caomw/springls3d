@@ -82,6 +82,7 @@ public:
 	bool setSource(const std::string& sourceFileName);
 	inline bool isRunning(){return mRunning;}
 	inline bool isDirty(){return mIsMeshDirty;}
+	virtual bool isPlayback(){return false;}
 	inline SpringLevelSet& getSource(){return mSource;}
 	inline const std::string& getName(){return mName;}
 	inline void setName(const std::string& name){mName=name;}

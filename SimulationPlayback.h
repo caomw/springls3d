@@ -40,6 +40,7 @@ public:
 	SimulationPlayback(const std::string& directory);
 	virtual bool init();
 	virtual bool step();
+	virtual bool isPlayback(){return true;}
 	inline bool forceStep(){
 		mRunning=true;
 		return step();

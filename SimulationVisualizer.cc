@@ -141,8 +141,8 @@ void SimulationVisualizer::stop(){
 }
 void SimulationVisualizer::SimulationEvent(Simulation* simulation,int mSimulationIteration,double time){
 	//std::cout<<"Stashing ..."<<std::endl;
-	simulation->stash(mOutputDirectory);
-	while(mSimulation->isDirty()){
+	if(!mSimulation->isPlayback())simulation->stash(mOutputDirectory);
+	while(mSimulation->isDirty()&&mSimulation->isRunning()){
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
 	}
 }
@@ -228,8 +228,13 @@ bool SimulationVisualizer::run(int width,int height){
     double time = glfwGetTime();
     glfwSwapInterval(1);
     if(mSimulation->getName()!="Recording")mSimulation->addListener(this);
-    start();
-    //mSimulation->init();
+    if(mSimulation->isPlayback()){
+    	mSimulation->init();
+    	mCamera->setNeedsDisplay(true);
+    }else {
+    	start();
+    }
+    //
     do {
     	if(mSimulation->updateGL()){
     		mSimulation->getSource().mConstellation.updateBoundingBox();

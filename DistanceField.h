@@ -29,9 +29,7 @@ namespace imagesci {
 	typedef Indexable<float> VoxelIndex;
 	class DistanceField {
 	private:
-		static const unsigned char ALIVE = 1;
-		static const unsigned char FARAWAY = 3;
-		static const unsigned char  NBAND = 2;
+		enum Flags{ ALIVE = 1,NBAND = 2,FARAWAY = 3};
 		BinaryMinHeap<float> heap;
 		double march(double Nv, double Sv, double Ev, double Wv,double Fv, double Bv, int Nl, int Sl, int El, int Wl, int Fl, int Bl);
 	public:

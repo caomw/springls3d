@@ -117,7 +117,7 @@ void DistanceField::solve(const RegularGrid<float>& vol,RegularGrid<float>& dist
 	uint8_t Nl = 0, Sl = 0, Wl = 0, El = 0, Fl = 0, Bl = 0, Cl = 0;
 	RegularGrid<uint8_t> labelVol(XN, YN, ZN, 1.0, FARAWAY);
 	int countAlive = 0;
-	FOR_EVERY_GRID_CELL(distVol) {
+	OPENMP_FOR FOR_EVERY_GRID_CELL(distVol) {
 		if (vol(i, j, k) == 0) {
 			distVol(i, j, k) = (0);
 			labelVol(i, j, k) = (ALIVE);

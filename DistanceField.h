@@ -32,14 +32,15 @@ namespace imagesci {
 		static const unsigned char ALIVE = 1;
 		static const unsigned char FARAWAY = 3;
 		static const unsigned char  NBAND = 2;
-
-		RegularGrid<float>& vol;
 		BinaryMinHeap<float> heap;
 		double march(double Nv, double Sv, double Ev, double Wv,double Fv, double Bv, int Nl, int Sl, int El, int Wl, int Fl, int Bl);
 	public:
-		DistanceField(RegularGrid<float>& _vol):vol(_vol),heap(_vol.rows(),_vol.cols(),_vol.slices()){
+		DistanceField(openvdb::Coord dims):heap(dims[0],dims[1],dims[2]){}
+		void solve(const RegularGrid<float>& vol,RegularGrid<float>& out, double maxDistance=openvdb::LEVEL_SET_HALF_WIDTH);
+		std::unique_ptr<RegularGrid<float> > solve(const RegularGrid<float>& vol, double maxDistance=openvdb::LEVEL_SET_HALF_WIDTH){
+			RegularGrid<float>* distField=new RegularGrid<float>(vol.dimensions(),vol.voxelSize(),0.0);
+			return std::unique_ptr<RegularGrid<float> >(distField);
 		}
-		void solve(RegularGrid<float>& out, double maxDistance=openvdb::LEVEL_SET_HALF_WIDTH);
 	};
 } /* namespace imagesci */
 

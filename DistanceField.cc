@@ -93,23 +93,17 @@ double DistanceField::march(double Nv, double Sv, double Ev, double Wv,
 		s2 += Bv * Bv;
 		count++;
 	}
-
-	/*
-	 * count must be greater than zero since there must be one ALIVE pt in
-	 * the neighbors
-	 */
-
 	tmp = (s + std::sqrt((s * s - count * (s2 - 1.0f)))) / count;
 	/* The larger root */
 	return tmp;
 }
-void DistanceField::solve(RegularGrid<float>& distVol, double maxDistance) {
+void DistanceField::solve(const RegularGrid<float>& vol,RegularGrid<float>& distVol, double maxDistance) {
 	int XN = vol.rows();
 	int YN = vol.cols();
 	int ZN = vol.slices();
 	int LX, HX, LY, HY, LZ, HZ;
 	short NSFlag, WEFlag, FBFlag;
-	int i, j, k, koff;
+	int koff;
 	int nj, nk, ni;
 	double newvalue;
 	double s = 0, t = 0, w = 0;
@@ -199,9 +193,10 @@ void DistanceField::solve(RegularGrid<float>& distVol, double maxDistance) {
 				result += 1.0 / (w * w);
 			}
 			if (result == 0) {
-				distVol(i, j, k)=0.0f;
+				distVol(i, j, k)=0;
 				continue;
 			}
+
 			countAlive++;
 			labelVol(i, j, k) = (ALIVE);
 			result = std::sqrt(result);
@@ -280,10 +275,6 @@ void DistanceField::solve(RegularGrid<float>& distVol, double maxDistance) {
 				heap.add(&voxelList.back());
 			}
 		};END_FOR
-		imagesci::WriteToRawFile(distVol,"/home/blake/tmp/init_distanceField");
-		imagesci::WriteToRawFile(vol,"/home/blake/tmp/init_vol");
-		std::cout<<"Number of alive verts "<<countAlive<<" / "<<XN*YN*ZN<<std::endl;
-
 	/*
 	 * Begin Fast Marching to get the unsigned distance function inwords and
 	 * outwards simultaneously since points inside and outside the contour
@@ -291,9 +282,8 @@ void DistanceField::solve(RegularGrid<float>& distVol, double maxDistance) {
 	 */
 
 	while (!heap.isEmpty()) { /* There are still points not yet accepted */
-
+		int i,j,k;
 		he = heap.remove();
-		std::cout<<"HEAP "<<he->mValue<<std::endl;
 		i = he->mIndex[0];
 		j = he->mIndex[1];
 		k = he->mIndex[2];

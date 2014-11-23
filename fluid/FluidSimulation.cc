@@ -392,9 +392,10 @@ bool FluidSimulation::init() {
 	mAdvect->setResampleEnabled(true);
 	//Not needed, so erase
 	if(mMotionScheme==IMPLICIT)mSource.mConstellation.reset();
-	DistanceField df(mLevelSet);
+	DistanceField df(mLevelSet.dimensions());
 	RegularGrid<float> distField(mLevelSet.dimensions(),1.0f,0.0);
-	df.solve(distField);
+	df.solve(mLevelSet,distField,10.0f);
+
 	imagesci::WriteToRawFile(mLevelSet,"/home/blake/tmp/dense_levelset");
 	imagesci::WriteToRawFile(distField,"/home/blake/tmp/distanceField");
 	//imagesci::WriteToRawFile(mSource.mSignedLevelSet,"/home/blake/tmp/init_levelset");

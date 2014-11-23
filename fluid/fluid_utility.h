@@ -39,9 +39,6 @@
 #define FOR_EVERY_Z_FLOW(NX,NY,NZ)		for( int i=0; i<NX; i++ ) for( int j=0; j<NY; j++ ) for( int k=0; k<NZ+1; k++ ) {
 #define FOR_EVERY_CELL(NX,NY,NZ)		for( int i=0; i<NX; i++ ) for( int j=0; j<NY; j++ ) for( int k=0; k<NZ; k++ ) {
 #define FOR_EVERY_PARTICLE(P)			for( int n=0; n<P.size(); n++)
-#define FOR_EVERY_GRID_CELL(G)		for( int i=0; i<G.rows(); i++ ) for( int j=0; j<G.cols(); j++ ) for( int k=0; k<G.slices(); k++ ) {
-#define END_FOR }
-
 namespace imagesci{
 namespace fluid{
 template<typename ValueT> RegularGrid<ValueT> alloc3D( int w, int h, int d ) {

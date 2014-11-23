@@ -35,6 +35,7 @@
 #include "../Simulation.h"
 #include "../SpringLevelSetAdvection.h"
 #include "FluidVelocityField.h"
+#include "FluidTrackingField.h"
 #undef OPENVDB_REQUIRE_VERSION_NAME
 
 
@@ -44,7 +45,7 @@ namespace fluid{
  *
  */
 class FluidSimulation :public Simulation{
-	typedef FluidVelocityField<float> FieldT;
+	typedef FluidTrackingField<float> FieldT;
 	typedef SpringLevelSetAdvection<FieldT> AdvectT;
 	protected:
 		std::unique_ptr<FieldT> mField;

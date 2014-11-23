@@ -106,11 +106,11 @@ public:
 			mGrid.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0f));
 			const float MAX_TIME_STEP=0.5;
 			double dt = MAX_TIME_STEP*(endTime-startTime)/std::max(1.0,maxV);//clamp(MAX_TIME_STEP  / std::max(1E-30, maxV), 0.0,endTime - startTime);
-			std::cout<<"Advect ["<<startTime<<","<<endTime<<"] "<<dt<<" <-> "<<maxV<<" <-> "<<(endTime - startTime)<<std::endl;
 			for (double time = startTime; time < endTime; time += dt) {
 				mGrid.mSignedLevelSet->setTransform(mGrid.transformPtr());
 				double et = std::min(time + dt, endTime);
 				mImplicitAdvection->advect(time, et);
+				std::cout<<"Advect ["<<time<<","<<et<<"] "<<dt<<" max:: "<<maxV<<" duration:: "<<(endTime - startTime)<<std::endl;
 				mGrid.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0f));
 			}
 

@@ -27,7 +27,7 @@
 #include "fluid_utility.h"
 #include "laplace_solver.h"
 #include "../ImageSciUtil.h"
-
+#include "../DistanceField.h"
 #include <sstream>
 #include <openvdb/openvdb.h>
 #include <openvdb/math/Math.h>
@@ -381,7 +381,10 @@ bool FluidSimulation::init() {
 	computeWallNormals();
 	createLevelSet();
 	updateParticleVolume();
-	mField=std::unique_ptr<FieldT>(new FluidVelocityField<float>(mVelocity,mDenseMap));
+//	mField=std::unique_ptr<FieldT>(new FluidVelocityField<float>(mVelocity,mDenseMap));
+
+	mField=std::unique_ptr<FieldT>(new FluidTrackingField<float>(mLevelSet));
+
 	mSource.create(mLevelSet);
 	mSparseLevelSet=mSource.mSignedLevelSet->copy(CopyPolicy::CP_COPY);
 	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField,mMotionScheme));
@@ -389,7 +392,11 @@ bool FluidSimulation::init() {
 	mAdvect->setResampleEnabled(true);
 	//Not needed, so erase
 	if(mMotionScheme==IMPLICIT)mSource.mConstellation.reset();
-	//imagesci::WriteToRawFile(mLevelSet,"/home/blake/tmp/dense_levelset");
+	DistanceField df(mLevelSet);
+	RegularGrid<float> distField(mLevelSet.dimensions(),1.0f,0.0);
+	df.solve(distField);
+	imagesci::WriteToRawFile(mLevelSet,"/home/blake/tmp/dense_levelset");
+	imagesci::WriteToRawFile(distField,"/home/blake/tmp/distanceField");
 	//imagesci::WriteToRawFile(mSource.mSignedLevelSet,"/home/blake/tmp/init_levelset");
 	return true;
 }
@@ -541,13 +548,12 @@ bool FluidSimulation::step() {
 	correctParticles(mParticleLocator.get(), mParticles, mTimeStep,
 			mFluidParticleDiameter * mVoxelSize);
 	updateParticleVolume();
-	std::stringstream levelFile,velFile,mapFile,unsignedFile;
 	createLevelSet();
-	mSparseLevelSet->clear();
-	openvdb::tools::copyFromDense(mLevelSet,*mSparseLevelSet,0.25);
-	mField->update(*mSparseLevelSet);
-	mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
-
+	//std::stringstream levelFile,velFile,mapFile,unsignedFile;
+	//mSparseLevelSet->clear();
+	//openvdb::tools::copyFromDense(mLevelSet,*mSparseLevelSet,0.25);
+	//mField->update(*mSparseLevelSet);
+	mAdvect->advect(0.0,mVoxelSize);
 	//velFile<<"/home/blake/tmp/velocity" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
 	//levelFile<<"/home/blake/tmp/levelset" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
 	//unsignedFile<<"/home/blake/tmp/unsigned" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
@@ -808,6 +814,7 @@ void FluidSimulation::createLevelSet() {
 // Create Density Field
 	Coord dims(mLevelSet.rows(), mLevelSet.cols(), mLevelSet.slices());
 	float voxelSize = mLevelSet.voxelSize();
+
 	OPENMP_FOR FOR_EVERY_GRID_CELL(mLevelSet)
 		{
 			double x = i * voxelSize;
@@ -827,8 +834,7 @@ void FluidSimulation::createLevelSet() {
 						openvdb::LEVEL_SET_HALF_WIDTH);
 			}
 		}END_FOR
-	mLevelSet.setTrasnfrom(Transform::createLinearTransform(mVoxelSize));
-
+	//mLevelSet.setTrasnfrom(Transform::createLinearTransform(mVoxelSize));
 }
 void FluidSimulation::computeWallNormals() {
 // Sort Particles

@@ -37,6 +37,8 @@
 #define OPENMP_END
 #define OPENMP_FOR_P
 #endif
+#define FOR_EVERY_GRID_CELL(G)		for( int i=0; i<G.rows(); i++ ) for( int j=0; j<G.cols(); j++ ) for( int k=0; k<G.slices(); k++ ) {
+#define END_FOR }
 namespace imagesci {
 typedef openvdb::math::Vec4<unsigned char> RGBA;
 typedef openvdb::math::Vec4<float> RGBAf;
@@ -114,6 +116,18 @@ public:
 		assert((j>=0&&j<mCols));
 		assert((k>=0&&k<mSlices));
 		return mPtr[i * mStrideX + j * mStrideY + k];
+	}
+	ValueT& operator()(const openvdb::Coord& ijk) {
+		assert((ijk[0]>=0&&ijk[0]<mRows));
+		assert((ijk[1]>=0&&ijk[1]<mCols));
+		assert((ijk[2]>=0&&ijk[2]<mSlices));
+		return mPtr[ijk[0] * mStrideX + ijk[1] * mStrideY + ijk[2]];
+	}
+	const ValueT& operator()(const openvdb::Coord& ijk) const {
+		assert((ijk[0]>=0&&ijk[0]<mRows));
+		assert((ijk[1]>=0&&ijk[1]<mCols));
+		assert((ijk[2]>=0&&ijk[2]<mSlices));
+		return mPtr[ijk[0] * mStrideX + ijk[1] * mStrideY + ijk[2]];
 	}
 	const openvdb::BBoxd& getBoundingBox() const {
 		return mBoundingBox;

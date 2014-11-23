@@ -117,7 +117,7 @@ void DistanceField::solve(const RegularGrid<float>& vol,RegularGrid<float>& dist
 	uint8_t Nl = 0, Sl = 0, Wl = 0, El = 0, Fl = 0, Bl = 0, Cl = 0;
 	RegularGrid<uint8_t> labelVol(XN, YN, ZN, 1.0, FARAWAY);
 	int countAlive = 0;
-	OPENMP_FOR FOR_EVERY_GRID_CELL(distVol) {
+	FOR_EVERY_GRID_CELL(distVol) {
 		if (vol(i, j, k) == 0) {
 			distVol(i, j, k) = (0);
 			labelVol(i, j, k) = (ALIVE);
@@ -179,7 +179,7 @@ void DistanceField::solve(const RegularGrid<float>& vol,RegularGrid<float>& dist
 					w = (std::abs(Fv) > std::abs(Bv)) ? Fv : Bv;
 				}
 			}
-			result = 0;
+			double result = 0;
 			if (NSFlag != 0) {
 				s = Cv / (Cv - s);
 				result += 1.0 / (s * s);
@@ -194,13 +194,12 @@ void DistanceField::solve(const RegularGrid<float>& vol,RegularGrid<float>& dist
 			}
 			if (result == 0) {
 				distVol(i, j, k)=0;
-				continue;
+			} else {
+				countAlive++;
+				labelVol(i, j, k) = (ALIVE);
+				result = std::sqrt(result);
+				distVol(i, j, k) = (float) (1.0 / result);
 			}
-
-			countAlive++;
-			labelVol(i, j, k) = (ALIVE);
-			result = std::sqrt(result);
-			distVol(i, j, k) = (float) (1.0 / result);
 		}
 	} END_FOR;
 	heap.reserve(countAlive);

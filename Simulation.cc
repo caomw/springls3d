@@ -169,9 +169,9 @@ SimulationTimeStepDescription Simulation::getDescription(){
 void Simulation::reset(){
 	mSimulationTime=0;
 	mSimulationIteration=0;
+	mRunning=false;
 	if(mIsInitialized){
 		cleanup();
-		init();
 	}
 }
 bool Simulation::stop(){
@@ -184,15 +184,16 @@ bool Simulation::stop(){
 	return true;
 }
 bool Simulation::start(){
-	if(mRunning)return false;
 	if(!mIsInitialized){
 		if(!init()){
-			std::cerr<<"Simulation init() failed."<<std::endl;
 			return false;
 		}
 		mIsInitialized=true;
 	}
 	mRunning=true;
+	if(mSimulationThread.joinable()){
+		mSimulationThread.join();
+	}
 	mSimulationThread=std::thread(ExecuteSimulation,this);
 	return true;
 }

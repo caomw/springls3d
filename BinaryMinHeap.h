@@ -80,19 +80,19 @@ public:
 			}
 		}
 	}
-	void change(IndexableType node,ScalarT value) {
-		change(node.mIndex[0],node.mIndex[1],node.mIndex[2], value);
-	}
 	void change(int i, int j, int k, ScalarT value) {
 		size_t index = mBackPointers(i,j,k);
-		IndexableType v = mArray[index];
-		if (value<v.mValue) {
-			v.setValue(value);
+		IndexableType* v = mArray[index];
+		if (value<v->mValue) {
+			v->setValue(value);
 			percolateUp(index);
 		} else {
-			v.setValue(value);
+			v->setValue(value);
 			percolateDown(index);
 		}
+	}
+	void change(IndexableType node,ScalarT value) {
+		change(node.mIndex[0],node.mIndex[1],node.mIndex[2], value);
 	}
 	void add(IndexableType* x) {
 		if (mCurrentSize + 1 == mArray.size()) {
@@ -116,6 +116,7 @@ public:
 	void clear() {
 		mCurrentSize = 0;
 		mArray.clear();
+		mBackPointers.fill(0);
 	}
 protected:
 	void buildHeap() {

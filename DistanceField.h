@@ -34,6 +34,7 @@ namespace imagesci {
 		double march(double Nv, double Sv, double Ev, double Wv,double Fv, double Bv, int Nl, int Sl, int El, int Wl, int Fl, int Bl);
 	public:
 		DistanceField(openvdb::Coord dims):heap(dims[0],dims[1],dims[2]){}
+		DistanceField(int rows,int cols,int slices):heap(rows,cols,slices){}
 		void solve(const RegularGrid<float>& vol,RegularGrid<float>& out, double maxDistance=openvdb::LEVEL_SET_HALF_WIDTH);
 		std::unique_ptr<RegularGrid<float> > solve(const RegularGrid<float>& vol, double maxDistance=openvdb::LEVEL_SET_HALF_WIDTH){
 			RegularGrid<float>* distField=new RegularGrid<float>(vol.dimensions(),vol.voxelSize(),0.0);

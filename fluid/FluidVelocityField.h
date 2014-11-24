@@ -38,10 +38,8 @@ public:
     typedef ScalarT             ScalarType;
     typedef openvdb::math::Vec3<ScalarT> VectorType;
     fluid::MACGrid<ScalarT>& mGrid;
-    double mGridRatio;
-    double mGridRatioInverse;
     RegularGrid<openvdb::Vec3s>& mDenseMap;
-    FluidVelocityField(fluid::MACGrid<ScalarT>& grid,RegularGrid<openvdb::Vec3s>& denseMap,float gridRatio=0.5):mDenseMap(denseMap),mGridRatio(gridRatio),mGridRatioInverse(1.0/gridRatio),mGrid(grid){
+    FluidVelocityField(fluid::MACGrid<ScalarT>& grid,RegularGrid<openvdb::Vec3s>& denseMap):mDenseMap(denseMap),mGrid(grid){
     }
     void update(const FloatGrid& levelSet){
     	openvdb::VectorGrid::Ptr mClosestPoints=openvdb::tools::cpt(levelSet);
@@ -51,20 +49,20 @@ public:
     /// @return const reference to the identity transfrom between world and index space
     /// @note Use this method to determine if a client grid is
     /// aligned with the coordinate space of this velocity field
-    const openvdb::math::Transform& transform() const { return mGrid.transform(); }
+    const openvdb::math::Transform& transform() const { return mDenseMap.transform(); }
 
     /// @return the velocity in world units, evaluated at the world
     /// position xyz and at the specified time
     inline VectorType operator()(const openvdb::Vec3d& pt, ScalarType time) const{
     	openvdb::Vec3d xyz=transform().worldToIndex(pt);
         openvdb::Vec3s cpt=mDenseMap.interpolate(xyz);
-    	return mGrid.interpolate(mGridRatio*transform().indexToWorld(cpt))*mGridRatioInverse;
+    	return mGrid.interpolate(transform().indexToWorld(cpt));
     }
     /// @return the velocity at the coordinate space position ijk
     inline VectorType operator() (const openvdb::Coord& ijk, ScalarType time) const
     {
     	Vec3s cpt=mDenseMap.getValue(ijk);
-    	return mGrid.interpolate(mGridRatio*transform().indexToWorld(cpt))*mGridRatioInverse;
+    	return mGrid.interpolate(transform().indexToWorld(cpt));
     }
 }; // end of TwistField
 

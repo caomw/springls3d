@@ -28,6 +28,7 @@ SimulationPlayback::SimulationPlayback(const std::string& directory):Simulation(
 
 }
 bool SimulationPlayback::init(){
+	if(mIsInitialized)return true;
 	mIsoSurfaceFiles.clear();
 	mConstellationFiles.clear();
 	mSignedDistanceFiles.clear();
@@ -149,6 +150,7 @@ void SimulationPlayback::cleanup(){
 	mSource.mIsoSurface.reset();
 	mSource.mConstellation.reset();
 	mSource.mParticleVolume.reset();
+	mIsInitialized=false;
 }
 SimulationPlayback::~SimulationPlayback() {
 	// TODO Auto-generated destructor stub

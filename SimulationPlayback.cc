@@ -33,6 +33,7 @@ bool SimulationPlayback::init(){
 	mConstellationFiles.clear();
 	mSignedDistanceFiles.clear();
 	mParticleVolumeFiles.clear();
+	mTimeSteps.clear();
 	std::vector<std::string> jsonFiles;
 	int n=GetDirectoryListing(mDirectory,jsonFiles,"",".sim");
 	Json::Reader reader;
@@ -72,7 +73,7 @@ bool SimulationPlayback::init(){
 	}
 	if(mSimulationIteration<mParticleVolumeFiles.size()&&mParticleVolumeFiles[mSimulationIteration].length()>0&&mSource.mParticleVolume.open(mDirectory+GetFileName(mParticleVolumeFiles[mSimulationIteration]))){
 	}
-	/*
+
 	if(mSimulationIteration<mSignedDistanceFiles.size()&&mSignedDistanceFiles[mSimulationIteration].length()>0){
 		openvdb::io::File file(mDirectory+GetFileName(mSignedDistanceFiles[mSimulationIteration]));
 		file.open();
@@ -87,7 +88,7 @@ bool SimulationPlayback::init(){
 			mSource.mSignedLevelSet=mSignedLevelSet;
 		}
 	}
-	*/
+
 	simDesc=mTimeSteps[mSimulationIteration];
 	mSimulationTime=simDesc.mSimulationTime;
 	mTimeStep=simDesc.mTimeStep;
@@ -111,7 +112,7 @@ bool SimulationPlayback::step(){
 	}
 	if(mSimulationIteration<mParticleVolumeFiles.size()&&mParticleVolumeFiles[mSimulationIteration].length()>0&&mSource.mParticleVolume.open(mDirectory+GetFileName(mParticleVolumeFiles[mSimulationIteration]))){
 	}
-
+	/*
 	if(mSimulationIteration<mSignedDistanceFiles.size()&&mSignedDistanceFiles[mSimulationIteration].length()>0){
 		openvdb::io::File file(mDirectory+GetFileName(mSignedDistanceFiles[mSimulationIteration]));
 		file.open();
@@ -126,6 +127,7 @@ bool SimulationPlayback::step(){
 			mSource.mSignedLevelSet=mSignedLevelSet;
 		}
 	}
+	*/
 	SimulationTimeStepDescription& simDesc=mTimeSteps[mSimulationIteration];
 
 	mSimulationTime=simDesc.mSimulationTime;
@@ -147,6 +149,7 @@ void SimulationPlayback::cleanup(){
 	mConstellationFiles.clear();
 	mSignedDistanceFiles.clear();
 	mParticleVolumeFiles.clear();
+	mTimeSteps.clear();
 	mSource.mIsoSurface.reset();
 	mSource.mConstellation.reset();
 	mSource.mParticleVolume.reset();

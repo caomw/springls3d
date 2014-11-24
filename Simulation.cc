@@ -34,7 +34,7 @@ void ExecuteSimulation(Simulation* sim){
 			sim->fireUpdateEvent();
 			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		}
-		if(sim->isRunning())sim->reset();
+		if(sim->isRunning())sim->stopRunning();
 	} catch (imagesci::Exception& e) {
 		std::cout << "ImageSci Error:: "<< e.what() << std::endl;
 	} catch (openvdb::Exception& e) {
@@ -44,7 +44,7 @@ void ExecuteSimulation(Simulation* sim){
 SimulationListener::~SimulationListener(){
 
 }
-Simulation::Simulation(const std::string& name,MotionScheme scheme):mComputeTimeSeconds(0.0),mName(name),mMotionScheme(scheme),mIsInitialized(false),mIsMeshDirty(false),mRunning(false),mTimeStep(0),mSimulationDuration(0),mSimulationTime(0),mSimulationIteration(0) {
+Simulation::Simulation(const std::string& name,MotionScheme scheme):mPaused(false),mComputeTimeSeconds(0.0),mName(name),mMotionScheme(scheme),mIsInitialized(false),mIsMeshDirty(false),mRunning(false),mTimeStep(0),mSimulationDuration(0),mSimulationTime(0),mSimulationIteration(0) {
 	// TODO Auto-generated constructor stub
 
 }
@@ -170,11 +170,18 @@ void Simulation::reset(){
 	mSimulationTime=0;
 	mSimulationIteration=0;
 	mRunning=false;
+	mPaused=false;
 	if(mIsInitialized){
 		cleanup();
+		mIsInitialized=false;
 	}
 }
+void Simulation::stopRunning(){
+	mRunning=false;
+	mPaused=false;
+}
 bool Simulation::stop(){
+	if(mRunning)mPaused=true;
 	mRunning=false;
 	if(mSimulationThread.joinable()){
 		mSimulationThread.join();
@@ -184,17 +191,21 @@ bool Simulation::stop(){
 	return true;
 }
 bool Simulation::start(){
-	if(!mIsInitialized){
+	if(mPaused){
+		mPaused=false;
+		mRunning=true;
+		mSimulationThread=std::thread(ExecuteSimulation,this);
+	} else {
+		stop();
+		if(mIsInitialized)cleanup();
+		mIsInitialized=false;
 		if(!init()){
 			return false;
 		}
 		mIsInitialized=true;
+		mRunning=true;
+		mSimulationThread=std::thread(ExecuteSimulation,this);
 	}
-	mRunning=true;
-	if(mSimulationThread.joinable()){
-		mSimulationThread.join();
-	}
-	mSimulationThread=std::thread(ExecuteSimulation,this);
 	return true;
 }
 Simulation::~Simulation() {

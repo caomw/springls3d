@@ -122,8 +122,10 @@ void SimulationVisualizer::run(Simulation* simulation,int width,int height,const
 }
 void SimulationVisualizer::start(){
 	if(mSimulation!=NULL){
+		std::cout<<"Reset "<<std::endl;
 		mSimulation->reset();
 		mMiniCamera->loadConfig();
+		std::cout<<"START "<<std::endl;
 		mSimulation->start();
 	}
 }

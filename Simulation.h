@@ -60,6 +60,7 @@ protected:
 	double mComputeTimeSeconds;
 	long mSimulationIteration;
 	bool mRunning;
+	bool mPaused;
 	bool mIsMeshDirty;
 	bool mIsInitialized;
 	MotionScheme mMotionScheme;
@@ -81,6 +82,7 @@ public:
 	void saveParameters(const std::string& paramFile);
 	bool setSource(const std::string& sourceFileName);
 	inline bool isRunning(){return mRunning;}
+	void stopRunning();
 	inline bool isDirty(){return mIsMeshDirty;}
 	virtual bool isPlayback(){return false;}
 	inline SpringLevelSet& getSource(){return mSource;}

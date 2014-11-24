@@ -31,6 +31,7 @@ bool SimulationPlayback::init(){
 	mIsoSurfaceFiles.clear();
 	mConstellationFiles.clear();
 	mSignedDistanceFiles.clear();
+	mParticleVolumeFiles.clear();
 	std::vector<std::string> jsonFiles;
 	int n=GetDirectoryListing(mDirectory,jsonFiles,"",".sim");
 	Json::Reader reader;
@@ -70,6 +71,7 @@ bool SimulationPlayback::init(){
 	}
 	if(mSimulationIteration<mParticleVolumeFiles.size()&&mParticleVolumeFiles[mSimulationIteration].length()>0&&mSource.mParticleVolume.open(mDirectory+GetFileName(mParticleVolumeFiles[mSimulationIteration]))){
 	}
+	/*
 	if(mSimulationIteration<mSignedDistanceFiles.size()&&mSignedDistanceFiles[mSimulationIteration].length()>0){
 		openvdb::io::File file(mDirectory+GetFileName(mSignedDistanceFiles[mSimulationIteration]));
 		file.open();
@@ -84,6 +86,7 @@ bool SimulationPlayback::init(){
 			mSource.mSignedLevelSet=mSignedLevelSet;
 		}
 	}
+	*/
 	simDesc=mTimeSteps[mSimulationIteration];
 	mSimulationTime=simDesc.mSimulationTime;
 	mTimeStep=simDesc.mTimeStep;

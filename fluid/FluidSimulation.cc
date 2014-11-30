@@ -380,17 +380,17 @@ bool FluidSimulation::init() {
 	}
 // Comput Normal for Walls
 	computeWallNormals();
-	std::cout<<"CREATE LEVEL SET "<<std::endl;
 	createLevelSet();
-
 	updateParticleVolume();
 	mField=std::unique_ptr<FieldT>(new FluidVelocityField<float>(mVelocity,mDenseMap));
-	//mField=std::unique_ptr<FieldT>(new FluidTrackingField<float>(mLevelSet));
 	mSource.create(mLevelSet);
-	mSparseLevelSet=mSource.mSignedLevelSet->copy(CopyPolicy::CP_COPY);
-	mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField,mMotionScheme));
-	mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
-	mAdvect->setResampleEnabled(true);
+	//mSparseLevelSet=mSource.mSignedLevelSet->copy(CopyPolicy::CP_COPY);
+	//openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
+	//mSource.updateIsoSurface();
+
+	//mAdvect=std::unique_ptr<AdvectT>(new AdvectT(mSource,*mField,mMotionScheme));
+	//mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
+	//mAdvect->setResampleEnabled(true);
 	//Not needed, so erase
 	if(mMotionScheme==IMPLICIT)mSource.mConstellation.reset();
 
@@ -547,14 +547,17 @@ bool FluidSimulation::step() {
 	correctParticles(mParticleLocator.get(), mParticles, mTimeStep,
 			mFluidParticleDiameter * mVoxelSize);
 	updateParticleVolume();
-	createLevelSet();
-	RegularGrid<float> distField(mLevelSet.dimensions(),1.0f,0.0);
-	mDistanceField.solve(mLevelSet,distField,8.0f);
-	mSparseLevelSet->clear();
-	openvdb::tools::copyFromDense(distField,*mSparseLevelSet,0.25);
 
-	mField->update(*mSparseLevelSet);
-	mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
+	createLevelSet();
+	//RegularGrid<float> distField(mLevelSet.dimensions(),1.0f,0.0);
+	//mDistanceField.solve(mLevelSet,distField,8.0f);
+	//mSparseLevelSet->clear();
+	openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
+	mSource.updateIsoSurface();
+
+	//mField->update(*mSparseLevelSet);
+	//mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
+
 	stringstream velFile,levelFile,unsignedFile,mapFile,distFile;
 	//velFile<<"/home/blake/tmp/velocity" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
 	//levelFile<<"/home/blake/tmp/levelset" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;

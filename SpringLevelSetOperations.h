@@ -135,11 +135,11 @@ public:
 	}
 };
 
-template<typename FieldT> class AdvectSpringlParticleOperation {
+template<typename FieldT> class AdvectSpringlOperation {
 private:
 	imagesci::TemporalIntegrationScheme mIntegrationScheme;
 public:
-	AdvectSpringlParticleOperation(
+	AdvectSpringlOperation(
 			imagesci::TemporalIntegrationScheme integrationScheme =
 					imagesci::TemporalIntegrationScheme::UNKNOWN_TIS) :
 			mIntegrationScheme(integrationScheme) {
@@ -168,6 +168,68 @@ public:
 	}
 
 };
+template<typename FieldT> class AdvectParticleOperation {
+private:
+	imagesci::TemporalIntegrationScheme mIntegrationScheme;
+public:
+	AdvectParticleOperation(
+			imagesci::TemporalIntegrationScheme integrationScheme =
+					imagesci::TemporalIntegrationScheme::UNKNOWN_TIS) :
+			mIntegrationScheme(integrationScheme) {
+	}
+	void compute(Springl& springl, SpringLevelSet& mGrid, const FieldT& field,
+			double t, double h) {
+		openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
+		Vec3d v = Vec3d(springl.particle());
+		Vec3d pt = trans->indexToWorld(v);
+		Vec3d vel = ComputeVelocity(field, mIntegrationScheme, pt, t, h);
+		springl.particle() = trans->worldToIndex(pt + vel);	//Apply integration scheme here, need buffer for previous time points?
+	}
+	double findTimeStep(Springl& springl, SpringLevelSet& mGrid,
+			const FieldT& field, double t) {
+		openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
+		Vec3d v = Vec3d(springl.particle());
+		Vec3d pt = trans->indexToWorld(v);
+		Vec3d vec = field(pt, t);
+		return std::max(std::max(fabs(vec[0]), fabs(vec[1])), fabs(vec[2]));
+	}
+
+};
+template<typename FieldT> class AdvectParticleAndVertexOperation {
+private:
+	imagesci::TemporalIntegrationScheme mIntegrationScheme;
+public:
+	AdvectParticleAndVertexOperation(
+			imagesci::TemporalIntegrationScheme integrationScheme =
+					imagesci::TemporalIntegrationScheme::UNKNOWN_TIS) :
+			mIntegrationScheme(integrationScheme) {
+	}
+	void compute(Springl& springl, SpringLevelSet& mGrid, const FieldT& field,
+			double t, double h) {
+		openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
+		Vec3d v = Vec3d(springl.particle());
+		Vec3d pt = trans->indexToWorld(v);
+		Vec3d vel = ComputeVelocity(field, mIntegrationScheme, pt, t, h);
+		springl.particle() = trans->worldToIndex(pt + vel);	//Apply integration scheme here, need buffer for previous time points?
+
+		for(int k=0;k<springl.size();k++){
+			v = Vec3d(springl[k]);
+			pt = trans->indexToWorld(v);
+			vel = ComputeVelocity(field, mIntegrationScheme, pt, t, h);
+			springl[k] = trans->worldToIndex(pt + vel);	//Apply integration scheme here, need buffer for previous time points?
+		}
+	}
+	double findTimeStep(Springl& springl, SpringLevelSet& mGrid,
+			const FieldT& field, double t) {
+		openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
+		Vec3d v = Vec3d(springl.particle());
+		Vec3d pt = trans->indexToWorld(v);
+		Vec3d vec = field(pt, t);
+		return std::max(std::max(fabs(vec[0]), fabs(vec[1])), fabs(vec[2]));
+	}
+
+};
+
 template<typename FieldT> class AdvectMeshVertexOperation {
 private:
 	imagesci::TemporalIntegrationScheme mIntegrationScheme;

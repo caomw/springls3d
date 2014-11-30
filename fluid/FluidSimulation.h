@@ -33,7 +33,7 @@
 #include "fluid_sorter.h"
 #include "../ParticleVolume.h"
 #include "../Simulation.h"
-#include "../SpringLevelSetAdvection.h"
+#include "../SpringLevelSetFieldDeformation.h"
 #include "../DistanceField.h"
 #include "FluidVelocityField.h"
 #include "FluidTrackingField.h"
@@ -47,7 +47,7 @@ namespace fluid{
  */
 class FluidSimulation :public Simulation{
 	typedef FluidVelocityField<float> FieldT;
-	typedef SpringLevelSetAdvection<FieldT> AdvectT;
+	typedef SpringLevelSetFieldDeformation<FieldT> AdvectT;
 	protected:
 		std::unique_ptr<FieldT> mField;
 		std::unique_ptr<AdvectT> mAdvect;

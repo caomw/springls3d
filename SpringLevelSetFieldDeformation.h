@@ -31,7 +31,7 @@
 #include "SpringLevelSetOperations.h"
 namespace imagesci {
 template<typename FieldT, typename InterruptT = openvdb::util::NullInterrupter>
-class SpringLevelSetAdvection {
+class SpringLevelSetFieldDeformation {
 private:
 	SpringLevelSet& mGrid;
 	const FieldT& mField;
@@ -53,9 +53,9 @@ public:
 	imagesci::MotionScheme mMotionScheme;
 	InterruptT* mInterrupt;
 	// disallow copy by assignment
-	void operator=(const SpringLevelSetAdvection& other) {
+	void operator=(const SpringLevelSetFieldDeformation& other) {
 	}
-	SpringLevelSetAdvection(SpringLevelSet& grid, const FieldT& field,
+	SpringLevelSetFieldDeformation(SpringLevelSet& grid, const FieldT& field,
 			imagesci::MotionScheme scheme =
 					imagesci::MotionScheme::SEMI_IMPLICIT,
 			InterruptT* interrupt = NULL) :
@@ -168,8 +168,9 @@ public:
 		//std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
 	}
 	template<typename MapT> void advect1(double mStartTime, double mEndTime) {
-		typedef AdvectSpringlParticleOperation<FieldT> OpT;
-		typedef AdvectMeshVertexOperation<FieldT> OpT2;
+		typedef AdvectParticleAndVertexOperation<FieldT> ParticleAdvectT;
+		typedef AdvectSpringlOperation<FieldT> SpringlAdvectT;
+		typedef AdvectMeshVertexOperation<FieldT> VertexAdvectT;
 		double dt = 0.0;
 		Vec3d vsz = mGrid.transformPtr()->voxelSize();
 		double scale = std::max(std::max(vsz[0], vsz[1]), vsz[2]);
@@ -179,7 +180,7 @@ public:
 		const double MAX_TIME_STEP = SpringLevelSet::MAX_VEXT;
 		mGrid.resetMetrics();
 		for (time = mStartTime; time < mEndTime; time += dt) {
-			MaxVelocityOperator<OpT, FieldT, InterruptT> op2(mGrid, mField,
+			MaxVelocityOperator<ParticleAdvectT, FieldT, InterruptT> op2(mGrid, mField,
 					time, mInterrupt);
 			double maxV = std::max(EPS, std::sqrt(op2.process()));
 			dt = clamp(MAX_TIME_STEP * scale / std::max(1E-30, maxV), 0.0,
@@ -187,13 +188,17 @@ public:
 			if (dt < EPS) {
 				break;
 			}
-			AdvectSpringlOperator<OpT, FieldT, InterruptT> op1(mGrid, mField,
-					mTemporalScheme, time, dt, mInterrupt);
-			op1.process();
 			if (mMotionScheme == MotionScheme::EXPLICIT) {
-				AdvectMeshVertexOperator<OpT2, FieldT, InterruptT> op3(mGrid,
+				AdvectSpringlOperator<ParticleAdvectT, FieldT, InterruptT> op1(mGrid, mField,
+						mTemporalScheme, time, dt, mInterrupt);
+				op1.process();
+				AdvectMeshVertexOperator<VertexAdvectT, FieldT, InterruptT> op2(mGrid,
 						mField, mTemporalScheme, time, dt, mInterrupt);
-				op3.process();
+				op2.process();
+			} else {
+				AdvectSpringlOperator<SpringlAdvectT, FieldT, InterruptT> op1(mGrid, mField,
+						mTemporalScheme, time, dt, mInterrupt);
+				op1.process();
 			}
 			if (mMotionScheme == MotionScheme::SEMI_IMPLICIT)track<MapT>(time);
 		}
@@ -204,7 +209,7 @@ public:
 
 	template<typename MapT> class SpringLevelSetEvolve {
 	public:
-		SpringLevelSetAdvection& mParent;
+		SpringLevelSetFieldDeformation& mParent;
 		typename TrackerT::LeafManagerType& mLeafs;
 		TrackerT& mTracker;
 		DiscreteField<openvdb::VectorGrid> mDiscreteField;
@@ -213,7 +218,7 @@ public:
 		double mTime;
 		double mTolerance;
 		int mIterations;
-		SpringLevelSetEvolve(SpringLevelSetAdvection& parent, TrackerT& tracker,
+		SpringLevelSetEvolve(SpringLevelSetFieldDeformation& parent, TrackerT& tracker,
 				double time, double dt, int iterations, double tolerance) :
 				mMap(NULL), mParent(parent), mTracker(tracker), mIterations(
 						iterations), mDiscreteField(*parent.mGrid.mGradient), mTime(

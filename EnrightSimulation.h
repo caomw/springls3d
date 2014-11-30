@@ -22,13 +22,13 @@
 #ifndef ENRIGHTSIMULATION_H_
 #define ENRIGHTSIMULATION_H_
 #include <openvdb/openvdb.h>
-#include "SpringLevelSetAdvection.h"
+#include "SpringLevelSetFieldDeformation.h"
 #include "Simulation.h"
 #include <memory>
 namespace imagesci {
 class EnrightSimulation:public Simulation {
 	typedef openvdb::tools::EnrightField<float> FieldT;
-	typedef SpringLevelSetAdvection<FieldT> AdvectT;
+	typedef SpringLevelSetFieldDeformation<FieldT> AdvectT;
 protected:
 	FieldT mField;
 	std::unique_ptr<AdvectT> mAdvect;

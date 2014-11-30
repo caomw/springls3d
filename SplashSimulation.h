@@ -23,7 +23,7 @@
 #define FLUIDSIMULATION_H_
 #include "Simulation.h"
 #include "fluid/FluidVelocityField.h"
-#include "SpringLevelSetAdvection.h"
+#include "SpringLevelSetFieldDeformation.h"
 #include "fluid/FluidSimulation.h"
 namespace imagesci {
 
@@ -32,7 +32,7 @@ namespace imagesci {
  */
 class SplashSimulation : public fluid::FluidSimulation{
 	typedef FluidVelocityField<float> FieldT;
-	typedef SpringLevelSetAdvection<FieldT> AdvectT;
+	typedef SpringLevelSetFieldDeformation<FieldT> AdvectT;
 protected:
 	std::unique_ptr<FieldT> mField;
 	std::unique_ptr<AdvectT> mAdvect;

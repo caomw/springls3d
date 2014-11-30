@@ -33,7 +33,7 @@
 #include "fluid_sorter.h"
 #include "../ParticleVolume.h"
 #include "../Simulation.h"
-#include "../SpringLevelSetFieldDeformation.h"
+#include "../SpringLevelSetParticleDeformation.h"
 #include "../DistanceField.h"
 #include "FluidVelocityField.h"
 #include "FluidTrackingField.h"
@@ -46,11 +46,8 @@ namespace fluid{
  *
  */
 class FluidSimulation :public Simulation{
-	typedef FluidVelocityField<float> FieldT;
-	typedef SpringLevelSetFieldDeformation<FieldT> AdvectT;
 	protected:
-		std::unique_ptr<FieldT> mField;
-		std::unique_ptr<AdvectT> mAdvect;
+		std::unique_ptr<SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter> > mAdvect;
 		//Constant, even though gravity really isn't constant on earth.
 		const static float GRAVITY ;
 		float mMaxDensity;

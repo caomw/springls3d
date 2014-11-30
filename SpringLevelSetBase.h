@@ -62,12 +62,14 @@ private:
 public:
 	openvdb::Index32 id;
 	openvdb::Index32 offset;
-
 	openvdb::Vec3s& normal() const {
 		return mesh->mParticleNormals[id];
 	}
 	openvdb::Vec3s& particle() const {
 		return mesh->mParticles[id];
+	}
+	openvdb::Vec3s& velocity() const {
+		return mesh->mParticleVelocity[id];
 	}
 	openvdb::Vec3s& operator[](size_t idx) {
 		return mesh->mVertexes[offset + idx];
@@ -84,8 +86,8 @@ public:
 	float distanceToFaceSqr(const openvdb::Vec3s& pt);
 	float distanceToParticle(const openvdb::Vec3s& pt);
 	float distanceToParticleSqr(const openvdb::Vec3s& pt);
-	float distanceEdgeSqr(const openvdb::Vec3s& pt, int e);
-	float distanceEdge(const openvdb::Vec3s& pt, int e);
+	float distanceToEdgeSqr(const openvdb::Vec3s& pt, int e);
+	float distanceToEdge(const openvdb::Vec3s& pt, int e);
 	openvdb::Vec3s computeCentroid() const;
 	openvdb::Vec3s computeNormal(const float eps = 1E-6f) const;
 	~Springl() {

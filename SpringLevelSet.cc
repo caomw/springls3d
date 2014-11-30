@@ -135,10 +135,10 @@ float Springl::distanceToFaceSqr(const openvdb::Vec3s& pt) {
 				(*this)[3], normal(), &closest);
 	}
 }
-float Springl::distanceEdgeSqr(const openvdb::Vec3s& pt, int e) {
+float Springl::distanceToEdgeSqr(const openvdb::Vec3s& pt, int e) {
 	return DistanceToEdgeSqr(pt, (*this)[e], (*this)[(e + 1) % size()]);
 }
-float Springl::distanceEdge(const openvdb::Vec3s& pt, int e) {
+float Springl::distanceToEdge(const openvdb::Vec3s& pt, int e) {
 	return std::sqrt(
 			DistanceToEdgeSqr(pt, (*this)[e], (*this)[(e + 1) % size()]));
 }
@@ -350,7 +350,7 @@ void NearestNeighborOperation::compute(Springl& springl, SpringLevelSet& mGrid,
 			Springl& snbr = mGrid.getSpringl(nbrId);
 			bestNbr = SpringlNeighbor(nbrId, -1, D2);
 			for (int8_t n = 0; n < snbr.size(); n++) {
-				float d = snbr.distanceEdgeSqr(refPoint, n);
+				float d = snbr.distanceToEdgeSqr(refPoint, n);
 				if (d <= bestNbr.distance) {
 					bestNbr.edgeId = n;
 					bestNbr.distance = d;

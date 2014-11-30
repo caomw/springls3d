@@ -79,7 +79,7 @@ class Mesh{
 		std::vector<openvdb::Index32> mTriIndexes;
 		std::vector<openvdb::Vec2s> uvMap;
 		std::vector<openvdb::Vec3s> mVertexAuxBuffer;
-		std::vector<openvdb::Vec3s> mParticleAuxBuffer;
+		std::vector<openvdb::Vec3s> mParticleVelocity;
 		std::vector<openvdb::Vec4I> mFaces;
 		Mesh();
 		void create(openvdb::tools::VolumeToMesh& mesher,openvdb::FloatGrid::Ptr grid);

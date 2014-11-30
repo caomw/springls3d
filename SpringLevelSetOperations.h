@@ -431,6 +431,48 @@ protected:
 	InterruptT* mInterrupt;
 	const FieldT& mField;
 };
+template<typename InterruptT = openvdb::util::NullInterrupter>
+class MaxParticleVelocityOperator {
+public:
+	double mMaxAbsV;
+	Constellation& mConstellation;
+	InterruptT* mInterrupt;
+	MaxParticleVelocityOperator(Constellation& constellation,
+			InterruptT* _interrupt) :
+				mConstellation(constellation),  mInterrupt(
+					_interrupt), mMaxAbsV(std::numeric_limits<double>::min()) {
+	}
+	MaxParticleVelocityOperator(MaxParticleVelocityOperator& other, tbb::split) :
+			mConstellation(other.mConstellation), mMaxAbsV(other.mMaxAbsV),  mInterrupt(other.mInterrupt){
+	}
+	virtual ~MaxParticleVelocityOperator() {
+	}
+	double process(bool threaded = true) {
+		if (mInterrupt)
+			mInterrupt->start("Processing springls");
+		SpringlRange range(mConstellation);
+		if (threaded) {
+			tbb::parallel_reduce(range, *this);
+		} else {
+			(*this)(range);
+		}
+		if (mInterrupt)
+			mInterrupt->end();
+		return mMaxAbsV;
+	}
+	void join(const MaxParticleVelocityOperator& other) {
+		mMaxAbsV = std::max(mMaxAbsV, other.mMaxAbsV);
+
+	}
+	void operator()(const SpringlRange& range) {
+		if (openvdb::util::wasInterrupted(mInterrupt))
+			tbb::task::self().cancel_group_execution();
+		for (typename SpringlRange::Iterator springl = range.begin(); springl;
+				++springl) {
+			mMaxAbsV=std::max((double)springl->velocity().lengthSqr(),mMaxAbsV);
+		}
+	}
+};
 template<typename FieldT,
 		typename InterruptT = openvdb::util::NullInterrupter>
 class MaxLevelSetVelocityOperator {
@@ -486,17 +528,17 @@ public:
 };
 template<typename OperatorT, typename FieldT,
 		typename InterruptT = openvdb::util::NullInterrupter>
-class AdvectSpringlOperator {
+class AdvectSpringlFieldOperator {
 public:
 	SpringLevelSet& mGrid;
-	AdvectSpringlOperator(SpringLevelSet& grid, const FieldT& field,
+	AdvectSpringlFieldOperator(SpringLevelSet& grid, const FieldT& field,
 			imagesci::TemporalIntegrationScheme scheme, double t, double dt,
 			InterruptT* _interrupt) :
 			mGrid(grid), mField(field), mIntegrationScheme(scheme), mInterrupt(
 					_interrupt), mTime(t), mTimeStep(dt) {
 
 	}
-	virtual ~AdvectSpringlOperator() {
+	virtual ~AdvectSpringlFieldOperator() {
 	}
 	void process(bool threaded = true) {
 		if (mInterrupt)
@@ -532,6 +574,8 @@ protected:
 	InterruptT* mInterrupt;
 
 };
+
+
 template<typename OperatorT, typename FieldT,
 		typename InterruptT = openvdb::util::NullInterrupter>
 class AdvectMeshVertexOperator {

@@ -189,14 +189,14 @@ public:
 				break;
 			}
 			if (mMotionScheme == MotionScheme::EXPLICIT) {
-				AdvectSpringlOperator<ParticleAdvectT, FieldT, InterruptT> op1(mGrid, mField,
+				AdvectSpringlFieldOperator<ParticleAdvectT, FieldT, InterruptT> op1(mGrid, mField,
 						mTemporalScheme, time, dt, mInterrupt);
 				op1.process();
 				AdvectMeshVertexOperator<VertexAdvectT, FieldT, InterruptT> op2(mGrid,
 						mField, mTemporalScheme, time, dt, mInterrupt);
 				op2.process();
 			} else {
-				AdvectSpringlOperator<SpringlAdvectT, FieldT, InterruptT> op1(mGrid, mField,
+				AdvectSpringlFieldOperator<SpringlAdvectT, FieldT, InterruptT> op1(mGrid, mField,
 						mTemporalScheme, time, dt, mInterrupt);
 				op1.process();
 			}

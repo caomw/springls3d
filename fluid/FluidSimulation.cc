@@ -384,15 +384,11 @@ bool FluidSimulation::init() {
 	createLevelSet();
 	updateParticleVolume();
 	mSource.create(mLevelSet);
-	//mSparseLevelSet=mSource.mSignedLevelSet->copy(CopyPolicy::CP_COPY);
-	//openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
-	//mSource.updateIsoSurface();
 	if(mMotionScheme==IMPLICIT){
 		mSource.mConstellation.reset();
 	} else {
 		mAdvect=std::unique_ptr<SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter> >(new SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter>(mSource,mMotionScheme));
 		mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
-		//mAdvect->setResampleEnabled(false);
 		if(mMotionScheme!=IMPLICIT){
 			std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 	#pragma omp for
@@ -558,12 +554,35 @@ bool FluidSimulation::step() {
 		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
 		mSource.updateIsoSurface();
 	} else {
-		mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
-		Coord dims=mLevelSet.dimensions();
 		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
+		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 #pragma omp for
 		for(int n=0;n<positions.size();n++){
-			Vec3s& pt=positions[n];
+			// Variables for Neighboring Particles
+			float wsum = 0.0;
+			Vec3s u(0.0f);
+			Vec3s pt=positions[n];
+			// Gather Neighboring Particles
+			std::vector<FluidParticle*> neighbors = mParticleLocator->getNeigboringCellParticles((int)(0.5f*pt[0]),(int)(0.5f*pt[1]),(int)(0.5f*pt[2]),1,1,1);
+			for(FluidParticle *np:neighbors) {
+				if( np->mObjectType == FLUID ) {
+					float dist2 = DistanceSquared(0.5f*mVoxelSize*pt,np->mLocation);
+					float w = np->mMass * SharpKernel(dist2,mFluidParticleDiameter * mVoxelSize);
+					u += w * np->mVelocity;
+					wsum += w;
+				}
+			}
+			if(wsum>0.0f) {
+				u /= wsum;
+				velocities[n]=u;
+			}
+		}
+		mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
+		Coord dims=mLevelSet.dimensions();
+		std::vector<Vec3s>& positions2=mSource.mConstellation.mParticles;
+#pragma omp for
+		for(int n=0;n<positions2.size();n++){
+			Vec3s& pt=positions2[n];
 			pt[0]=clamp(pt[0],0.0f,dims[0]-1.0f);
 			pt[1]=clamp(pt[1],0.0f,dims[1]-1.0f);
 			pt[2]=clamp(pt[2],0.0f,dims[2]-1.0f);

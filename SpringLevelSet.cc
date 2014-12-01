@@ -56,7 +56,8 @@ const float SpringLevelSet::MIN_ASPECT_RATIO = 0.1f;
 MotionScheme DecodeMotionScheme(const std::string& name) {
 	if (name == "implicit" || name == "IMPLICIT") {
 		return MotionScheme::IMPLICIT;
-	} else if (name == "semi-implicit" || name == "SEMI_IMPLICIT"|| name == "semi_implicit") {
+	} else if (name == "semi-implicit" || name == "SEMI_IMPLICIT"
+			|| name == "semi_implicit") {
 		return MotionScheme::SEMI_IMPLICIT;
 	} else if (name == "explicit" || name == "EXPLICIT") {
 		return MotionScheme::EXPLICIT;
@@ -507,8 +508,7 @@ void SpringLevelSet::create(Mesh* mesh,
 }
 void SpringLevelSet::create(FloatGrid& grid) {
 	this->mTransform = grid.transformPtr();
-	grid.setTransform(
-			openvdb::math::Transform::createLinearTransform(1.0));
+	grid.setTransform(openvdb::math::Transform::createLinearTransform(1.0));
 	mSignedLevelSet = boost::static_pointer_cast<FloatGrid>(
 			grid.copyGrid(CopyPolicy::CP_COPY));
 	mIsoSurface.create(mSignedLevelSet);
@@ -531,7 +531,7 @@ void SpringLevelSet::create(RegularGrid<float>& grid) {
 	mSignedLevelSet = std::unique_ptr<FloatGrid>(new FloatGrid());
 	mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
 	mSignedLevelSet->setTransform(grid.transformPtr());
-	openvdb::tools::copyFromDense(grid,*mSignedLevelSet,0.25f);
+	openvdb::tools::copyFromDense(grid, *mSignedLevelSet, 0.25f);
 	mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
 	mIsoSurface.create(mSignedLevelSet);
 	updateSignedLevelSet();
@@ -577,6 +577,7 @@ int SpringLevelSet::fill() {
 	const float D2 = FILL_DISTANCE * FILL_DISTANCE;
 	Index64 N = mVolToMesh.polygonPoolListSize();
 	Index64 I;
+	std::list<int> fillList;
 	for (Index64 n = 0; n < N; ++n) {
 		const openvdb::tools::PolygonPool& polygons = polygonPoolList[n];
 		I = polygons.numQuads();
@@ -636,20 +637,9 @@ int SpringLevelSet::fill() {
 									counter + 3));
 					mConstellation.mParticles.push_back(
 							springl.computeCentroid());
-					if(mConstellation.mParticleVelocity.size()>0){
-						int K = springl.size();
-						Vec3s vel(0.0);
-						double wsum=0.0;
-						for (int k = 0; k < K; k++) {
-							std::list<SpringlNeighbor>& map = getNearestNeighbors(springl.id,k);
-							for (SpringlNeighbor ci : map) {
-								Springl& nbr = getSpringl(ci.springlId);
-								vel+=nbr.velocity();
-								wsum+=1.0f;
-							}
-						}
-						if(wsum>0.0f)vel*=1.0/wsum;
-						mConstellation.mParticleVelocity.push_back(vel);
+					if (mConstellation.mParticleVelocity.size() > 0) {
+						fillList.push_back(springl.id);
+						mConstellation.mParticleVelocity.push_back(Vec3s(0.0f));
 					}
 					openvdb::Vec3s norm = springl.computeNormal();
 					mConstellation.mParticleNormals.push_back(norm);
@@ -717,20 +707,9 @@ int SpringLevelSet::fill() {
 									openvdb::util::INVALID_IDX));
 					mConstellation.mParticles.push_back(
 							springl.computeCentroid());
-					if(mConstellation.mParticleVelocity.size()>0){
-						int K = springl.size();
-						Vec3s vel(0.0);
-						double wsum=0.0;
-						for (int k = 0; k < K; k++) {
-							std::list<SpringlNeighbor>& map = getNearestNeighbors(springl.id,k);
-							for (SpringlNeighbor ci : map) {
-								Springl& nbr = getSpringl(ci.springlId);
-								vel+=nbr.velocity();
-								wsum+=1.0f;
-							}
-						}
-						if(wsum>0.0f)vel*=1.0/wsum;
-						mConstellation.mParticleVelocity.push_back(vel);
+					if (mConstellation.mParticleVelocity.size() > 0) {
+						fillList.push_back(springl.id);
+						mConstellation.mParticleVelocity.push_back(Vec3s(0.0f));
 					}
 					openvdb::Vec3s norm = springl.computeNormal();
 
@@ -743,6 +722,40 @@ int SpringLevelSet::fill() {
 					counter += 3;
 				}
 			}
+		}
+	}
+	if (fillList.size() > 0) {
+		updateUnSignedLevelSet();
+		updateNearestNeighbors();
+		for (int cycle = 0; cycle < 8; cycle++) {
+			int unfilledCount = 0;
+			for (int fid : fillList) {
+				Springl& springl = mConstellation.springls[fid];
+				int K = springl.size();
+				Vec3s vel(0.0);
+				double wsum = 0.0;
+				for (int k = 0; k < K; k++) {
+					std::list<SpringlNeighbor>& map = getNearestNeighbors(
+							springl.id, k);
+					for (SpringlNeighbor ci : map) {
+						Springl& nbr = getSpringl(ci.springlId);
+						Vec3s v = nbr.velocity();
+						if (v.lengthSqr() > 0) {
+							vel += v;
+							wsum += 1.0f;
+						}
+					}
+				}
+				if (wsum > 0.0f) {
+					vel *= 1.0 / wsum;
+					mConstellation.mParticleVelocity[fid] = vel;
+				} else {
+					unfilledCount++;
+				}
+			}
+			if (unfilledCount == 0)
+				break;
+			std::cout << cycle << ":: un-filled " << unfilledCount << std::endl;
 		}
 	}
 	mFillCount += added;
@@ -1013,7 +1026,7 @@ int SpringLevelSet::clean() {
 			mConstellation.mParticles[springlOffset] =
 					mConstellation.mParticles[n];
 
-			if(mConstellation.mParticleVelocity.size()>0){
+			if (mConstellation.mParticleVelocity.size() > 0) {
 				mConstellation.mParticleVelocity[springlOffset] =
 						mConstellation.mParticleVelocity[n];
 			}
@@ -1066,7 +1079,7 @@ int SpringLevelSet::clean() {
 			mConstellation.mParticles.begin() + springlOffset,
 			mConstellation.mParticles.end());
 
-	if(mConstellation.mParticleVelocity.size()>0){
+	if (mConstellation.mParticleVelocity.size() > 0) {
 		mConstellation.mParticleVelocity.erase(
 				mConstellation.mParticleVelocity.begin() + springlOffset,
 				mConstellation.mParticleVelocity.end());

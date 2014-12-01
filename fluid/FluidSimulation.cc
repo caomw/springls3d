@@ -583,17 +583,17 @@ bool FluidSimulation::step() {
 #pragma omp for
 		for(int n=0;n<positions2.size();n++){
 			Vec3s& pt=positions2[n];
-			pt[0]=clamp(pt[0],0.0f,dims[0]-1.0f);
-			pt[1]=clamp(pt[1],0.0f,dims[1]-1.0f);
-			pt[2]=clamp(pt[2],0.0f,dims[2]-1.0f);
+			pt[0]=clamp(pt[0],1.0f,dims[0]-2.0f);
+			pt[1]=clamp(pt[1],1.0f,dims[1]-2.0f);
+			pt[2]=clamp(pt[2],1.0f,dims[2]-2.0f);
 		}
 		std::vector<Vec3s>& vertexes=mSource.mConstellation.mVertexes;
 #pragma omp for
 		for(int n=0;n<vertexes.size();n++){
 			Vec3s& pt=vertexes[n];
-			pt[0]=clamp(pt[0],0.0f,dims[0]-1.0f);
-			pt[1]=clamp(pt[1],0.0f,dims[1]-1.0f);
-			pt[2]=clamp(pt[2],0.0f,dims[2]-1.0f);
+			pt[0]=clamp(pt[0],1.0f,dims[0]-2.0f);
+			pt[1]=clamp(pt[1],1.0f,dims[1]-2.0f);
+			pt[2]=clamp(pt[2],1.0f,dims[2]-2.0f);
 		}
 	}
 	correctParticles(mParticleLocator.get(), mParticles, mTimeStep,

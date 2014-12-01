@@ -559,6 +559,23 @@ bool FluidSimulation::step() {
 		mSource.updateIsoSurface();
 	} else {
 		mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
+		Coord dims=mLevelSet.dimensions();
+		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
+#pragma omp for
+		for(int n=0;n<positions.size();n++){
+			Vec3s& pt=positions[n];
+			pt[0]=clamp(pt[0],0.0f,dims[0]-1.0f);
+			pt[1]=clamp(pt[1],0.0f,dims[1]-1.0f);
+			pt[2]=clamp(pt[2],0.0f,dims[2]-1.0f);
+		}
+		std::vector<Vec3s>& vertexes=mSource.mConstellation.mVertexes;
+#pragma omp for
+		for(int n=0;n<vertexes.size();n++){
+			Vec3s& pt=vertexes[n];
+			pt[0]=clamp(pt[0],0.0f,dims[0]-1.0f);
+			pt[1]=clamp(pt[1],0.0f,dims[1]-1.0f);
+			pt[2]=clamp(pt[2],0.0f,dims[2]-1.0f);
+		}
 	}
 	correctParticles(mParticleLocator.get(), mParticles, mTimeStep,
 			mFluidParticleDiameter * mVoxelSize);
@@ -803,7 +820,6 @@ void FluidSimulation::solvePicFlip() {
 	if(mMotionScheme!=IMPLICIT){
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
-		std::cout<<"VELOCITIES "<<velocities.size()<<" "<<positions.size()<<std::endl;
 #pragma omp for
 		for(int n=0;n<velocities.size();n++){
 			Vec3s pt=0.5f*mVoxelSize*positions[n];

@@ -549,7 +549,6 @@ bool FluidSimulation::step() {
 	computeParticleDensity(mMaxDensity);
 	addExternalForce();
 	solvePicFlip();
-	advectParticles();
 	if(mMotionScheme==MotionScheme::IMPLICIT){
 		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
 		mSource.updateIsoSurface();
@@ -596,6 +595,7 @@ bool FluidSimulation::step() {
 			pt[2]=clamp(pt[2],1.0f,dims[2]-2.0f);
 		}
 	}
+	advectParticles();
 	correctParticles(mParticleLocator.get(), mParticles, mTimeStep,
 			mFluidParticleDiameter * mVoxelSize);
 	updateParticleVolume();

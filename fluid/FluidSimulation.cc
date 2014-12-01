@@ -392,7 +392,7 @@ bool FluidSimulation::init() {
 	} else {
 		mAdvect=std::unique_ptr<SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter> >(new SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter>(mSource,mMotionScheme));
 		mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
-		mAdvect->setResampleEnabled(false);
+		//mAdvect->setResampleEnabled(false);
 		if(mMotionScheme!=IMPLICIT){
 			std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 	#pragma omp for
@@ -803,6 +803,7 @@ void FluidSimulation::solvePicFlip() {
 	if(mMotionScheme!=IMPLICIT){
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
+		std::cout<<"VELOCITIES "<<velocities.size()<<" "<<positions.size()<<std::endl;
 #pragma omp for
 		for(int n=0;n<velocities.size();n++){
 			Vec3s pt=0.5f*mVoxelSize*positions[n];

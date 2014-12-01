@@ -47,7 +47,7 @@ namespace fluid{
  */
 class FluidSimulation :public Simulation{
 	protected:
-		std::unique_ptr<SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter> > mAdvect;
+		std::unique_ptr<imagesci::SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter> > mAdvect;
 		//Constant, even though gravity really isn't constant on earth.
 		const static float GRAVITY ;
 		float mMaxDensity;

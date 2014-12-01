@@ -161,6 +161,7 @@ public:
 			int cleaned = mGrid.clean();
 			mGrid.updateUnSignedLevelSet();
 			mGrid.updateIsoSurface();
+			mGrid.updateNearestNeighbors();
 			mGrid.fill();
 		} else {
 			mGrid.updateIsoSurface();

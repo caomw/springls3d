@@ -636,6 +636,21 @@ int SpringLevelSet::fill() {
 									counter + 3));
 					mConstellation.mParticles.push_back(
 							springl.computeCentroid());
+					if(mConstellation.mParticleVelocity.size()>0){
+						int K = springl.size();
+						Vec3s vel(0.0);
+						double wsum=0.0;
+						for (int k = 0; k < K; k++) {
+							std::list<SpringlNeighbor>& map = getNearestNeighbors(springl.id,k);
+							for (SpringlNeighbor ci : map) {
+								Springl& nbr = getSpringl(ci.springlId);
+								vel+=nbr.velocity();
+								wsum+=1.0f;
+							}
+						}
+						if(wsum>0.0f)vel*=1.0/wsum;
+						mConstellation.mParticleVelocity.push_back(vel);
+					}
 					openvdb::Vec3s norm = springl.computeNormal();
 					mConstellation.mParticleNormals.push_back(norm);
 					mConstellation.mVertexNormals.push_back(norm);
@@ -702,6 +717,21 @@ int SpringLevelSet::fill() {
 									openvdb::util::INVALID_IDX));
 					mConstellation.mParticles.push_back(
 							springl.computeCentroid());
+					if(mConstellation.mParticleVelocity.size()>0){
+						int K = springl.size();
+						Vec3s vel(0.0);
+						double wsum=0.0;
+						for (int k = 0; k < K; k++) {
+							std::list<SpringlNeighbor>& map = getNearestNeighbors(springl.id,k);
+							for (SpringlNeighbor ci : map) {
+								Springl& nbr = getSpringl(ci.springlId);
+								vel+=nbr.velocity();
+								wsum+=1.0f;
+							}
+						}
+						if(wsum>0.0f)vel*=1.0/wsum;
+						mConstellation.mParticleVelocity.push_back(vel);
+					}
 					openvdb::Vec3s norm = springl.computeNormal();
 
 					mConstellation.mParticleNormals.push_back(norm);
@@ -982,6 +1012,12 @@ int SpringLevelSet::clean() {
 		if (springlOffset != n) {
 			mConstellation.mParticles[springlOffset] =
 					mConstellation.mParticles[n];
+
+			if(mConstellation.mParticleVelocity.size()>0){
+				mConstellation.mParticleVelocity[springlOffset] =
+						mConstellation.mParticleVelocity[n];
+			}
+
 			mConstellation.mParticleNormals[springlOffset] =
 					mConstellation.mParticleNormals[n];
 			springl.offset = vertexOffset;
@@ -1029,6 +1065,13 @@ int SpringLevelSet::clean() {
 	mConstellation.mParticles.erase(
 			mConstellation.mParticles.begin() + springlOffset,
 			mConstellation.mParticles.end());
+
+	if(mConstellation.mParticleVelocity.size()>0){
+		mConstellation.mParticleVelocity.erase(
+				mConstellation.mParticleVelocity.begin() + springlOffset,
+				mConstellation.mParticleVelocity.end());
+	}
+
 	mConstellation.mParticleNormals.erase(
 			mConstellation.mParticleNormals.begin() + springlOffset,
 			mConstellation.mParticleNormals.end());

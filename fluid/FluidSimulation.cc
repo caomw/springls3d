@@ -559,8 +559,7 @@ bool FluidSimulation::step() {
 	computeParticleDensity(mMaxDensity);
 	//Add external gravity force
 	addExternalForce();
-	solvePicFlip();
-	advectParticles();
+	solvePicFlip();	
 	if(mMotionScheme==MotionScheme::IMPLICIT){
 		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
 		mSource.updateIsoSurface();
@@ -588,6 +587,7 @@ bool FluidSimulation::step() {
 				velocities[n]=u;
 			}
 		}
+		advectParticles();
 		mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
 		Coord dims=mLevelSet.dimensions();
 		std::vector<Vec3s>& positions2=mSource.mConstellation.mParticles;

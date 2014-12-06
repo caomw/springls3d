@@ -90,6 +90,19 @@ class FluidSimulation :public Simulation{
 		void createLevelSet();
 		void updateParticleVolume();
 		void enforceBoundaryCondition();
+		float SmoothKernel( float r2, float h );
+		float SharpKernel( float r2, float h );
+		float Distance(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1);
+		float DistanceSquared(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1);
+		float LengthSquared( float a, float b, float c );
+		void ShuffleCoordinates( std::vector<openvdb::Coord> &waters );
+		float linear( RegularGrid<float>& q, float x, float y, float z ) ;
+		void resampleParticles( ParticleLocator *sort, openvdb::Vec3f& p, openvdb::Vec3f& u, float re );
+		void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle, float dt, float re);
+		double implicit_func( ParticleLocator *sort, openvdb::Vec3f& p, float density );
+		double implicit_func( std::vector<FluidParticle*> &neighbors,openvdb::Vec3f& p, float density,float voxelSize);
+		void MapParticlesToGrid();
+		void MapGridToParticles();
 		inline float isWallIndicator( char a ) {
 			return ((a == WALL) ? 1.0f : -1.0f);
 		}

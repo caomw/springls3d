@@ -47,18 +47,7 @@ template<typename ValueT> RegularGrid<ValueT> alloc3D( int w, int h, int d ) {
 
 unsigned long getMicroseconds();
 double dumptime();
-float SmoothKernel( float r2, float h );
-float SharpKernel( float r2, float h );
-float Distance(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1);
-float DistanceSquared(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1);
-float LengthSquared( float a, float b, float c );
-void MapParticlesToGrid( ParticleLocator *sort, std::vector<ParticlePtr>& particles,MACGrid<float>&  grid);
-void MapGridToParticles( std::vector<ParticlePtr>& particles, MACGrid<float>& grid );
-float linear( RegularGrid<float>& q, float x, float y, float z ) ;
-void fetchVelocity(openvdb::Vec3f& p,openvdb::Vec3f& u,MACGrid<float>& grid );
-void resampleParticles( ParticleLocator *sort, openvdb::Vec3f& p, openvdb::Vec3f& u, float re );
-void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle, float dt, float re);
-double implicit_func( ParticleLocator *sort, openvdb::Vec3f& p, float density );
+
 static void dump(const char *format, ...) {
 	va_list args;
 	va_start(args, format);
@@ -66,7 +55,6 @@ static void dump(const char *format, ...) {
 	va_end(args);
 }
 
-void ShuffleCoordinates( std::vector<openvdb::Coord> &waters );
 
 }
 }

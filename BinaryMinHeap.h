@@ -34,11 +34,7 @@ struct Indexable{
 public:
 	ScalarT mValue;
 	openvdb::Coord mIndex;
-	size_t mChainIndex;
-	Indexable(ScalarT value,const openvdb::Coord& index):mChainIndex(0),mValue(value),mIndex(index){
-	}
-	void setChainIndex(size_t idx){
-		mChainIndex=idx;
+	Indexable(ScalarT value,const openvdb::Coord& index):mValue(value),mIndex(index){
 	}
 };
 template<typename ScalarT>
@@ -84,10 +80,10 @@ public:
 		size_t index = mBackPointers(i,j,k);
 		IndexableType* v = mArray[index];
 		if (value<v->mValue) {
-			v->setValue(value);
+			v->mValue=value;
 			percolateUp(index);
 		} else {
-			v->setValue(value);
+			v->mValue=value;
 			percolateDown(index);
 		}
 	}
@@ -95,7 +91,7 @@ public:
 		change(node.mIndex[0],node.mIndex[1],node.mIndex[2], value);
 	}
 	void add(IndexableType* x) {
-		if (mCurrentSize + 1 == mArray.size()) {
+		if (mCurrentSize + 1 >= mArray.size()) {
 			resize();
 		}
 		int hole = ++mCurrentSize;
@@ -113,9 +109,15 @@ public:
 		percolateDown(1);
 		return minItem;
 	}
+	void remove(IndexableType* item) {
+		size_t idx=mBackPointers(item->mIndex);
+		mArray[idx] = mArray[mCurrentSize--];
+		percolateDown(idx);
+	}
 	void clear() {
 		mCurrentSize = 0;
 		mArray.clear();
+		mArray.shrink_to_fit();
 		mBackPointers.fill(0);
 	}
 protected:

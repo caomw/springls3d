@@ -108,6 +108,7 @@ void DistanceField::solve(const RegularGrid<float>& vol,RegularGrid<float>& dist
 	double newvalue;
 	double s = 0, t = 0, w = 0;
 	double result;
+
 	static const int neighborsX[6] = { 1, 0, -1, 0, 0, 0 };
 	static const int neighborsY[6] = { 0, 1, 0, -1, 0, 0 };
 	static const int neighborsZ[6] = { 0, 0, 0, 0, 1, -1 };

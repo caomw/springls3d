@@ -39,6 +39,9 @@ using namespace std;
 namespace imagesci {
 namespace fluid {
 const float FluidSimulation::GRAVITY = 9.8067f;
+const float RELAXATION_KERNEL_WIDTH=1.4;
+const float SPRING_STIFFNESS=50.0;
+
 FluidSimulation::FluidSimulation(const openvdb::Coord& dims, float voxelSize,
 		MotionScheme scheme) :
 		Simulation("Fluid Simulation", scheme), mMaxDensity(0.0), mStuckParticleCount(
@@ -71,9 +74,11 @@ void FluidSimulation::computeParticleDensity(float maxDensity) {
 				mGridSize[1] - 1);
 		int k = clamp((int) (mGridSize[2] * p->mLocation[2]), 0,
 				mGridSize[2] - 1);
+		//Search in sm all region
 		std::vector<FluidParticle*> neighbors =
 				mParticleLocator->getNeigboringCellParticles(i, j, k, 1, 1, 1);
 		float wsum = 0.0;
+		//Density a function of how close particles are to their neighbors.
 		for (FluidParticle* np : neighbors) {
 			if (np->mObjectType == WALL)
 				continue;
@@ -83,6 +88,7 @@ void FluidSimulation::computeParticleDensity(float maxDensity) {
 							4.0f * mFluidParticleDiameter * mVoxelSize);
 			wsum += w;
 		}
+		//Estimate density in region using current particle configuration.
 		p->mDensity = wsum / maxDensity;
 	}
 }
@@ -429,12 +435,14 @@ void FluidSimulation::pourWater(int limit, float maxDensity) {
 }
 void FluidSimulation::addExternalForce() {
 	float velocity = -mTimeStep * GRAVITY;
+	//Add graviy acceleration to all particles
 	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles)
 	{
 		if (mParticles[n]->mObjectType == FLUID)
 			mParticles[n]->mVelocity[1] += velocity;
 	}
 	if(mMotionScheme!=IMPLICIT){
+		//Add velocity to surface particles
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 #pragma omp for
 		for(int n=0;n<velocities.size();n++){
@@ -545,8 +553,11 @@ void FluidSimulation::cleanup() {
 	mParticles.clear();
 }
 bool FluidSimulation::step() {
+	//Rebuild location data structure
 	mParticleLocator->update(mParticles);
+	//Compute density for each cell, capped by max density as pre-computed
 	computeParticleDensity(mMaxDensity);
+	//Add external gravity force
 	addExternalForce();
 	solvePicFlip();
 	advectParticles();
@@ -596,8 +607,7 @@ bool FluidSimulation::step() {
 			pt[2]=clamp(pt[2],1.0f,dims[2]-2.0f);
 		}
 	}
-	correctParticles(mParticleLocator.get(), mParticles, mTimeStep,
-			mFluidParticleDiameter * mVoxelSize);
+	correctParticles(mParticleLocator.get(), mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 	updateParticleVolume();
 	createLevelSet();
 	//RegularGrid<float> distField(mLevelSet.dimensions(),1.0f,0.0);
@@ -821,7 +831,7 @@ void FluidSimulation::extrapolateVelocity() {
 }
 void FluidSimulation::solvePicFlip() {
 	mParticleLocator->update(mParticles);
-	MapParticlesToGrid(mParticleLocator.get(), mParticles, mVelocity);
+	MapParticlesToGrid();
 	mParticleLocator->markAsWater(mLabel, mWallWeight, mFluidParticleDiameter);
 	copyGridToBuffer();
 	enforceBoundaryCondition();
@@ -891,6 +901,231 @@ void FluidSimulation::createLevelSet() {
 		}END_FOR;
 
 
+}
+float FluidSimulation::LengthSquared( float a, float b, float c ) {
+    return a*a + b*b + c*c;
+}
+
+float FluidSimulation::DistanceSquared(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1) {
+	return (p0-p1).lengthSqr();
+}
+
+float FluidSimulation::Distance(const openvdb::Vec3f& p0,const openvdb::Vec3f& p1) {
+	return (p0-p1).length();
+}
+
+void FluidSimulation::ShuffleCoordinates( std::vector<openvdb::Coord> &waters ) {
+	random_shuffle( waters.begin(), waters.end() );
+}
+
+
+float FluidSimulation::SmoothKernel( float r2, float h ) {
+    return max( 1.0-r2/(h*h), 0.0 );
+}
+float FluidSimulation::SharpKernel( float r2, float h ) {
+    return max( h*h/fmax(r2,1.0e-5) - 1.0, 0.0 );
+}
+
+
+
+
+void FluidSimulation::MapParticlesToGrid() {
+
+	// Compute Mapping
+
+	openvdb::Coord dims(mVelocity.rows(),mVelocity.cols(),mVelocity.slices());
+//OPENMP_FOR
+	FOR_EVERY_CELL(dims[0]+1,dims[1]+1,dims[2]+1) {
+		// Variales for Particle Sorter
+		vector<FluidParticle*> neighbors;
+
+		// Map X Grids
+		if( j <dims[1] && k < dims[2]) {
+			openvdb::Vec3f px(i, j+0.5, k+0.5);
+			float sumw = 0.0;
+			float sumx = 0.0;
+			neighbors = mParticleLocator->getNeigboringWallParticles(i,j,k,1,2,2);
+
+			for( int n=0; n<neighbors.size(); n++ ) {
+				FluidParticle *p = neighbors[n];
+				if( p->mObjectType == FLUID ) {
+					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
+					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
+					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
+					openvdb::Vec3f pos(x, y, z);
+					float w = p->mMass * SharpKernel(DistanceSquared(pos,px),RELAXATION_KERNEL_WIDTH);
+					sumx += w*p->mVelocity[0];
+					sumw += w;
+				}
+			}
+			mVelocity[0](i,j,k) = sumw ? sumx/sumw : 0.0;
+		}
+
+		// Map Y Grids
+		if( i < dims[0] && k < dims[2] ) {
+			openvdb::Vec3f py( i+0.5, j, k+0.5);
+			float sumw = 0.0;
+			float sumy = 0.0;
+			neighbors =mParticleLocator->getNeigboringWallParticles(i,j,k,2,1,2);
+			for( int n=0; n<neighbors.size(); n++ ) {
+				FluidParticle *p = neighbors[n];
+				if( p->mObjectType == FLUID ) {
+					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
+					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
+					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
+					openvdb::Vec3s pos( x, y, z );
+					float w = p->mMass * SharpKernel(DistanceSquared(pos,py),RELAXATION_KERNEL_WIDTH);
+					sumy += w*p->mVelocity[1];
+					sumw += w;
+				}
+			}
+			mVelocity[1](i,j,k) = sumw ? sumy/sumw : 0.0;
+		}
+		// Map Z Grids
+		if( i < dims[0] && j < dims[1] ) {
+			openvdb::Vec3f pz(i+0.5, j+0.5, k);
+			float sumw = 0.0;
+			float sumz = 0.0;
+			neighbors =mParticleLocator->getNeigboringWallParticles(i,j,k,2,2,1);
+			for( int n=0; n<neighbors.size(); n++ ) {
+				FluidParticle *p = neighbors[n];
+				if( p->mObjectType == FLUID ) {
+					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
+					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
+					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
+					openvdb::Vec3s pos( x, y, z );
+					float w = p->mMass * SharpKernel(DistanceSquared(pos,pz),RELAXATION_KERNEL_WIDTH);
+					sumz += w*p->mVelocity[2];
+					sumw += w;
+				}
+			}
+			mVelocity[2](i,j,k) = sumw ? sumz/sumw : 0.0;
+		}
+	} END_FOR
+}
+
+float FluidSimulation::linear ( RegularGrid<float>& q, float x, float y, float z) {
+	 int w=q.rows();
+	 int h=q.cols();
+	 int d=q.slices();
+	x = clamp(x,0.0f,(float)w);
+	y = clamp(y,0.0f,(float)h);
+	z = clamp(z,0.0f,(float)d);
+	int i = min((int)x,w-2);
+	int j = min((int)y,h-2);
+	int k = min((int)z,d-2);
+	return	(k+1-z)*(((i+1-x)*q(i,j,k)+(x-i)*q(i+1,j,k))*(j+1-y) + ((i+1-x)*q(i,j+1,k)+(x-i)*q(i+1,j+1,k))*(y-j)) +
+			(z-k)*(((i+1-x)*q(i,j,k+1)+(x-i)*q(i+1,j,k+1))*(j+1-y) + ((i+1-x)*q(i,j+1,k+1)+(x-i)*q(i+1,j+1,k+1))*(y-j));
+}
+
+void FluidSimulation::resampleParticles( ParticleLocator *sort, openvdb::Vec3f& p,openvdb::Vec3f& u, float re ) {
+	// Variables for Neighboring Particles
+	std::vector<FluidParticle*> neighbors;
+	openvdb::Coord cell_size = sort->getCellSize();
+	float wsum = 0.0;
+	openvdb::Vec3f save(u);
+	u[0] = u[1] = u[2] = 0.0;
+	int i = clamp((int)(p[0]*cell_size[0]),0,cell_size[0]-1);
+	int j = clamp((int)(p[1]*cell_size[1]),0,cell_size[1]-1);
+	int k = clamp((int)(p[2]*cell_size[2]),0,cell_size[2]-1);
+	// Gather Neighboring Particles
+	neighbors = sort->getNeigboringCellParticles(i,j,k,1,1,1);
+	for(FluidParticle *np:neighbors) {
+		if( np->mObjectType == FLUID ) {
+			float dist2 = DistanceSquared(p,np->mLocation);
+			float w = np->mMass * SharpKernel(dist2,re);
+			u += w * np->mVelocity;
+			wsum += w;
+		}
+	}
+	if( wsum ) {
+		u /= wsum;
+	} else {
+		u = save;
+	}
+}
+
+void FluidSimulation::correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particles, float dt, float re ) {
+	// Variables for Neighboring Particles
+	openvdb::Coord cell_size = sort->getCellSize();
+	sort->update(particles);
+
+	// Compute Pseudo Moved Point
+	OPENMP_FOR FOR_EVERY_PARTICLE(particles) {
+		if( particles[n]->mObjectType == FLUID ) {
+			FluidParticle *p = particles[n].get();
+			openvdb::Vec3f spring(0.0);
+			int i = clamp((int)(p->mLocation[0]*cell_size[0]),0,cell_size[0]-1);
+			int j = clamp((int)(p->mLocation[1]*cell_size[1]),0,cell_size[1]-1);
+			int k = clamp((int)(p->mLocation[2]*cell_size[2]),0,cell_size[2]-1);
+			std::vector<FluidParticle*> neighbors = sort->getNeigboringCellParticles(i,j,k,1,1,1);
+			for( int n=0; n<neighbors.size(); n++ ) {
+				FluidParticle *np = neighbors[n];
+				if( p != np ) {
+					float dist = Distance(p->mLocation,np->mLocation);
+					float w = SPRING_STIFFNESS * np->mMass * SmoothKernel(dist*dist,re);
+					if( dist > 0.1*re ) {
+						spring += w * (p->mLocation-np->mLocation) / dist * re;
+					} else {
+						if( np->mObjectType == FLUID ) {
+							spring += 0.01*re/dt*(rand()%101)/100.0;
+						} else {
+							spring += 0.05*re/dt*np->mNormal;
+						}
+					}
+				}
+			}
+			p->mTmp[0] = p->mLocation + dt*spring;
+		}
+	}
+	// Resample New Velocity
+	OPENMP_FOR FOR_EVERY_PARTICLE(particles) {
+		if( particles[n]->mObjectType == FLUID ) {
+			FluidParticle *p = particles[n].get();
+			p->mTmp[1] = p->mVelocity;
+			resampleParticles( sort, p->mTmp[0], p->mTmp[1], re );
+
+		}
+	}
+
+	// Update
+	OPENMP_FOR FOR_EVERY_PARTICLE(particles) {
+		if( particles[n]->mObjectType == FLUID ) {
+			FluidParticle *p = particles[n].get();
+			p->mLocation = p->mTmp[0];
+			p->mVelocity = p->mTmp[1];
+		}
+	}
+}
+void FluidSimulation::MapGridToParticles() {
+	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles){
+		ParticlePtr& p=mParticles[n];
+		p->mVelocity=mVelocity.interpolate(p->mLocation);
+	}
+}
+double FluidSimulation::implicit_func( vector<FluidParticle*> &neighbors,openvdb::Vec3f& p, float density,float voxelSize) {
+	double phi = 8.0*density*voxelSize;
+	for( int m=0; m<neighbors.size(); m++ ) {
+		FluidParticle &np = *neighbors[m];
+		if( np.mObjectType == WALL ) {
+			if( Distance(np.mLocation,p) < density*voxelSize) return 4.5*density*voxelSize;
+			continue;
+		}
+		double d = Distance(np.mLocation,p);
+		if( d < phi ) {
+			phi = d;
+		}
+	}
+	return phi - density*voxelSize;
+}
+double FluidSimulation::implicit_func( ParticleLocator *sort, openvdb::Vec3f& p, float density ) {
+	openvdb::Coord cell_size = sort->getCellSize();
+	vector<FluidParticle *> neighbors = sort->getNeigboringCellParticles(
+			clamp((int)(p[0]*cell_size[0]),0,cell_size[0]-1),
+			clamp((int)(p[1]*cell_size[1]),0,cell_size[1]-1),
+			clamp((int)(p[2]*cell_size[2]),0,cell_size[2]-1),2,2,2
+			);
+	return implicit_func( neighbors, p, density,sort->getVoxelSize());
 }
 void FluidSimulation::computeWallNormals() {
 // Sort Particles

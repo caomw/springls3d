@@ -567,8 +567,6 @@ bool FluidSimulation::step() {
 	addExternalForce();
 	solvePicFlip();	
 	if(mMotionScheme==MotionScheme::IMPLICIT){
-		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
-		mSource.updateIsoSurface();
 		advectParticles();
 	} else {
 		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
@@ -617,6 +615,10 @@ bool FluidSimulation::step() {
 	correctParticles(mParticleLocator.get(), mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 	updateParticleVolume();
 	createLevelSet();
+	if(mMotionScheme==MotionScheme::IMPLICIT){
+		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
+		mSource.updateIsoSurface();
+	}
 	//RegularGrid<float> distField(mLevelSet.dimensions(),1.0f,0.0);
 	//mDistanceField.solve(mLevelSet,distField,8.0f);
 	//mSparseLevelSet->clear();

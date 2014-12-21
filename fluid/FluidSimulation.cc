@@ -436,11 +436,16 @@ void FluidSimulation::pourWater(int limit, float maxDensity) {
 void FluidSimulation::addExternalForce() {
 	float velocity = -mTimeStep * GRAVITY;
 	//Add graviy acceleration to all particles
+	int count=0;
 	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles)
 	{
-		if (mParticles[n]->mObjectType == FLUID)
+		if (mParticles[n]->mObjectType == FLUID){
 			mParticles[n]->mVelocity[1] += velocity;
+			count++;
+		}
 	}
+	std:cout<<"Velocity "<<velocity<<" Count "<<count<<" "<<mParticles.size()<<std::endl;
+
 	if(mMotionScheme!=IMPLICIT){
 		//Add velocity to surface particles
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
@@ -459,6 +464,7 @@ void FluidSimulation::advectParticles() {
 			p->mLocation += mTimeStep * mVelocity.interpolate(p->mLocation);
 		}
 	}
+	//WriteToRawFile(mVelocity,"velocity.xml");
 	mParticleLocator->update(mParticles);
 // Constraint Outer Wall
 	for (ParticlePtr& p : mParticles) {
@@ -563,6 +569,7 @@ bool FluidSimulation::step() {
 	if(mMotionScheme==MotionScheme::IMPLICIT){
 		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
 		mSource.updateIsoSurface();
+		advectParticles();
 	} else {
 		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;

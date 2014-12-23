@@ -37,6 +37,23 @@ void DamBreakSimulation::cleanup(){
 	mAdvect.reset();
 	FluidSimulation::cleanup();
 }
+void DamBreakSimulation::addFluid(){
+	//replace with level set for falling object
+	SimulationObject obj;
+	obj.type = ObjectType::FLUID;
+	obj.shape = ObjectShape::BOX;
+	obj.mVisible = true;
+	obj.mBounds[0] = Vec3f(0.2, mWallThickness, 0.2);
+	obj.mBounds[1] = Vec3f(0.4, 0.4, 0.8);
+	mSimulationObjects.push_back(obj);
+	obj.type = ObjectType::FLUID;
+	obj.shape = ObjectShape::BOX;
+	obj.mVisible = true;
+	obj.mBounds[0] = Vec3f(mWallThickness, mWallThickness, mWallThickness);
+	obj.mBounds[1] = Vec3f(1.0 - mWallThickness, 0.06, 1.0 - mWallThickness);
+	mSimulationObjects.push_back(obj);
+
+}
 bool DamBreakSimulation::step(){
 	Clock::time_point t0 = Clock::now();
 	bool ret=FluidSimulation::step();

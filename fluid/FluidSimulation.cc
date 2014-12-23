@@ -44,7 +44,7 @@ const float SPRING_STIFFNESS=50.0;
 
 FluidSimulation::FluidSimulation(const openvdb::Coord& dims, float voxelSize,
 		MotionScheme scheme) :
-		Simulation("Fluid Simulation", scheme), mMaxDensity(0.0), mStuckParticleCount(
+		Simulation("Fluid_Simulation", scheme), mMaxDensity(0.0), mStuckParticleCount(
 				0), mPicFlipBlendWeight(0.95f), mFluidParticleDiameter(0.5f), mVoxelSize(
 				voxelSize), mGridSize(dims), mWallNormal(dims, voxelSize,openvdb::Vec3s(0.0)),
 				mLevelSet(Coord(dims[0] * 2, dims[1] * 2, dims[2] * 2), 0.5f * voxelSize,0.0f),
@@ -63,7 +63,7 @@ void FluidSimulation::computeParticleDensity(float maxDensity) {
 	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles)
 	{
 		ParticlePtr& p = mParticles[n];
-		if (p->mObjectType == WALL) {
+		if (p->mObjectType == ObjectType::WALL) {
 			p->mDensity = 1.0;
 			continue;
 		}
@@ -80,7 +80,7 @@ void FluidSimulation::computeParticleDensity(float maxDensity) {
 		float wsum = 0.0;
 		//Density a function of how close particles are to their neighbors.
 		for (FluidParticle* np : neighbors) {
-			if (np->mObjectType == WALL)
+			if (np->mObjectType == ObjectType::WALL)
 				continue;
 			float d2 = distanceSquared(np->mLocation, pt);
 			float w = np->mMass
@@ -93,81 +93,64 @@ void FluidSimulation::computeParticleDensity(float maxDensity) {
 	}
 }
 void FluidSimulation::placeWalls() {
-	CollisionObject obj;
+	SimulationObject obj;
 	// Left Wall
-	obj.type = WALL;
-	obj.shape = BOX;
-	obj.material = GLASS;
+	obj.type = ObjectType::WALL;
+	obj.shape = ObjectShape::BOX;
+	obj.material = ObjectMaterial::GLASS;
 	obj.mVisible = 0;
 	obj.mBounds[0] = Vec3f(0.0, 0.0, 0.0);
 	obj.mBounds[1] = Vec3f(mWallThickness, 1.0, 1.0);
-	mCollisionObjects.push_back(obj);
+	mSimulationObjects.push_back(obj);
 
 	// Right Wall
-	obj.type = WALL;
-	obj.shape = BOX;
-	obj.material = GLASS;
+	obj.type = ObjectType::WALL;
+	obj.shape = ObjectShape::BOX;
+	obj.material = ObjectMaterial::GLASS;
 	obj.mVisible = 0;
 	obj.mBounds[0] = Vec3f(1.0 - mWallThickness, 0.0, 0.0);
 	obj.mBounds[1] = Vec3f(1.0, 1.0, 1.0);
-	mCollisionObjects.push_back(obj);
+	mSimulationObjects.push_back(obj);
 
 	// Floor Wall
-	obj.type = WALL;
-	obj.shape = BOX;
-	obj.material = GRAY;
+	obj.type = ObjectType::WALL;
+	obj.shape = ObjectShape::BOX;
+	obj.material = ObjectMaterial::GRAY;
 	obj.mVisible = 0;
 	obj.mBounds[0] = Vec3f(0.0, 0.0, 0.0);
 	obj.mBounds[1] = Vec3f(1.0, mWallThickness, 1.0);
-	mCollisionObjects.push_back(obj);
+	mSimulationObjects.push_back(obj);
 
 	// Ceiling Wall
-	obj.type = WALL;
-	obj.shape = BOX;
-	obj.material = GLASS;
+	obj.type = ObjectType::WALL;
+	obj.shape = ObjectShape::BOX;
+	obj.material = ObjectMaterial::GLASS;
 	obj.mVisible = 0;
 	obj.mBounds[0] = Vec3f(0.0, 1.0 - mWallThickness, 0.0);
 	obj.mBounds[1] = Vec3f(1.0, 1.0, 1.0);
-	mCollisionObjects.push_back(obj);
+	mSimulationObjects.push_back(obj);
 
 	// Front Wall
-	obj.type = WALL;
-	obj.shape = BOX;
-	obj.material = GLASS;
+	obj.type = ObjectType::WALL;
+	obj.shape = ObjectShape::BOX;
+	obj.material = ObjectMaterial::GLASS;
 	obj.mVisible = 0;
 	obj.mBounds[0] = Vec3f(0.0, 0.0, 0.0);
 	obj.mBounds[1] = Vec3f(1.0, 1.0, mWallThickness);
-	mCollisionObjects.push_back(obj);
+	mSimulationObjects.push_back(obj);
 
 	// Back Wall
-	obj.type = WALL;
-	obj.shape = BOX;
-	obj.material = GLASS;
+	obj.type = ObjectType::WALL;
+	obj.shape = ObjectShape::BOX;
+	obj.material = ObjectMaterial::GLASS;
 	obj.mVisible = 0;
 	obj.mBounds[0] = Vec3f(0.0, 0.0, 1.0 - mWallThickness);
 	obj.mBounds[1] = Vec3f(1.0, 1.0, 1.0);
-	mCollisionObjects.push_back(obj);
-}
-void FluidSimulation::damBreakTest() {
-	//replace with level set for falling object
-	CollisionObject obj;
-	obj.type = FLUID;
-	obj.shape = BOX;
-	obj.mVisible = true;
-	obj.mBounds[0] = Vec3f(0.2, mWallThickness, 0.2);
-	obj.mBounds[1] = Vec3f(0.4, 0.4, 0.8);
-	mCollisionObjects.push_back(obj);
-	obj.type = FLUID;
-	obj.shape = BOX;
-	obj.mVisible = true;
-	obj.mBounds[0] = Vec3f(mWallThickness, mWallThickness, mWallThickness);
-	obj.mBounds[1] = Vec3f(1.0 - mWallThickness, 0.06, 1.0 - mWallThickness);
-	mCollisionObjects.push_back(obj);
-
+	mSimulationObjects.push_back(obj);
 }
 void FluidSimulation::placeObjects() {
 	placeWalls();
-	damBreakTest();
+	addFluid();
 }
 void FluidSimulation::repositionParticles(vector<int>& indices) {
 	if (indices.empty())
@@ -177,19 +160,19 @@ void FluidSimulation::repositionParticles(vector<int>& indices) {
 	while (waters.size() < indices.size()) {
 		FOR_EVERY_GRID_CELL(mLabel)
 			{
-				if (i > 0 && mLabel(i - 1, j, k) != FLUID)
+				if (i > 0 && mLabel(i - 1, j, k) != static_cast<char>(ObjectType::FLUID))
 					continue;
-				if (i < mGridSize[0] - 1 && mLabel(i + 1, j, k) != FLUID)
+				if (i < mGridSize[0] - 1 && mLabel(i + 1, j, k) != static_cast<char>(ObjectType::FLUID))
 					continue;
-				if (j > 0 && mLabel(i, j - 1, k) != FLUID)
+				if (j > 0 && mLabel(i, j - 1, k) != static_cast<char>(ObjectType::FLUID))
 					continue;
-				if (j < mGridSize[1] - 1 && mLabel(i, j + 1, k) != FLUID)
+				if (j < mGridSize[1] - 1 && mLabel(i, j + 1, k) != static_cast<char>(ObjectType::FLUID))
 					continue;
-				if (k > 0 && mLabel(i, j, k - 1) != FLUID)
+				if (k > 0 && mLabel(i, j, k - 1) != static_cast<char>(ObjectType::FLUID))
 					continue;
-				if (k < mGridSize[2] - 1 && mLabel(i, j, k + 1) != FLUID)
+				if (k < mGridSize[2] - 1 && mLabel(i, j, k + 1) != static_cast<char>(ObjectType::FLUID))
 					continue;
-				if (mLabel(i, j, k) != FLUID)
+				if (mLabel(i, j, k) != static_cast<char>(ObjectType::FLUID))
 					continue;
 
 				Coord aPos(i, j, k);
@@ -223,8 +206,8 @@ void FluidSimulation::repositionParticles(vector<int>& indices) {
 	}
 }
 void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
-		char type) {
-	CollisionObject *inside_obj = NULL;
+		ObjectType type) {
+	SimulationObject *inside_obj = NULL;
 	const int MAX_INT = std::numeric_limits<int>::max();
 	Vec3s axis(((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f,
 			((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f,
@@ -236,14 +219,14 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 	float x = pt[0];
 	float y = pt[1];
 	float z = pt[2];
-	for (CollisionObject &obj : mCollisionObjects) {
+	for (SimulationObject &obj : mSimulationObjects) {
 		bool found = false;
 		float thickness = 3.0 * mVoxelSize;
-		if (obj.shape == BOX) {
+		if (obj.shape == ObjectShape::BOX) {
 			if (x > obj.mBounds[0][0] && x < obj.mBounds[1][0]
 					&& y > obj.mBounds[0][1] && y < obj.mBounds[1][1]
 					&& z > obj.mBounds[0][2] && z < obj.mBounds[1][2]) {
-				if (obj.type == WALL && x > obj.mBounds[0][0] + thickness
+				if (obj.type == ObjectType::WALL && x > obj.mBounds[0][0] + thickness
 						&& x < obj.mBounds[1][0] - thickness
 						&& y > obj.mBounds[0][1] + thickness
 						&& y < obj.mBounds[1][1] - thickness
@@ -256,10 +239,10 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 					found = true;
 				}
 			}
-		} else if (obj.shape == SPHERE) {
+		} else if (obj.shape == ObjectShape::SPHERE) {
 			float len = distance(pt, obj.mCenter);
 			if (len < obj.mRadius) {
-				if (obj.type == WALL) {
+				if (obj.type == ObjectType::WALL) {
 					found = true;
 					if (len < obj.mRadius - thickness) {
 						// Do nothing. Because It's too deep
@@ -267,7 +250,7 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 						inside_obj = NULL;
 						break;
 					}
-				} else if (obj.type == FLUID) {
+				} else if (obj.type == ObjectType::FLUID) {
 					found = true;
 				}
 			}
@@ -283,7 +266,7 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 	if (inside_obj) {
 		FluidParticle *p = new FluidParticle;
 
-		if (inside_obj->type == FLUID) {
+		if (inside_obj->type == ObjectType::FLUID) {
 			p->mLocation = center + R * (pt - center);
 		} else {
 			p->mLocation = pt;
@@ -316,7 +299,7 @@ bool FluidSimulation::init() {
 		{
 			FluidParticle *p = new FluidParticle;
 			p->mLocation = Vec3f((i + 0.5) * h, (j + 0.5) * h, (k + 0.5) * h);
-			p->mObjectType = FLUID;
+			p->mObjectType = ObjectType::FLUID;
 			p->mMass = 1.0;
 			mParticles.push_back(std::unique_ptr<FluidParticle>(p));
 		}END_FOR
@@ -327,10 +310,10 @@ bool FluidSimulation::init() {
 		mMaxDensity = max(mMaxDensity, p->mDensity);
 	}
 	mParticles.clear();
-	// Place Fluid Particles And Walls
-	double w = mFluidParticleDiameter * mVoxelSize;
 	Vec3s center;
 	Vec3s pt;
+	// Place Fluid Particles And Walls
+	double w = mFluidParticleDiameter * mVoxelSize;
 	FOR_EVERY_GRID_CELL(mLabel)
 		{
 			for (int ii = 0; ii < 2; ii++) {
@@ -347,12 +330,13 @@ bool FluidSimulation::init() {
 
 							center = Vec3s(w * (2 * i + 1), w * (2 * j + 1),
 									w * (2 * k + 1));
-							addParticle(Vec3s(x, y, z), center, FLUID);
+							addParticle(Vec3s(x, y, z), center, ObjectType::FLUID);
 						}
 					}
 				}
 			}
 		}END_FOR;
+
 // Place Wall Particles And Walls
 	w = 2 * mFluidParticleDiameter * mVoxelSize;
 	FOR_EVERY_GRID_CELL(mLabel)
@@ -360,7 +344,7 @@ bool FluidSimulation::init() {
 			double x = i * w + w * 0.5;
 			double y = j * w + w * 0.5;
 			double z = k * w + w * 0.5;
-			addParticle(Vec3s(x, y, z), Vec3s(x, y, z), WALL);
+			addParticle(Vec3s(x, y, z), Vec3s(x, y, z), ObjectType::WALL);
 		}END_FOR;
 	mParticleLocator->update(mParticles);
 	mParticleLocator->markAsWater(mLabel, mWallWeight, mFluidParticleDiameter);
@@ -369,7 +353,7 @@ bool FluidSimulation::init() {
 	for (std::vector<ParticlePtr>::iterator iter = mParticles.begin();
 			iter != mParticles.end();) {
 		ParticlePtr& p = *iter;
-		if (p->mObjectType == WALL) {
+		if (p->mObjectType == ObjectType::WALL) {
 			iter++;
 			continue;
 		}
@@ -379,7 +363,7 @@ bool FluidSimulation::init() {
 				mGridSize[1] - 1);
 		int k = clamp((int) (mGridSize[2] * p->mLocation[2]), 0,
 				mGridSize[2] - 1);
-		if (mLabel(i, j, k) == WALL) {
+		if (mLabel(i, j, k) == static_cast<char>(ObjectType::WALL)) {
 			iter = mParticles.erase(iter);
 		} else {
 			iter++;
@@ -424,7 +408,7 @@ void FluidSimulation::pourWater(int limit, float maxDensity) {
 						-0.5 * mVoxelSize * mFluidParticleDiameter / mTimeStep,
 						0.0);
 				p->mNormal = Vec3f(0.0);
-				p->mObjectType = FLUID;
+				p->mObjectType = ObjectType::FLUID;
 				p->mDensity = maxDensity;
 				p->mMass = 1.0;
 				mParticles.push_back(ParticlePtr(p));
@@ -439,7 +423,7 @@ void FluidSimulation::addExternalForce() {
 	int count=0;
 	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles)
 	{
-		if (mParticles[n]->mObjectType == FLUID){
+		if (mParticles[n]->mObjectType == ObjectType::FLUID){
 			mParticles[n]->mVelocity[1] += velocity;
 			count++;
 		}
@@ -460,7 +444,7 @@ void FluidSimulation::advectParticles() {
 	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles)
 	{
 		ParticlePtr& p = mParticles[n];
-		if (p->mObjectType == FLUID) {
+		if (p->mObjectType == ObjectType::FLUID) {
 			p->mLocation += mTimeStep * mVelocity.interpolate(p->mLocation);
 		}
 	}
@@ -470,11 +454,11 @@ void FluidSimulation::advectParticles() {
 	for (ParticlePtr& p : mParticles) {
 		float r = mWallThickness;
 		for (int k = 0; k < 3; k++) {
-			if (p->mObjectType == FLUID) {
+			if (p->mObjectType == ObjectType::FLUID) {
 				p->mLocation[k] = clamp(p->mLocation[k], r, 1.0f - r);
 			}
 		}
-		if (p->mObjectType == FLUID) {
+		if (p->mObjectType == ObjectType::FLUID) {
 			int i = clamp((int) (p->mLocation[0] * mGridSize[0]), 0,
 					mGridSize[0] - 1);
 			int j = clamp((int) (p->mLocation[1] * mGridSize[1]), 0,
@@ -487,7 +471,7 @@ void FluidSimulation::advectParticles() {
 			for (int n = 0; n < neighbors.size(); n++) {
 				FluidParticle *np = neighbors[n];
 				double re = 1.5 * mFluidParticleDiameter * mVoxelSize;
-				if (np->mObjectType == WALL) {
+				if (np->mObjectType == ObjectType::WALL) {
 					float dist = distance(p->mLocation, np->mLocation);
 					if (dist < re) {
 						float normal[3] = { np->mNormal[0], np->mNormal[1],
@@ -518,7 +502,7 @@ void FluidSimulation::advectParticles() {
 	for (ParticlePtr& p : mParticles) {
 		p->mRemoveIndicator = false;
 		// Focus on Only Fluid Particle
-		if (p->mObjectType != FLUID) {
+		if (p->mObjectType != ObjectType::FLUID) {
 			continue;
 		}
 
@@ -526,15 +510,15 @@ void FluidSimulation::advectParticles() {
 		j = clamp((int) (p->mLocation[1] * mGridSize[1]), 0, mGridSize[1] - 1);
 		k = clamp((int) (p->mLocation[2] * mGridSize[2]), 0, mGridSize[2] - 1);
 		// If Stuck On Wall Cells Just Repositoin
-		if (mLabel(i, j, k) == WALL) {
+		if (mLabel(i, j, k) == static_cast<char>(ObjectType::WALL)) {
 			p->mRemoveIndicator = true;
 		}
 		i = clamp((int) (p->mLocation[0] * mGridSize[0]), 2, mGridSize[0] - 3);
 		j = clamp((int) (p->mLocation[1] * mGridSize[1]), 2, mGridSize[1] - 3);
 		k = clamp((int) (p->mLocation[2] * mGridSize[2]), 2, mGridSize[2] - 3);
 		if (p->mDensity < 0.04
-				&& (mLabel(i, max(0, j - 1), k) == WALL
-						|| mLabel(i, min(mGridSize[1] - 1, j + 1), k) == WALL)) {
+				&& (mLabel(i, max(0, j - 1), k) == static_cast<char>(ObjectType::WALL)
+						|| mLabel(i, min(mGridSize[1] - 1, j + 1), k) == static_cast<char>(ObjectType::WALL))) {
 			// Put Into Reposition List
 			p->mRemoveIndicator = true;
 		}
@@ -580,7 +564,7 @@ bool FluidSimulation::step() {
 			// Gather Neighboring Particles
 			std::vector<FluidParticle*> neighbors = mParticleLocator->getNeigboringCellParticles((int)(0.5f*pt[0]),(int)(0.5f*pt[1]),(int)(0.5f*pt[2]),1,1,1);
 			for(FluidParticle *np:neighbors) {
-				if( np->mObjectType == FLUID ) {
+				if( np->mObjectType == ObjectType::FLUID ) {
 					float dist2 = distanceSquared(0.5f*mVoxelSize*pt,np->mLocation);
 					float w = np->mMass * sharpKernel(dist2,mFluidParticleDiameter * mVoxelSize);
 					u += w * np->mVelocity;
@@ -695,7 +679,7 @@ void FluidSimulation::project() {
 // Compute Divergence
 	OPENMP_FOR FOR_EVERY_GRID_CELL(mLabel)
 		{
-			if (mLabel(i, j, k) == FLUID) {
+			if (mLabel(i, j, k) == static_cast<char>(ObjectType::FLUID)) {
 				mDivergence(i, j, k) = (mVelocity[0](i + 1, j, k)
 						- mVelocity[0](i, j, k) + mVelocity[1](i, j + 1, k)
 						- mVelocity[1](i, j, k) + mVelocity[2](i, j, k + 1)
@@ -783,20 +767,20 @@ void FluidSimulation::extrapolateVelocity() {
 	MACGrid<char> wall_mark(mGridSize, mVoxelSize);
 	OPENMP_FOR FOR_EVERY_GRID_CELL(mark[0])
 		{
-			mark[0](i, j, k) = (i > 0 && mLabel(i - 1, j, k) == FLUID)|| (i < mGridSize[0] && mLabel(i, j, k) == FLUID);
-			wall_mark[0](i, j, k) = (i <= 0 || mLabel(i - 1, j, k) == WALL)&& (i >= mGridSize[0] || mLabel(i, j, k) == WALL);
+			mark[0](i, j, k) = (i > 0 && mLabel(i - 1, j, k) == static_cast<char>(ObjectType::FLUID))|| (i < mGridSize[0] && mLabel(i, j, k) == static_cast<char>(ObjectType::FLUID));
+			wall_mark[0](i, j, k) = (i <= 0 || mLabel(i - 1, j, k) == static_cast<char>(ObjectType::WALL))&& (i >= mGridSize[0] || mLabel(i, j, k) == static_cast<char>(ObjectType::WALL));
 		}END_FOR;
 
 	OPENMP_FOR FOR_EVERY_GRID_CELL(mark[1])
 		{
-			mark[1](i, j, k) = (j > 0 && mLabel(i, j - 1, k) == FLUID)|| (j < mGridSize[1] && mLabel(i, j, k) == FLUID);
-			wall_mark[1](i, j, k) = (j <= 0 || mLabel(i, j - 1, k) == WALL)&& (j >= mGridSize[1] || mLabel(i, j, k) == WALL);
+			mark[1](i, j, k) = (j > 0 && mLabel(i, j - 1, k) == static_cast<char>(ObjectType::FLUID))|| (j < mGridSize[1] && mLabel(i, j, k) == static_cast<char>(ObjectType::FLUID));
+			wall_mark[1](i, j, k) = (j <= 0 || mLabel(i, j - 1, k) == static_cast<char>(ObjectType::WALL))&& (j >= mGridSize[1] || mLabel(i, j, k) == static_cast<char>(ObjectType::WALL));
 		}END_FOR;
 
 	OPENMP_FOR FOR_EVERY_GRID_CELL(mark[2])
 		{
-			mark[2](i, j, k) = (k > 0 && mLabel(i, j, k - 1) == FLUID)|| (k < mGridSize[2] && mLabel(i, j, k) == FLUID);
-			wall_mark[2](i, j, k) = (k <= 0 || mLabel(i, j, k - 1) == WALL)&& (k >= mGridSize[2] || mLabel(i, j, k) == WALL);
+			mark[2](i, j, k) = (k > 0 && mLabel(i, j, k - 1) == static_cast<char>(ObjectType::FLUID))|| (k < mGridSize[2] && mLabel(i, j, k) == static_cast<char>(ObjectType::FLUID));
+			wall_mark[2](i, j, k) = (k <= 0 || mLabel(i, j, k - 1) == static_cast<char>(ObjectType::WALL))&& (k >= mGridSize[2] || mLabel(i, j, k) == static_cast<char>(ObjectType::WALL));
 		}END_FOR;
 
 // Now Extrapolate
@@ -955,7 +939,7 @@ void FluidSimulation::mapParticlesToGrid() {
 
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
-				if( p->mObjectType == FLUID ) {
+				if( p->mObjectType == ObjectType::FLUID ) {
 					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
 					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
 					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
@@ -976,7 +960,7 @@ void FluidSimulation::mapParticlesToGrid() {
 			neighbors =mParticleLocator->getNeigboringWallParticles(i,j,k,2,1,2);
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
-				if( p->mObjectType == FLUID ) {
+				if( p->mObjectType == ObjectType::FLUID ) {
 					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
 					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
 					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
@@ -996,7 +980,7 @@ void FluidSimulation::mapParticlesToGrid() {
 			neighbors =mParticleLocator->getNeigboringWallParticles(i,j,k,2,2,1);
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
-				if( p->mObjectType == FLUID ) {
+				if( p->mObjectType == ObjectType::FLUID ) {
 					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
 					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
 					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
@@ -1038,7 +1022,7 @@ void FluidSimulation::resampleParticles( ParticleLocator *sort, openvdb::Vec3f& 
 	// Gather Neighboring Particles
 	neighbors = sort->getNeigboringCellParticles(i,j,k,1,1,1);
 	for(FluidParticle *np:neighbors) {
-		if( np->mObjectType == FLUID ) {
+		if( np->mObjectType == ObjectType::FLUID ) {
 			float dist2 = distanceSquared(p,np->mLocation);
 			float w = np->mMass * sharpKernel(dist2,re);
 			u += w * np->mVelocity;
@@ -1059,7 +1043,7 @@ void FluidSimulation::correctParticles( ParticleLocator *sort, std::vector<Parti
 
 	// Compute Pseudo Moved Point
 	OPENMP_FOR FOR_EVERY_PARTICLE(particles) {
-		if( particles[n]->mObjectType == FLUID ) {
+		if( particles[n]->mObjectType == ObjectType::FLUID ) {
 			FluidParticle *p = particles[n].get();
 			openvdb::Vec3f spring(0.0);
 			int i = clamp((int)(p->mLocation[0]*cell_size[0]),0,cell_size[0]-1);
@@ -1074,7 +1058,7 @@ void FluidSimulation::correctParticles( ParticleLocator *sort, std::vector<Parti
 					if( dist > 0.1*re ) {
 						spring += w * (p->mLocation-np->mLocation) / dist * re;
 					} else {
-						if( np->mObjectType == FLUID ) {
+						if( np->mObjectType == ObjectType::FLUID ) {
 							spring += 0.01*re/dt*(rand()%101)/100.0;
 						} else {
 							spring += 0.05*re/dt*np->mNormal;
@@ -1087,7 +1071,7 @@ void FluidSimulation::correctParticles( ParticleLocator *sort, std::vector<Parti
 	}
 	// Resample New Velocity
 	OPENMP_FOR FOR_EVERY_PARTICLE(particles) {
-		if( particles[n]->mObjectType == FLUID ) {
+		if( particles[n]->mObjectType == ObjectType::FLUID ) {
 			FluidParticle *p = particles[n].get();
 			p->mTmp[1] = p->mVelocity;
 			resampleParticles( sort, p->mTmp[0], p->mTmp[1], re );
@@ -1097,7 +1081,7 @@ void FluidSimulation::correctParticles( ParticleLocator *sort, std::vector<Parti
 
 	// Update
 	OPENMP_FOR FOR_EVERY_PARTICLE(particles) {
-		if( particles[n]->mObjectType == FLUID ) {
+		if( particles[n]->mObjectType == ObjectType::FLUID ) {
 			FluidParticle *p = particles[n].get();
 			p->mLocation = p->mTmp[0];
 			p->mVelocity = p->mTmp[1];
@@ -1114,7 +1098,7 @@ double FluidSimulation::implicit_func( vector<FluidParticle*> &neighbors,openvdb
 	double phi = 8.0*density*voxelSize;
 	for( int m=0; m<neighbors.size(); m++ ) {
 		FluidParticle &np = *neighbors[m];
-		if( np.mObjectType == WALL ) {
+		if( np.mObjectType == ObjectType::WALL ) {
 			if( distance(np.mLocation,p) < density*voxelSize) return 4.5*density*voxelSize;
 			continue;
 		}
@@ -1148,7 +1132,7 @@ void FluidSimulation::computeWallNormals() {
 		mWallNormal(i, j, k) = Vec3f(0.0f);
 		p->mNormal = Vec3f(0.0);
 
-		if (p->mObjectType == WALL) {
+		if (p->mObjectType == ObjectType::WALL) {
 			if (p->mLocation[0] <= 1.1 * mWallThickness) {
 				p->mNormal[0] = 1.0;
 			}
@@ -1175,7 +1159,7 @@ void FluidSimulation::computeWallNormals() {
 								3, 3);
 				for (int n = 0; n < neighbors.size(); n++) {
 					FluidParticle *np = neighbors[n];
-					if (p.get() != np && np->mObjectType == WALL) {
+					if (p.get() != np && np->mObjectType == ObjectType::WALL) {
 						float d = distance(p->mLocation, np->mLocation);
 						float w = 1.0 / d;
 						p->mNormal += w * (p->mLocation - np->mLocation) / d;
@@ -1194,7 +1178,7 @@ void FluidSimulation::computeWallNormals() {
 	FOR_EVERY_GRID_CELL(mWallNormal)
 		{
 			mWallWeight(i, j, k) = 0.0;
-			if (mLabel(i, j, k) != WALL) {
+			if (mLabel(i, j, k) != static_cast<char>(ObjectType::WALL)) {
 				// For Every Nearby Cells
 				int sum = 0;
 				Vec3f norm(0.0f);
@@ -1209,7 +1193,7 @@ void FluidSimulation::computeWallNormals() {
 							|| sj > mGridSize[1] - 1 || sk < 0
 							|| sk > mGridSize[2] - 1)
 						continue;
-					if (mLabel(si, sj, sk) == WALL) {
+					if (mLabel(si, sj, sk) == static_cast<char>(ObjectType::WALL)) {
 						sum++;
 						norm += mWallNormal(si, sj, sk);
 					}

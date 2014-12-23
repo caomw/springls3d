@@ -19,8 +19,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef FLUIDSIMULATION_H_
-#define FLUIDSIMULATION_H_
+#ifndef DAMBREAKSIMULATION_H_
+#define DAMBREAKSIMULATION_H_
 #include "Simulation.h"
 #include "fluid/FluidVelocityField.h"
 #include "SpringLevelSetFieldDeformation.h"
@@ -41,6 +41,7 @@ protected:
 	bool init();
 	bool step();
 	void cleanup();
+	void addFluid();
 public:
 	DamBreakSimulation(const std::string& mSourceFileName,int gridSize=256,MotionScheme motionScheme=SEMI_IMPLICIT);
 };

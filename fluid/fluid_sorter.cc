@@ -97,7 +97,7 @@ float ParticleLocator::getLevelSetValue(int i, int j, int k,
 		RegularGrid<float>& halfwall, float density) {
 	float accm = 0.0;
 	for (FluidParticle* p : cells(i, j, k)) {
-		if (p->mObjectType == FLUID) {
+		if (p->mObjectType == ObjectType::FLUID) {
 			accm += p->mDensity;
 		} else {
 			return 1.0;
@@ -112,17 +112,17 @@ void ParticleLocator::markAsWater(RegularGrid<char>& A,
 		RegularGrid<float>& halfwall, float density) {
 	OPENMP_FOR FOR_EVERY_GRID_CELL(cells)
 		{
-			A(i, j, k) = AIR;
+			A(i, j, k) = static_cast<char>(ObjectType::AIR);
 			for (FluidParticle* p : cells(i, j, k)) {
-				if (p->mObjectType == WALL) {
-					A(i, j, k) = WALL;
+				if (p->mObjectType == ObjectType::WALL) {
+					A(i, j, k) = static_cast<char>(ObjectType::WALL);
 					break;
 				}
 			}
-			if (A(i, j, k) != WALL)
+			if (A(i, j, k) != static_cast<char>(ObjectType::WALL))
 				A(i, j, k) =
-						getLevelSetValue(i, j, k, halfwall, density) < 0.0 ?
-								FLUID : AIR;
+						static_cast<char>(getLevelSetValue(i, j, k, halfwall, density) < 0.0 ?
+								ObjectType::FLUID : ObjectType::AIR);
 		}END_FOR
 }
 void ParticleLocator::deleteAllParticles() {

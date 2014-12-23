@@ -70,7 +70,7 @@ class FluidSimulation :public Simulation{
 		float mVoxelSize;
 		float mWallThickness;
 		std::unique_ptr<ParticleLocator> mParticleLocator;
-		std::vector<CollisionObject> mCollisionObjects;
+		std::vector<SimulationObject> mSimulationObjects;
 		std::vector<ParticlePtr> mParticles;
 		void copyGridToBuffer();
 		void subtractGrid();
@@ -85,7 +85,7 @@ class FluidSimulation :public Simulation{
 		void pourWater(int limit,float maxDensity);
 		void extrapolateVelocity();
 		void repositionParticles(std::vector<int>& indices) ;
-		void addParticle( openvdb::Vec3s pt, openvdb::Vec3s center,char type );
+		void addParticle( openvdb::Vec3s pt, openvdb::Vec3s center,ObjectType type );
 		void project();
 		void createLevelSet();
 		void updateParticleVolume();
@@ -104,8 +104,9 @@ class FluidSimulation :public Simulation{
 		void mapParticlesToGrid();
 		void mapGridToParticles();
 		inline float isWallIndicator( char a ) {
-			return ((a == WALL) ? 1.0f : -1.0f);
+			return ((a == static_cast<char>(ObjectType::WALL)) ? 1.0f : -1.0f);
 		}
+		virtual void addFluid()=0;
 	public:
 		FluidSimulation(const openvdb::Coord& dims,float voxelSize,MotionScheme scheme) ;
 		virtual bool init();

@@ -33,6 +33,24 @@ bool SplashSimulation::init(){
 	mIsMeshDirty=true;
 	return ret;
 }
+void SplashSimulation::addFluid(){
+	//replace with level set for falling object
+	SimulationObject obj;
+	obj.type = ObjectType::FLUID;
+	obj.shape = ObjectShape::SPHERE;
+	obj.mVisible = true;
+	obj.mRadius=mWallThickness;
+	obj.mCenter=Vec3f(0.5,1.0-obj.mRadius-2*mWallThickness,0.5);
+	mSimulationObjects.push_back(obj);
+
+	obj.type = ObjectType::FLUID;
+	obj.shape = ObjectShape::BOX;
+	obj.mVisible = true;
+	obj.mBounds[0] = Vec3f(mWallThickness, mWallThickness, mWallThickness);
+	obj.mBounds[1] = Vec3f(1.0 - mWallThickness, mWallThickness*4, 1.0 - mWallThickness);
+	mSimulationObjects.push_back(obj);
+}
+
 void SplashSimulation::cleanup(){
 	mAdvect.reset();
 	FluidSimulation::cleanup();

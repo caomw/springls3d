@@ -18,9 +18,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- *  This implementation of a PIC/FLIP fluid simulator is derived from:
+ *  This implementation of a PIC/FLIP static_cast<char>(ObjectType::FLUID) simulator is derived from:
  *
- *  Ando, R., Thurey, N., & Tsuruno, R. (2012). Preserving fluid sheets with adaptively sampled anisotropic particles.
+ *  Ando, R., Thurey, N., & Tsuruno, R. (2012). Preserving static_cast<char>(ObjectType::FLUID) sheets with adaptively sampled anisotropic particles.
  *  Visualization and Computer Graphics, IEEE Transactions on, 18(8), 1202-1214.
  */
 #include "laplace_solver.h"
@@ -41,9 +41,9 @@ static float x_ref(RegularGrid<char>& A, RegularGrid<float>& L,
 	i = clamp(i,0,(int)x.rows()-1);
 	j = clamp(j,0,(int)x.cols()-1);
 	k = clamp(k,0,(int)x.slices()-1);
-	if (A(i,j,k) == FLUID)
+	if (A(i,j,k) == static_cast<char>(ObjectType::FLUID))
 		return x(i,j,k);
-	else if (A(i,j,k) == WALL)
+	else if (A(i,j,k) == static_cast<char>(ObjectType::WALL))
 		return x(fi,fj,fk);
 	return L(i,j,k) / fmin(1.0e-6, L(fi,fj,fk)) * x(fi,fj,fk);
 }
@@ -54,7 +54,7 @@ static void compute_Ax(RegularGrid<char>& A, RegularGrid<float>& L,
 	float h2 = x.voxelSize()*x.voxelSize();
 	OPENMP_FOR FOR_EVERY_GRID_CELL(x)
 		{
-			if (A(i,j,k) == FLUID) {
+			if (A(i,j,k) == static_cast<char>(ObjectType::FLUID)) {
 				ans(i,j,k) = (6.0 * x(i,j,k)
 						- x_ref(A, L, x, i, j, k, i + 1, j, k)
 						- x_ref(A, L, x, i, j, k, i - 1, j, k)
@@ -78,7 +78,7 @@ static double product(RegularGrid<char>& A, RegularGrid<float>& x,
 #endif
 	FOR_EVERY_GRID_CELL(A)
 		{
-			if (A(i,j,k) == FLUID)
+			if (A(i,j,k) == static_cast<char>(ObjectType::FLUID))
 				ans += x(i,j,k) * y(i,j,k);
 		}END_FOR;
 	return ans;
@@ -101,7 +101,7 @@ static void op(RegularGrid<char>& A, RegularGrid<float>& x,
 	RegularGrid<float> tmp(x.rows(),x.cols(),x.slices(),x.voxelSize());
 	OPENMP_FOR FOR_EVERY_GRID_CELL(x)
 		{
-			if (A(i,j,k) == FLUID)
+			if (A(i,j,k) == static_cast<char>(ObjectType::FLUID))
 				tmp(i,j,k) = x(i,j,k) + a * y(i,j,k);
 			else
 				tmp(i,j,k) = 0.0;
@@ -123,10 +123,10 @@ static inline float square(float a) {
 static float A_ref(RegularGrid<char>& A, int i, int j, int k, int qi, int qj,
 		int qk) {
 	if (i < 0 || i > A.rows() - 1 || j < 0 || j > A.cols() - 1 || k < 0 || k > A.slices() - 1
-			|| A(i,j,k) != FLUID)
+			|| A(i,j,k) != static_cast<char>(ObjectType::FLUID))
 		return 0.0;
 	if (qi < 0 || qi > A.rows() - 1 || qj < 0 || qj >A.cols() - 1 || qk < 0 || qk > A.slices() - 1
-			|| A(qi,qj,qk) != FLUID)
+			|| A(qi,qj,qk) != static_cast<char>(ObjectType::FLUID))
 		return 0.0;
 	return -1.0;
 }
@@ -134,7 +134,7 @@ static float A_ref(RegularGrid<char>& A, int i, int j, int k, int qi, int qj,
 static float A_diag(RegularGrid<char>& A, RegularGrid<float>& L, int i, int j,
 		int k) {
 	float diag = 6.0;
-	if (A(i,j,k) != FLUID)
+	if (A(i,j,k) != static_cast<char>(ObjectType::FLUID))
 		return diag;
 	int q[][3] = { { i - 1, j, k }, { i + 1, j, k }, { i, j - 1, k }, { i, j
 			+ 1, k }, { i, j, k - 1 }, { i, j, k + 1 } };
@@ -143,9 +143,9 @@ static float A_diag(RegularGrid<char>& A, RegularGrid<float>& L, int i, int j,
 		int qj = q[m][1];
 		int qk = q[m][2];
 		if (qi < 0 || qi > A.rows() - 1 || qj < 0 || qj > A.cols() - 1 || qk < 0 || qk > A.slices() - 1
-				|| A(qi,qj,qk) == WALL)
+				|| A(qi,qj,qk) == static_cast<char>(ObjectType::WALL))
 			diag -= 1.0;
-		else if (A(qi,qj,qk) == AIR) {
+		else if (A(qi,qj,qk) == static_cast<char>(ObjectType::AIR)) {
 			diag -= L(qi,qj,qk) / fmin(1.0e-6, L(i,j,k));
 		}
 	}
@@ -155,7 +155,7 @@ static float A_diag(RegularGrid<char>& A, RegularGrid<float>& L, int i, int j,
 template<class T>
 static float P_ref(RegularGrid<T>& P, int i, int j, int k) {
 	if (i < 0 || i > P.rows() - 1 || j < 0 || j > P.cols() - 1 || k < 0 || k > P.slices() - 1
-			|| P(i,j,k) != FLUID)
+			|| P(i,j,k) != static_cast<char>(ObjectType::FLUID))
 		return 0.0;
 	return P(i,j,k);
 }
@@ -165,7 +165,7 @@ static void buildPreconditioner(RegularGrid<double>& P, RegularGrid<float>& L,
 	double a = 0.25;
 	FOR_EVERY_GRID_CELL(A)
 		{
-			if (A(i,j,k) == FLUID) {
+			if (A(i,j,k) == static_cast<char>(ObjectType::FLUID)) {
 				double left = A_ref(A, i - 1, j, k, i, j, k)
 						* P_ref(P, i - 1, j, k);
 				double bottom = A_ref(A, i, j - 1, k, i, j, k)
@@ -186,7 +186,7 @@ static void applyPreconditioner(RegularGrid<float>& z, RegularGrid<float>& r,
 	RegularGrid<double> q(P.rows(),P.cols(),P.slices(),P.voxelSize(),0.0);
 	// Lq = r
 	FOR_EVERY_GRID_CELL(q){
-				if (A(i,j,k) == FLUID) {
+				if (A(i,j,k) == static_cast<char>(ObjectType::FLUID)) {
 					double left = A_ref(A, i - 1, j, k, i, j, k)
 							* P_ref(P, i - 1, j, k)
 							* P_ref(q, i - 1, j, k);
@@ -205,7 +205,7 @@ static void applyPreconditioner(RegularGrid<float>& z, RegularGrid<float>& r,
 	for (int i = q.rows() - 1; i >= 0; i--) {
 		for (int j = q.cols() - 1; j >= 0; j--) {
 			for (int k = q.slices() - 1; k >= 0; k--) {
-				if (A(i,j,k) == FLUID) {
+				if (A(i,j,k) == static_cast<char>(ObjectType::FLUID)) {
 					double right = A_ref(A, i, j, k, i + 1, j, k)
 							* P_ref(P, i, j, k) * P_ref(z, i + 1, j, k);
 					double top = A_ref(A, i, j, k, i, j + 1, k)

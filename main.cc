@@ -57,6 +57,7 @@
 #include "SimulationPlayback.h"
 #include "ArmadilloTwist.h"
 #include "SplashSimulation.h"
+#include "DamBreakSimulation.h"
 #include <iostream>
 using namespace openvdb;
 using namespace imagesci;
@@ -123,6 +124,25 @@ int main(int argc, char *argv[]) {
 						break;
 					}
 					SplashSimulation sim(sourceFileName,dim,scheme);
+					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_HEIGHT,WIN_HEIGHT,dirName);
+					status=EXIT_SUCCESS;
+				}
+			} else if(args[i]== "-dam_break"){
+				if(i+1<args.size()){
+					std::string dirName=std::string(args[++i]);
+					std::string sourceFileName="armadillo.ply";
+					int dim = 64;
+					MotionScheme scheme=DecodeMotionScheme(args[++i]);
+					if(i+1<args.size()){
+						dim=atoi(args[++i].c_str());
+						if(i+1<args.size()){
+							sourceFileName=args[++i];
+						}
+					}
+					if(scheme==MotionScheme::UNDEFINED){
+						break;
+					}
+					DamBreakSimulation sim(sourceFileName,dim,scheme);
 					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_HEIGHT,WIN_HEIGHT,dirName);
 					status=EXIT_SUCCESS;
 				}

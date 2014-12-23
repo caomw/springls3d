@@ -157,19 +157,19 @@ inline bool WriteToRawFile(MACGrid<float>& mac, const std::string& fileName) {
 	return (r1 && r2 && r3);
 }
 
-enum ObjectType {
+enum class ObjectType {
 	AIR = 0, FLUID = 1, WALL = 2
 };
-enum MaterialType {
+enum class ObjectMaterial {
 	GLASS = 0, GRAY = 1, RED = 2
 };
-enum ObjectShape {
+enum class ObjectShape {
 	BOX = 0, SPHERE = 1
 };
-struct CollisionObject {
+struct SimulationObject {
 	ObjectType type;
 	ObjectShape shape;
-	MaterialType material;
+	ObjectMaterial material;
 	bool mVisible;
 	float mRadius;
 	openvdb::Vec3f mCenter;
@@ -180,7 +180,7 @@ struct FluidParticle {
 	openvdb::Vec3f mLocation;
 	openvdb::Vec3f mVelocity;
 	openvdb::Vec3f mNormal;
-	char mObjectType;
+	ObjectType mObjectType;
 	//char mVisible;
 	bool mRemoveIndicator;
 	openvdb::Vec3f mTmp[2];

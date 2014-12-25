@@ -122,10 +122,8 @@ void SimulationVisualizer::run(Simulation* simulation,int width,int height,const
 }
 void SimulationVisualizer::start(){
 	if(mSimulation!=NULL){
-		std::cout<<"Reset "<<std::endl;
 		mSimulation->reset();
 		mMiniCamera->loadConfig();
-		std::cout<<"START "<<std::endl;
 		mSimulation->start();
 	}
 }
@@ -410,7 +408,7 @@ SimulationVisualizer::keyCallback(GLFWwindow* win,int key, int action,int mod)
     bool keyPress = (glfwGetKey(win,key) == GLFW_PRESS);
     mCamera->keyCallback(win,key, action);
     if(keyPress){
-		if(key==' '){
+		if(key==GLFW_KEY_ENTER){
 			if(mSimulation->isRunning()){
 				std::cout<<"############# STOP #############"<<std::endl;
 				stop();
@@ -424,6 +422,9 @@ SimulationVisualizer::keyCallback(GLFWwindow* win,int key, int action,int mod)
 			mShowIsoSurface=!mShowIsoSurface;
 		}  else if(key=='E'){
 			mShowSpringls=!mShowSpringls;
+		} else if(key==GLFW_KEY_SPACE){
+			mSimulation->step();
+			mSimulation->fireUpdateEvent();
 		}
     }
     mCamera->setNeedsDisplay(true);

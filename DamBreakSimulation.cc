@@ -40,17 +40,24 @@ void DamBreakSimulation::cleanup(){
 void DamBreakSimulation::addFluid(){
 	//replace with level set for falling object
 	SimulationObject obj;
+	Coord dims=mLabel.dimensions();
 	obj.type = ObjectType::FLUID;
 	obj.shape = ObjectShape::BOX;
 	obj.mVisible = true;
 	obj.mBounds[0] = Vec3f(0.2, mWallThickness, 0.2);
-	obj.mBounds[1] = Vec3f(0.4, 0.4, 0.8);
+	obj.mBounds[1] = Vec3f(
+			0.4*mVoxelSize*dims[0],
+			0.4*mVoxelSize*dims[1],
+			0.8*mVoxelSize*dims[2]);
 	mSimulationObjects.push_back(obj);
 	obj.type = ObjectType::FLUID;
 	obj.shape = ObjectShape::BOX;
 	obj.mVisible = true;
 	obj.mBounds[0] = Vec3f(mWallThickness, mWallThickness, mWallThickness);
-	obj.mBounds[1] = Vec3f(1.0 - mWallThickness, 0.06, 1.0 - mWallThickness);
+	obj.mBounds[1] = Vec3f(
+			mVoxelSize*dims[0]- mWallThickness,
+			0.06*mVoxelSize*dims[1],
+			mVoxelSize*dims[2]- mWallThickness);
 	mSimulationObjects.push_back(obj);
 
 }

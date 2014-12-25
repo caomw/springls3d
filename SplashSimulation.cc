@@ -24,30 +24,36 @@
 namespace imagesci {
 using namespace openvdb::tools;
 using namespace imagesci::fluid;
-SplashSimulation::SplashSimulation(const std::string& fileName,int gridSize,MotionScheme scheme):FluidSimulation(Coord(gridSize,gridSize,gridSize),1.0f/gridSize,scheme),mSourceFileName(fileName),mGridSize(gridSize) {
+SplashSimulation::SplashSimulation(const std::string& fileName,int gridSize,MotionScheme scheme):FluidSimulation(Coord(
+		gridSize,gridSize,gridSize),1.0f/gridSize,scheme),mSourceFileName(fileName),mGridSize(gridSize) {
 }
 
 bool SplashSimulation::init(){
 
 	bool ret=FluidSimulation::init();
 	mIsMeshDirty=true;
+	mSimulationDuration=2.0;
 	return ret;
 }
 void SplashSimulation::addFluid(){
 	//replace with level set for falling object
 	SimulationObject obj;
+	Coord dims=mLabel.dimensions();
 	obj.type = ObjectType::FLUID;
 	obj.shape = ObjectShape::SPHERE;
 	obj.mVisible = true;
-	obj.mRadius=mWallThickness;
-	obj.mCenter=Vec3f(0.5,1.0-obj.mRadius-2*mWallThickness,0.5);
+	obj.mRadius=0.025;
+	obj.mCenter=Vec3f(mVoxelSize*dims[0]*0.5f,mVoxelSize*dims[1]*0.8f,mVoxelSize*dims[2]*0.5f);
 	mSimulationObjects.push_back(obj);
 
 	obj.type = ObjectType::FLUID;
 	obj.shape = ObjectShape::BOX;
 	obj.mVisible = true;
 	obj.mBounds[0] = Vec3f(mWallThickness, mWallThickness, mWallThickness);
-	obj.mBounds[1] = Vec3f(1.0 - mWallThickness, mWallThickness*4, 1.0 - mWallThickness);
+	obj.mBounds[1] = Vec3f(
+			mVoxelSize*dims[0] - mWallThickness,
+			0.075,
+			mVoxelSize*dims[2] - mWallThickness);
 	mSimulationObjects.push_back(obj);
 }
 

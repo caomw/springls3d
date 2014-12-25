@@ -36,6 +36,7 @@ private:
 	SpringLevelSet& mGrid;
 	bool mResample;
 	int mSignChanges;
+	float mConvergenceThresold=0.01;
 	std::mutex mSignChangeLock;
 public:
 	typedef FloatGrid GridType;
@@ -44,7 +45,9 @@ public:
 	typedef typename TrackerT::LeafType LeafType;
 	typedef typename TrackerT::BufferType BufferType;
 	typedef typename TrackerT::ValueType ScalarType;
-
+	void setConvergenceThreshold(float convg){
+		mConvergenceThresold=convg;
+	}
 	imagesci::TemporalIntegrationScheme mTemporalScheme;
 	imagesci::MotionScheme mMotionScheme;
 	InterruptT* mInterrupt;
@@ -75,10 +78,8 @@ public:
 			const math::Transform& trans = mGrid.mSignedLevelSet->transform();
 			if (trans.mapType() == math::UniformScaleMap::mapType()) {
 				advect1<math::UniformScaleMap>(startTime, endTime);
-			} else if (trans.mapType()
-					== math::UniformScaleTranslateMap::mapType()) {
-				advect1<math::UniformScaleTranslateMap>(startTime,
-						endTime);
+			} else if (trans.mapType()== math::UniformScaleTranslateMap::mapType()) {
+				advect1<math::UniformScaleTranslateMap>(startTime,endTime);
 			} else if (trans.mapType() == math::UnitaryMap::mapType()) {
 				advect1<math::UnitaryMap>(startTime, endTime);
 			} else if (trans.mapType() == math::TranslationMap::mapType()) {
@@ -97,8 +98,7 @@ public:
 			mGrid.updateUnSignedLevelSet(2.5 * openvdb::LEVEL_SET_HALF_WIDTH);
 			mGrid.updateGradient();
 			TrackerT mTracker(*mGrid.mSignedLevelSet, mInterrupt);
-			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, 32,
-					0.01);
+			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, 32,mConvergenceThresold);
 			evolve.process();
 		} else if (mMotionScheme == MotionScheme::EXPLICIT) {
 			mGrid.mIsoSurface.updateVertexNormals(0);
@@ -107,8 +107,7 @@ public:
 			mGrid.updateUnSignedLevelSet(2.5 * openvdb::LEVEL_SET_HALF_WIDTH);
 			mGrid.updateGradient();
 			TrackerT mTracker(*mGrid.mSignedLevelSet, mInterrupt);
-			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, 128,
-					0.05);
+			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, 128,mConvergenceThresold);
 			evolve.process();
 		}
 		if (mResample) {
@@ -119,6 +118,7 @@ public:
 		} else {
 			mGrid.updateIsoSurface();
 		}
+
 		//std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
 	}
 	template<typename MapT> void advect1(double mStartTime, double mEndTime) {
@@ -134,32 +134,30 @@ public:
 			MaxParticleVelocityOperator<InterruptT> op2(mGrid.mConstellation,mInterrupt);
 			double err=std::sqrt(op2.process());
 			double maxV = std::max(EPS, err);
-			dt = clamp(MAX_TIME_STEP * scale / std::max(1E-30, maxV), 0.0,
-					mEndTime - time);
-			std::cout<<"Velocity "<<err<<" "<<maxV<<" "<<dt<<std::endl;
+			dt = clamp(MAX_TIME_STEP * scale / std::max(1E-30, maxV), 0.0,mEndTime - time);
 			if (dt < EPS) {
 				break;
 			}
 			int N=mGrid.mConstellation.springls.size();
+			openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
 #pragma omp for
 			for(int n=0;n<N;n++){
 				Springl& springl=mGrid.mConstellation.springls[n];
-				openvdb::math::Transform::Ptr trans = mGrid.transformPtr();
 				Vec3d v = Vec3d(springl.particle());
 				Vec3d pt = trans->indexToWorld(v);
 				Vec3s vel=dt*springl.velocity();
 				springl.particle() = trans->worldToIndex(pt + vel);	//Apply integration scheme here, need buffer for previous time points?
-				int K = springl.size();
+				int K=springl.size();
 				for (int k = 0; k < K; k++) {
 					pt = trans->indexToWorld(springl[k]);
-					vel = dt*springl.velocity();
 					springl[k] = trans->worldToIndex(pt + vel);
 				}
+//				max2=std::max(max2,(float)trans->worldToIndex(vel).length());
 			}
+			//std::cout<<"DISPLACEMENT "<<dt<<" "<<maxV<<" "<<max2<<std::endl;
 			if (mMotionScheme == MotionScheme::SEMI_IMPLICIT)track<MapT>(time);
 		}
-		if (mMotionScheme == MotionScheme::EXPLICIT)
-			track<MapT>(time);
+		if (mMotionScheme == MotionScheme::EXPLICIT)track<MapT>(time);
 		mGrid.mConstellation.updateVertexNormals(0,0);
 	}
 
@@ -189,7 +187,8 @@ public:
 			mParent.mSignChanges=0;
 			const int MIN_NUM_SIGN_CHANGES=32;
 			int maxSignChanges=MIN_NUM_SIGN_CHANGES;
-			for(int iter=0;iter<mIterations;iter++) {
+			int iter;
+			for(iter=0;iter<mIterations;iter++) {
 				mLeafs.rebuildAuxBuffers(1);
 				mParent.mSignChanges=0;
 				if (threaded) {
@@ -202,10 +201,11 @@ public:
 				mTracker.track();
 				maxSignChanges=std::max(mParent.mSignChanges,maxSignChanges);
 				float ratio=(mParent.mSignChanges/(float)maxSignChanges);
-				if(ratio<=mTolerance){
+				if(ratio<mTolerance){
 					break;
 				}
 			}
+			std::cout<<"SEMI-IMPLICIT "<<iter<<std::endl;
 			if (mParent.mInterrupt){
 				mParent.mInterrupt->end();
 			}

@@ -38,6 +38,7 @@ private:
 	bool mResample;
 	int mSignChanges;
 	std::mutex mSignChangeLock;
+	float mConvergenceThresold=0.01f;
 public:
 	typedef FloatGrid GridType;
 	typedef LevelSetTracker<FloatGrid, InterruptT> TrackerT;
@@ -47,7 +48,9 @@ public:
 	typedef typename TrackerT::BufferType BufferType;
 	typedef typename TrackerT::ValueType ScalarType;
 	typedef typename FieldT::VectorType VectorType;
-
+	void setConvergenceThreshold(float convg){
+		mConvergenceThresold=convg;
+	}
 	std::unique_ptr<ImplicitAdvectionT> mImplicitAdvection;
 	imagesci::TemporalIntegrationScheme mTemporalScheme;
 	imagesci::MotionScheme mMotionScheme;
@@ -144,7 +147,7 @@ public:
 			mGrid.updateGradient();
 			TrackerT mTracker(*mGrid.mSignedLevelSet, mInterrupt);
 			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, 32,
-					0.01);
+					mConvergenceThresold);
 			evolve.process();
 		} else if (mMotionScheme == MotionScheme::EXPLICIT) {
 			mGrid.mIsoSurface.updateVertexNormals(0);
@@ -154,7 +157,7 @@ public:
 			mGrid.updateGradient();
 			TrackerT mTracker(*mGrid.mSignedLevelSet, mInterrupt);
 			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, 128,
-					0.05);
+					mConvergenceThresold);
 			evolve.process();
 		}
 		if (mResample) {

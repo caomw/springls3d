@@ -33,6 +33,7 @@
 #include "fluid_sorter.h"
 #include "../ParticleVolume.h"
 #include "../Simulation.h"
+#include "../SpringLevelSetFieldDeformation.h"
 #include "../SpringLevelSetParticleDeformation.h"
 #include "../DistanceField.h"
 #include "FluidVelocityField.h"
@@ -48,6 +49,7 @@ namespace fluid{
 class FluidSimulation :public Simulation{
 	protected:
 		std::unique_ptr<imagesci::SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter> > mAdvect;
+		std::unique_ptr<imagesci::SpringLevelSetFieldDeformation<FluidTrackingField<float>,openvdb::util::NullInterrupter> > mTrack;
 		//Constant, even though gravity really isn't constant on earth.
 		const static float GRAVITY ;
 		float mMaxDensity;
@@ -58,15 +60,19 @@ class FluidSimulation :public Simulation{
 		MACGrid<float> mVelocityLast;
 		RegularGrid<char> mLabel;
 		RegularGrid<float> mLaplacian;
+
 		RegularGrid<float> mDivergence;
 		RegularGrid<float> mPressure;
 		RegularGrid<openvdb::Vec3s> mWallNormal;
 		RegularGrid<openvdb::Vec3s> mDenseMap;
 		RegularGrid<float> mWallWeight;
 		RegularGrid<float> mLevelSet;
+		RegularGrid<float> mSignedDistanceField;
 		openvdb::FloatGrid::Ptr mSparseLevelSet;
 		openvdb::Coord mGridSize;
 		openvdb::Vec3f mDomainSize;
+		std::unique_ptr<FluidTrackingField<float> > mTrackingField;
+
 		int mStuckParticleCount;
 		float mVoxelSize;
 		float mWallThickness;

@@ -191,6 +191,8 @@ public:
 			if (dt < EPS) {
 				break;
 			}
+			std::cout<<"Advect ["<<time<<","<<dt<<"] "<<dt<<" max:: "<<maxV<<" duration:: "<<(mEndTime - mStartTime)<<std::endl;
+
 			if (mMotionScheme == MotionScheme::EXPLICIT) {
 				AdvectSpringlFieldOperator<ParticleAdvectT, FieldT, InterruptT> op1(mGrid, mField,
 						mTemporalScheme, time, dt, mInterrupt);

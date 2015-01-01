@@ -53,6 +53,7 @@ FluidSimulation::FluidSimulation(const openvdb::Coord& dims, float voxelSize,
 				voxelSize), mPressure(dims, voxelSize), mVelocity(dims,
 				voxelSize), mVelocityLast(dims, voxelSize), mWallWeight(dims,
 				voxelSize),
+				mSignedDistanceField(Coord(dims[0] * 2, dims[1] * 2, dims[2] * 2), 0.5f * voxelSize,0.0f),
 				mDistanceField(dims[0] * 2, dims[1] * 2, dims[2] * 2){
 	mWallThickness = voxelSize;
 	srand(52372143L);
@@ -378,16 +379,25 @@ bool FluidSimulation::init() {
 	if(mMotionScheme==IMPLICIT){
 		mSource.mConstellation.reset();
 	} else {
+		std::cout<<"Init Advect "<<std::endl;
 		mAdvect=std::unique_ptr<SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter> >(new SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter>(mSource,mMotionScheme));
 		mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
-		mAdvect->setResampleEnabled(true);
+		mAdvect->setResampleEnabled(false);
 		mAdvect->setConvergenceThreshold(0.0f);
-		if(mMotionScheme!=IMPLICIT){
-			std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
+
+		std::cout<<"Create Field "<<std::endl;
+		mTrackingField=std::unique_ptr<FluidTrackingField<float> >(new FluidTrackingField<float>(mSignedDistanceField));
+		std::cout<<"Create tracker"<<std::endl;
+		mTrack=std::unique_ptr<SpringLevelSetFieldDeformation<FluidTrackingField<float> ,openvdb::util::NullInterrupter> >(new SpringLevelSetFieldDeformation<FluidTrackingField<float> ,openvdb::util::NullInterrupter>(
+				mSource,*mTrackingField,mMotionScheme));
+		mTrack->setResampleEnabled(true);
+		mTrack->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
+
+		std::cout<<"Create velocities "<<std::endl;
+		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 	#pragma omp for
-			for(int n=0;n<velocities.size();n++){
-				velocities[n]=Vec3s(0.0);
-			}
+		for(int n=0;n<velocities.size();n++){
+			velocities[n]=Vec3s(0.0);
 		}
 	}
 	return true;
@@ -422,7 +432,7 @@ void FluidSimulation::pourWater(int limit, float maxDensity) {
 }
 void FluidSimulation::addExternalForce() {
 	float velocity = -mTimeStep * GRAVITY;
-	//Add graviy acceleration to all particles
+	//Add gravity acceleration to all particles
 	int count=0;
 	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles)
 	{
@@ -431,8 +441,6 @@ void FluidSimulation::addExternalForce() {
 			count++;
 		}
 	}
-	std:cout<<"Velocity "<<velocity<<" Count "<<count<<" "<<mParticles.size()<<std::endl;
-
 	if(mMotionScheme!=IMPLICIT){
 		//Add velocity to surface particles
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
@@ -517,7 +525,7 @@ void FluidSimulation::advectParticles() {
 		}
 
 	}
-// Reposition If Neccessary
+// Reposition If Necessary
 	vector<int> reposition_indices;
 	size_t n = 0;
 	for (ParticlePtr& p : mParticles) {
@@ -546,12 +554,14 @@ bool FluidSimulation::step() {
 	if(mMotionScheme==MotionScheme::IMPLICIT){
 		advectParticles();
 	} else {
+
 		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
+		/*
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
-#pragma omp for
+
+		#pragma omp for
 		for(int n=0;n<positions.size();n++){
-			velocities[n]=mVelocity.interpolate(0.5f*mVoxelSize*positions[n]);
-			/*
+			//velocities[n]=mVelocity.interpolate(0.5f*mVoxelSize*positions[n]);
 			// Variables for Neighboring Particles
 			float wsum = 0.0;
 			Vec3s u(0.0f);
@@ -569,8 +579,8 @@ bool FluidSimulation::step() {
 				u /= wsum;
 				velocities[n]=u;
 			}
-			*/
 		}
+		*/
 		advectParticles();
 		mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
 		Coord dims=mLevelSet.dimensions();
@@ -596,9 +606,25 @@ bool FluidSimulation::step() {
 	if(mMotionScheme==MotionScheme::IMPLICIT){
 		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
 		mSource.updateIsoSurface();
+	} else {
+		const float EVOLVE_DISTANCE=4.0f;
+		mDistanceField.solve(mLevelSet,mSignedDistanceField,EVOLVE_DISTANCE);
+		stringstream distFile,beforeConst,afterConst;
+		distFile<<"/home/blake/tmp/distfield" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
+		imagesci::WriteToRawFile(mSignedDistanceField,distFile.str());
+
+		beforeConst<<"/home/blake/tmp/before" <<std::setw(8)<<std::setfill('0')<<mSimulationIteration<< ".ply";
+		imagesci::WriteToRawFile(mSignedDistanceField,distFile.str());
+		mSource.mConstellation.save(beforeConst.str());
+
+		mTrack->advect(0,0.333f);
+
+		afterConst<<"/home/blake/tmp/after" <<std::setw(8)<<std::setfill('0')<<mSimulationIteration<< ".ply";
+		mSource.mConstellation.save(afterConst.str());
+
 	}
 	//RegularGrid<float> distField(mLevelSet.dimensions(),1.0f,0.0);
-	//mDistanceField.solve(mLevelSet,distField,8.0f);
+	//
 	//mSparseLevelSet->clear();
 	//stringstream velFile,levelFile,unsignedFile,mapFile,distFile;
 	//velFile<<"/home/blake/tmp/velocity" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;

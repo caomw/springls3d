@@ -37,6 +37,7 @@ private:
 	bool mResample;
 	int mSignChanges;
 	float mConvergenceThresold=0.01;
+	int mTrackingIterations=128;
 	std::mutex mSignChangeLock;
 public:
 	typedef FloatGrid GridType;
@@ -47,6 +48,9 @@ public:
 	typedef typename TrackerT::ValueType ScalarType;
 	void setConvergenceThreshold(float convg){
 		mConvergenceThresold=convg;
+	}
+	void setTrackingIterations(int iters){
+		mTrackingIterations=iters;
 	}
 	imagesci::TemporalIntegrationScheme mTemporalScheme;
 	imagesci::MotionScheme mMotionScheme;
@@ -98,7 +102,7 @@ public:
 			mGrid.updateUnSignedLevelSet(2.5 * openvdb::LEVEL_SET_HALF_WIDTH);
 			mGrid.updateGradient();
 			TrackerT mTracker(*mGrid.mSignedLevelSet, mInterrupt);
-			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, 32,mConvergenceThresold);
+			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, mTrackingIterations,mConvergenceThresold);
 			evolve.process();
 		} else if (mMotionScheme == MotionScheme::EXPLICIT) {
 			mGrid.mIsoSurface.updateVertexNormals(0);
@@ -107,7 +111,7 @@ public:
 			mGrid.updateUnSignedLevelSet(2.5 * openvdb::LEVEL_SET_HALF_WIDTH);
 			mGrid.updateGradient();
 			TrackerT mTracker(*mGrid.mSignedLevelSet, mInterrupt);
-			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, 128,mConvergenceThresold);
+			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, mTrackingIterations,mConvergenceThresold);
 			evolve.process();
 		}
 		if (mResample) {

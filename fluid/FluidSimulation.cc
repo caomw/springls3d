@@ -382,18 +382,17 @@ bool FluidSimulation::init() {
 		std::cout<<"Init Advect "<<std::endl;
 		mAdvect=std::unique_ptr<SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter> >(new SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter>(mSource,mMotionScheme));
 		mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
-		mAdvect->setResampleEnabled(false);
+		mAdvect->setResampleEnabled(true);
 		mAdvect->setConvergenceThreshold(0.0f);
+		mAdvect->setTrackingIterations(32);
 
-		std::cout<<"Create Field "<<std::endl;
 		mTrackingField=std::unique_ptr<FluidTrackingField<float> >(new FluidTrackingField<float>(mSignedDistanceField));
-		std::cout<<"Create tracker"<<std::endl;
 		mTrack=std::unique_ptr<SpringLevelSetFieldDeformation<FluidTrackingField<float> ,openvdb::util::NullInterrupter> >(new SpringLevelSetFieldDeformation<FluidTrackingField<float> ,openvdb::util::NullInterrupter>(
 				mSource,*mTrackingField,mMotionScheme));
-		mTrack->setResampleEnabled(true);
+		mTrack->setResampleEnabled(false);
 		mTrack->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
-
-		std::cout<<"Create velocities "<<std::endl;
+		mTrack->setConvergenceThreshold(0.0f);
+		mTrack->setTrackingIterations(16);
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 	#pragma omp for
 		for(int n=0;n<velocities.size();n++){
@@ -616,12 +615,9 @@ bool FluidSimulation::step() {
 		beforeConst<<"/home/blake/tmp/before" <<std::setw(8)<<std::setfill('0')<<mSimulationIteration<< ".ply";
 		imagesci::WriteToRawFile(mSignedDistanceField,distFile.str());
 		mSource.mConstellation.save(beforeConst.str());
-
-		mTrack->advect(0,0.333f);
-
+		mTrack->advect(0,0.25f);
 		afterConst<<"/home/blake/tmp/after" <<std::setw(8)<<std::setfill('0')<<mSimulationIteration<< ".ply";
 		mSource.mConstellation.save(afterConst.str());
-
 	}
 	//RegularGrid<float> distField(mLevelSet.dimensions(),1.0f,0.0);
 	//

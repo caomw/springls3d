@@ -49,40 +49,58 @@ public:
     /// position xyz and at the specified time
     inline VectorType operator()(const openvdb::Vec3d& pt, ScalarType time) const{
     	openvdb::Vec3d xyz=transform().worldToIndex(pt);
-        ScalarT v111=mLevelSet.interpolate(xyz[0],xyz[1],xyz[2]);
+    	if(		xyz[0]>2&&
+    			xyz[1]>2&&
+    			xyz[2]>2&&
+    			xyz[0]<mLevelSet.rows()-3&&
+    			xyz[1]<mLevelSet.cols()-3&&
+    			xyz[2]<mLevelSet.slices()-3){
+			ScalarT v111=mLevelSet.interpolate(xyz[0],xyz[1],xyz[2]);
 
-        ScalarT v110=mLevelSet.interpolate(xyz[0],xyz[1],xyz[2]-1.0f);
-        ScalarT v112=mLevelSet.interpolate(xyz[0],xyz[1],xyz[2]+1.0f);
+			ScalarT v110=mLevelSet.interpolate(xyz[0],xyz[1],xyz[2]-1.0f);
+			ScalarT v112=mLevelSet.interpolate(xyz[0],xyz[1],xyz[2]+1.0f);
 
-        ScalarT v101=mLevelSet.interpolate(xyz[0],xyz[1]-1.0f,xyz[2]);
-        ScalarT v121=mLevelSet.interpolate(xyz[0],xyz[1]+1.0f,xyz[2]);
+			ScalarT v101=mLevelSet.interpolate(xyz[0],xyz[1]-1.0f,xyz[2]);
+			ScalarT v121=mLevelSet.interpolate(xyz[0],xyz[1]+1.0f,xyz[2]);
 
-        ScalarT v011=mLevelSet.interpolate(xyz[0]-1.0f,xyz[1],xyz[2]);
-        ScalarT v211=mLevelSet.interpolate(xyz[0]+1.0f,xyz[1],xyz[2]);
+			ScalarT v011=mLevelSet.interpolate(xyz[0]-1.0f,xyz[1],xyz[2]);
+			ScalarT v211=mLevelSet.interpolate(xyz[0]+1.0f,xyz[1],xyz[2]);
 
-        VectorType v(v211-v011,v121-v101,v112-v110);
-        v.normalize();
-        v*=-v111/openvdb::LEVEL_SET_HALF_WIDTH;
-        return v;
+			VectorType v(v211-v011,v121-v101,v112-v110);
+			v.normalize();
+			v*=-v111*0.5f;
+			return v;
+    	} else {
+    		return  VectorType(0.0,0.0,0.0);
+    	}
     }
     /// @return the velocity at the coordinate space position ijk
     inline VectorType operator() (const openvdb::Coord& xyz, ScalarType time) const
     {
-        ScalarT v111=mLevelSet.interpolate(xyz[0],xyz[1],xyz[2]);
+    	if(		xyz[0]>2&&
+    			xyz[1]>2&&
+    			xyz[2]>2&&
+    			xyz[0]<mLevelSet.rows()-3&&
+    			xyz[1]<mLevelSet.cols()-3&&
+    			xyz[2]<mLevelSet.slices()-3){
+			ScalarT v111=mLevelSet.interpolate(xyz[0],xyz[1],xyz[2]);
 
-        ScalarT v110=mLevelSet.interpolate(xyz[0],xyz[1],xyz[2]-1.0f);
-        ScalarT v112=mLevelSet.interpolate(xyz[0],xyz[1],xyz[2]+1.0f);
+			ScalarT v110=mLevelSet.interpolate(xyz[0],xyz[1],xyz[2]-1.0f);
+			ScalarT v112=mLevelSet.interpolate(xyz[0],xyz[1],xyz[2]+1.0f);
 
-        ScalarT v101=mLevelSet.interpolate(xyz[0],xyz[1]-1.0f,xyz[2]);
-        ScalarT v121=mLevelSet.interpolate(xyz[0],xyz[1]+1.0f,xyz[2]);
+			ScalarT v101=mLevelSet.interpolate(xyz[0],xyz[1]-1.0f,xyz[2]);
+			ScalarT v121=mLevelSet.interpolate(xyz[0],xyz[1]+1.0f,xyz[2]);
 
-        ScalarT v011=mLevelSet.interpolate(xyz[0]-1.0f,xyz[1],xyz[2]);
-        ScalarT v211=mLevelSet.interpolate(xyz[0]+1.0f,xyz[1],xyz[2]);
+			ScalarT v011=mLevelSet.interpolate(xyz[0]-1.0f,xyz[1],xyz[2]);
+			ScalarT v211=mLevelSet.interpolate(xyz[0]+1.0f,xyz[1],xyz[2]);
 
-        VectorType v(v211-v011,v121-v101,v112-v110);
-        v.normalize();
-        v*=-v111/openvdb::LEVEL_SET_HALF_WIDTH;
-        return v;
+			VectorType v(v211-v011,v121-v101,v112-v110);
+			v.normalize();
+			v*=-v111*0.5f;
+			return v;
+    	} else {
+    		return VectorType(0.0,0.0,0.0);
+    	}
     }
 }; // end of TwistField
 

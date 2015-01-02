@@ -382,7 +382,7 @@ bool FluidSimulation::init() {
 		std::cout<<"Init Advect "<<std::endl;
 		mAdvect=std::unique_ptr<SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter> >(new SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter>(mSource,mMotionScheme));
 		mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
-		mAdvect->setResampleEnabled(true);
+		mAdvect->setResampleEnabled(false);
 		mAdvect->setConvergenceThreshold(0.0f);
 		mAdvect->setTrackingIterations(32);
 
@@ -606,6 +606,7 @@ bool FluidSimulation::step() {
 		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
 		mSource.updateIsoSurface();
 	} else {
+		/*
 		const float EVOLVE_DISTANCE=4.0f;
 		mDistanceField.solve(mLevelSet,mSignedDistanceField,EVOLVE_DISTANCE);
 		stringstream distFile,beforeConst,afterConst;
@@ -618,6 +619,7 @@ bool FluidSimulation::step() {
 		mTrack->advect(0,0.25f);
 		afterConst<<"/home/blake/tmp/after" <<std::setw(8)<<std::setfill('0')<<mSimulationIteration<< ".ply";
 		mSource.mConstellation.save(afterConst.str());
+		*/
 	}
 	//RegularGrid<float> distField(mLevelSet.dimensions(),1.0f,0.0);
 	//

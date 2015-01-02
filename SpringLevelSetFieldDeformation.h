@@ -37,6 +37,7 @@ private:
 	const FieldT& mField;
 	bool mResample;
 	int mSignChanges;
+	int mTrackingIterations=128;
 	std::mutex mSignChangeLock;
 	float mConvergenceThresold=0.01f;
 public:
@@ -50,6 +51,9 @@ public:
 	typedef typename FieldT::VectorType VectorType;
 	void setConvergenceThreshold(float convg){
 		mConvergenceThresold=convg;
+	}
+	void setTrackingIterations(int iters){
+		mTrackingIterations=iters;
 	}
 	std::unique_ptr<ImplicitAdvectionT> mImplicitAdvection;
 	imagesci::TemporalIntegrationScheme mTemporalScheme;
@@ -146,7 +150,7 @@ public:
 			mGrid.updateUnSignedLevelSet(2.5 * openvdb::LEVEL_SET_HALF_WIDTH);
 			mGrid.updateGradient();
 			TrackerT mTracker(*mGrid.mSignedLevelSet, mInterrupt);
-			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, 32,
+			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, mTrackingIterations,
 					mConvergenceThresold);
 			evolve.process();
 		} else if (mMotionScheme == MotionScheme::EXPLICIT) {
@@ -156,7 +160,7 @@ public:
 			mGrid.updateUnSignedLevelSet(2.5 * openvdb::LEVEL_SET_HALF_WIDTH);
 			mGrid.updateGradient();
 			TrackerT mTracker(*mGrid.mSignedLevelSet, mInterrupt);
-			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, 128,
+			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, mTrackingIterations,
 					mConvergenceThresold);
 			evolve.process();
 		}

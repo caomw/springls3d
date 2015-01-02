@@ -154,6 +154,47 @@ void FluidSimulation::placeObjects() {
 	placeWalls();
 	addFluid();
 }
+void FluidSimulation::operator()(Springl& springl,double time,double dt){
+	Transform::Ptr trans=mSource.transformPtr();
+	Vec3d v = Vec3d(springl.particle());
+	Vec3d pt = trans->indexToWorld(v);
+	Vec3s vel=dt*springl.velocity();
+	Vec3d npt=pt+vel;
+	/*
+
+*/
+	double re = 1.5 * mFluidParticleDiameter * mVoxelSize;
+	double r = mWallThickness;
+	npt = clamp(npt, r, 1.0 - r);
+
+	int i = clamp((int) (npt[0] * mGridSize[0]), 0,mGridSize[0] - 1);
+	int j = clamp((int) (npt[1] * mGridSize[1]), 0,mGridSize[1] - 1);
+	int k = clamp((int) (npt[2] * mGridSize[2]), 0,mGridSize[2] - 1);
+
+	vector<FluidParticle*> neighbors =mParticleLocator->getNeigboringCellParticles(i, j, k, 1, 1,1);
+	for (int n = 0; n < neighbors.size(); n++) {
+		FluidParticle *np = neighbors[n];
+		if (np->mObjectType == ObjectType::WALL) {
+			float dist = distance(npt, np->mLocation);
+			if (dist < re) {
+				Vec3f normal =  np->mNormal;
+				if (normal[0] == 0.0 && normal[1] == 0.0&& normal[2] == 0.0 && dist) {
+					normal = (npt- np->mLocation)/ dist;
+				}
+				npt += (re - dist) * normal;
+				float dot = springl.velocity().dot(normal);
+				springl.velocity()-= dot * normal;
+			}
+		}
+	}
+	springl.particle() = trans->worldToIndex(npt);	//Apply integration scheme here, need buffer for previous time points?
+	int K=springl.size();
+	npt=npt-pt;
+	for (int k = 0; k < K; k++) {
+		pt = trans->indexToWorld(springl[k]);
+		springl[k] = trans->worldToIndex(npt);
+	}
+}
 void FluidSimulation::repositionParticles(vector<int>& indices) {
 	if (indices.empty())
 		return;
@@ -381,7 +422,7 @@ bool FluidSimulation::init() {
 		mSource.mConstellation.reset();
 	} else {
 		std::cout<<"Init Advect "<<std::endl;
-		mAdvect=std::unique_ptr<SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter> >(new SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter>(mSource,mMotionScheme));
+		mAdvect=std::unique_ptr<SpringLevelSetParticleDeformation<FluidSimulation,openvdb::util::NullInterrupter> >(new SpringLevelSetParticleDeformation<FluidSimulation,openvdb::util::NullInterrupter>(mSource,*this,mMotionScheme));
 		mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
 		mAdvect->setResampleEnabled(false);
 		mAdvect->setConvergenceThreshold(0.0f);
@@ -492,6 +533,9 @@ void FluidSimulation::advectParticles() {
 			}
 		}
 	}
+	if(mMotionScheme!=IMPLICIT){
+		mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
+	}
 // Remove Particles That Stuck On The Up-Down Wall Cells...
 	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles)
 	{
@@ -543,55 +587,7 @@ bool FluidSimulation::step() {
 	//Add external gravity force
 	addExternalForce();
 	solvePicFlip();	
-	if(mMotionScheme==MotionScheme::IMPLICIT){
-		advectParticles();
-	} else {
-		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
-		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
-
-		/*
-
-		#pragma omp for
-		for(int n=0;n<positions.size();n++){
-			//velocities[n]=mVelocity.interpolate(0.5f*mVoxelSize*positions[n]);
-			// Variables for Neighboring Particles
-			float wsum = 0.0;
-			Vec3s u(0.0f);
-			Vec3s pt=positions[n];
-			std::vector<FluidParticle*> neighbors = mParticleLocator->getNeigboringCellParticles((int)(0.5f*pt[0]),(int)(0.5f*pt[1]),(int)(0.5f*pt[2]),1,1,1);
-			pt*=0.5f*mVoxelSize;
-			for(FluidParticle *np:neighbors) {
-				if( np->mObjectType == ObjectType::FLUID ) {
-					float w = np->mMass * sharpKernel(distanceSquared(pt,np->mLocation),mFluidParticleDiameter * mVoxelSize);
-					u += w * np->mVelocity;
-					wsum += w;
-				}
-			}
-			if(wsum>0.0f) {
-				u /= wsum;
-				velocities[n]=u;
-			}
-		}
-		*/
-		//advectParticles();
-		//mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
-		Coord dims=mLevelSet.dimensions();
-#pragma omp for
-		for(int n=0;n<positions.size();n++){
-			Vec3s& pt=positions[n];
-			pt[0]=clamp(pt[0],1.0f,dims[0]-2.0f);
-			pt[1]=clamp(pt[1],1.0f,dims[1]-2.0f);
-			pt[2]=clamp(pt[2],1.0f,dims[2]-2.0f);
-		}
-		std::vector<Vec3s>& vertexes=mSource.mConstellation.mVertexes;
-#pragma omp for
-		for(int n=0;n<vertexes.size();n++){
-			Vec3s& pt=vertexes[n];
-			pt[0]=clamp(pt[0],1.0f,dims[0]-2.0f);
-			pt[1]=clamp(pt[1],1.0f,dims[1]-2.0f);
-			pt[2]=clamp(pt[2],1.0f,dims[2]-2.0f);
-		}
-	}
+	advectParticles();
 	correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 	updateParticleVolume();
 	createLevelSet();

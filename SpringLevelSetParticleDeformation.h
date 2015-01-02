@@ -30,9 +30,10 @@
 #include <openvdb/tools/LevelSetAdvect.h>
 #include "SpringLevelSetOperations.h"
 namespace imagesci {
-template<typename InterruptT = openvdb::util::NullInterrupter>
+template<typename ParticleAdvectionFunc,typename InterruptT = openvdb::util::NullInterrupter>
 class SpringLevelSetParticleDeformation {
 private:
+	ParticleAdvectionFunc& mParticleAdvection;
 	SpringLevelSet& mGrid;
 	bool mResample;
 	int mSignChanges;
@@ -54,10 +55,10 @@ public:
 	// disallow copy by assignment
 	void operator=(const SpringLevelSetParticleDeformation& other) {
 	}
-	SpringLevelSetParticleDeformation(SpringLevelSet& grid,
+	SpringLevelSetParticleDeformation(SpringLevelSet& grid,ParticleAdvectionFunc& advectFunc,
 			imagesci::MotionScheme scheme =
 					imagesci::MotionScheme::SEMI_IMPLICIT,
-			InterruptT* interrupt = NULL) :
+			InterruptT* interrupt = NULL) :mParticleAdvection(advectFunc),
 			mSignChanges(0), mMotionScheme(scheme), mGrid(grid), mInterrupt(interrupt), mTemporalScheme(
 					imagesci::TemporalIntegrationScheme::RK4b), mResample(true) {
 		mGrid.mConstellation.mParticleVelocity.resize(mGrid.mConstellation.mParticles.size(),Vec3s(0.0));
@@ -143,16 +144,9 @@ public:
 #pragma omp for
 			for(int n=0;n<N;n++){
 				Springl& springl=mGrid.mConstellation.springls[n];
-				Vec3d v = Vec3d(springl.particle());
-				Vec3d pt = trans->indexToWorld(v);
-				Vec3s vel=dt*springl.velocity();
-				springl.particle() = trans->worldToIndex(pt + vel);	//Apply integration scheme here, need buffer for previous time points?
-				int K=springl.size();
-				for (int k = 0; k < K; k++) {
-					pt = trans->indexToWorld(springl[k]);
-					springl[k] = trans->worldToIndex(pt + vel);
-				}
+				mParticleAdvection(springl,time,dt);
 			}
+			//need this! commented out for debugging.
 			//if (mMotionScheme == MotionScheme::SEMI_IMPLICIT)track<MapT>(time);
 		}
 		if (mMotionScheme == MotionScheme::EXPLICIT)track<MapT>(time);

@@ -48,7 +48,7 @@ namespace fluid{
  */
 class FluidSimulation :public Simulation{
 	protected:
-		std::unique_ptr<imagesci::SpringLevelSetParticleDeformation<openvdb::util::NullInterrupter> > mAdvect;
+		std::unique_ptr<imagesci::SpringLevelSetParticleDeformation<FluidSimulation,openvdb::util::NullInterrupter> > mAdvect;
 		std::unique_ptr<imagesci::SpringLevelSetFieldDeformation<FluidTrackingField<float>,openvdb::util::NullInterrupter> > mTrack;
 		//Constant, even though gravity really isn't constant on earth.
 		const static float GRAVITY ;
@@ -115,6 +115,7 @@ class FluidSimulation :public Simulation{
 		}
 		virtual void addFluid()=0;
 	public:
+		void operator()(Springl& springl,double time,double dt);
 		FluidSimulation(const openvdb::Coord& dims,float voxelSize,MotionScheme scheme) ;
 		virtual bool init();
 		virtual bool step();

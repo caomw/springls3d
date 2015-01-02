@@ -53,6 +53,9 @@ public:
 	void setTrackingIterations(int iters){
 		mTrackingIterations=iters;
 	}
+	void setTrackingIterations(int iters){
+		mTrackingIterations=iters;
+	}
 	imagesci::TemporalIntegrationScheme mTemporalScheme;
 	imagesci::MotionScheme mMotionScheme;
 	InterruptT* mInterrupt;

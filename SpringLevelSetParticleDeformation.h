@@ -152,10 +152,8 @@ public:
 					pt = trans->indexToWorld(springl[k]);
 					springl[k] = trans->worldToIndex(pt + vel);
 				}
-//				max2=std::max(max2,(float)trans->worldToIndex(vel).length());
 			}
-			//std::cout<<"DISPLACEMENT "<<dt<<" "<<maxV<<" "<<max2<<std::endl;
-			if (mMotionScheme == MotionScheme::SEMI_IMPLICIT)track<MapT>(time);
+			//if (mMotionScheme == MotionScheme::SEMI_IMPLICIT)track<MapT>(time);
 		}
 		if (mMotionScheme == MotionScheme::EXPLICIT)track<MapT>(time);
 		mGrid.mConstellation.updateVertexNormals(0,0);

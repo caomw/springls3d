@@ -49,6 +49,24 @@ typedef openvdb::math::Mat4f Matrix4f;
 template<typename T> T clamp(T val, T min, T max) {
 	return std::min(std::max(val, min), max);
 }
+template<typename T> openvdb::math::Vec2<T> clamp(openvdb::math::Vec2<T> val, T min, T max) {
+	return openvdb::math::Vec2<T>(
+			std::min(std::max(val[0], min), max),
+			std::min(std::max(val[1], min), max));
+}
+template<typename T> openvdb::math::Vec3<T> clamp(openvdb::math::Vec3<T> val, T min, T max) {
+	return openvdb::math::Vec3<T>(
+			std::min(std::max(val[0], min), max),
+			std::min(std::max(val[1], min), max),
+			std::min(std::max(val[2], min), max));
+}
+template<typename T> openvdb::math::Vec4<T> clamp(openvdb::math::Vec4<T> val, T min, T max) {
+	return openvdb::math::Vec4<T>(
+			std::min(std::max(val[0], min), max),
+			std::min(std::max(val[1], min), max),
+			std::min(std::max(val[2], min), max),
+			std::min(std::max(val[3], min), max));
+}
 template<typename ValueT> class RegularGrid: public openvdb::tools::Dense<
 		ValueT, openvdb::tools::MemoryLayout::LayoutZYX> {
 private:

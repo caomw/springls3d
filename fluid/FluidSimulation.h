@@ -104,9 +104,9 @@ class FluidSimulation :public Simulation{
 		float lengthSquared( float a, float b, float c );
 		void shuffleCoordinates( std::vector<openvdb::Coord> &waters );
 		float linear( RegularGrid<float>& q, float x, float y, float z ) ;
-		void resampleParticles( ParticleLocator *sort, openvdb::Vec3f& p, openvdb::Vec3f& u, float re );
-		void correctParticles( ParticleLocator *sort, std::vector<ParticlePtr>& particle, float dt, float re);
-		double implicit_func( ParticleLocator *sort, openvdb::Vec3f& p, float density );
+		void resampleParticles(openvdb::Vec3f& p, openvdb::Vec3f& u, float re );
+		void correctParticles(std::vector<ParticlePtr>& particle, float dt, float re);
+		double implicit_func(openvdb::Vec3f& p, float density );
 		double implicit_func( std::vector<FluidParticle*> &neighbors,openvdb::Vec3f& p, float density,float voxelSize);
 		void mapParticlesToGrid();
 		void mapGridToParticles();

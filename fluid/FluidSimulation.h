@@ -48,6 +48,8 @@ namespace fluid{
  */
 class FluidSimulation :public Simulation{
 	protected:
+
+		bool mSpringlTracking;
 		std::unique_ptr<imagesci::SpringLevelSetParticleDeformation<FluidSimulation,openvdb::util::NullInterrupter> > mAdvect;
 		std::unique_ptr<imagesci::SpringLevelSetFieldDeformation<FluidTrackingField<float>,openvdb::util::NullInterrupter> > mTrack;
 		//Constant, even though gravity really isn't constant on earth.

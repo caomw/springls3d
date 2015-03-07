@@ -120,7 +120,6 @@ public:
 				std::cout<<"Advect ["<<time<<","<<et<<"] "<<dt<<" max:: "<<maxV<<" duration:: "<<(endTime - startTime)<<std::endl;
 				mGrid.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0f));
 			}
-
 			mGrid.updateIsoSurface();
 			mGrid.mConstellation.updateVertexNormals();
 		} else if (mMotionScheme == SEMI_IMPLICIT||mMotionScheme==EXPLICIT) {
@@ -168,11 +167,12 @@ public:
 			int cleaned = mGrid.clean();
 			mGrid.updateUnSignedLevelSet();
 			mGrid.updateIsoSurface();
-			mGrid.fill();
+			int added=mGrid.fill();
+			std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
+
 		} else {
 			mGrid.updateIsoSurface();
 		}
-		//std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
 	}
 	template<typename MapT> void advect1(double mStartTime, double mEndTime) {
 		typedef AdvectParticleAndVertexOperation<FieldT> ParticleAdvectT;

@@ -52,7 +52,7 @@ FluidSimulation::FluidSimulation(const openvdb::Coord& dims, float voxelSize,
 				mLabel(dims, voxelSize), mLaplacian(dims, voxelSize), mDivergence(dims,
 				voxelSize), mPressure(dims, voxelSize), mVelocity(dims,
 				voxelSize), mVelocityLast(dims, voxelSize), mWallWeight(dims,
-				voxelSize),
+				voxelSize),mSpringlTracking(scheme!=IMPLICIT),
 				mSignedDistanceField(Coord(dims[0] * 2, dims[1] * 2, dims[2] * 2), 0.5f * voxelSize,0.0f),
 				mDistanceField(dims[0] * 2, dims[1] * 2, dims[2] * 2){
 	mWallThickness = voxelSize;
@@ -160,13 +160,9 @@ void FluidSimulation::operator()(Springl& springl,double time,double dt){
 	Vec3d pt = trans->indexToWorld(v);
 	Vec3s vel=dt*springl.velocity();
 	Vec3d npt=pt+vel;
-	/*
-
-*/
 	double re = 1.5 * mFluidParticleDiameter * mVoxelSize;
 	double r = mWallThickness;
 	npt = clamp(npt, r, 1.0 - r);
-
 	int i = clamp((int) (npt[0] * mGridSize[0]), 0,mGridSize[0] - 1);
 	int j = clamp((int) (npt[1] * mGridSize[1]), 0,mGridSize[1] - 1);
 	int k = clamp((int) (npt[2] * mGridSize[2]), 0,mGridSize[2] - 1);
@@ -178,7 +174,7 @@ void FluidSimulation::operator()(Springl& springl,double time,double dt){
 			float dist = distance(npt, np->mLocation);
 			if (dist < re) {
 				Vec3f normal =  np->mNormal;
-				if (normal[0] == 0.0 && normal[1] == 0.0&& normal[2] == 0.0 && dist) {
+				if (normal[0] == 0.0 && normal[1] == 0.0&& normal[2] == 0.0 && dist>1E-6f) {
 					normal = (npt- np->mLocation)/ dist;
 				}
 				npt += (re - dist) * normal;
@@ -192,7 +188,7 @@ void FluidSimulation::operator()(Springl& springl,double time,double dt){
 	npt=npt-pt;
 	for (int k = 0; k < K; k++) {
 		pt = trans->indexToWorld(springl[k]);
-		springl[k] = trans->worldToIndex(npt);
+		springl[k] = trans->worldToIndex(pt+npt);
 	}
 }
 void FluidSimulation::repositionParticles(vector<int>& indices) {
@@ -328,11 +324,6 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 bool FluidSimulation::init() {
 	mSimulationTime = 0;
 	mSimulationIteration = 0;
-#ifdef MP
-	static int procs = omp_get_num_procs();
-	std::cout << "Number of OpenMP threads: " << procs << std::endl;
-#endif
-
 	mParticleLocator = std::unique_ptr<ParticleLocator>(
 			new ParticleLocator(mGridSize, mVoxelSize));
 	placeObjects();
@@ -418,16 +409,15 @@ bool FluidSimulation::init() {
 	createLevelSet();
 	updateParticleVolume();
 	mSource.create(mLevelSet);
-	if(mMotionScheme==IMPLICIT){
+	if(!mSpringlTracking){
 		mSource.mConstellation.reset();
 	} else {
-		std::cout<<"Init Advect "<<std::endl;
 		mAdvect=std::unique_ptr<SpringLevelSetParticleDeformation<FluidSimulation,openvdb::util::NullInterrupter> >(new SpringLevelSetParticleDeformation<FluidSimulation,openvdb::util::NullInterrupter>(mSource,*this,mMotionScheme));
 		mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
 		mAdvect->setResampleEnabled(false);
 		mAdvect->setConvergenceThreshold(0.0f);
 		mAdvect->setTrackingIterations(32);
-
+		/*
 		mTrackingField=std::unique_ptr<FluidTrackingField<float> >(new FluidTrackingField<float>(mSignedDistanceField));
 		mTrack=std::unique_ptr<SpringLevelSetFieldDeformation<FluidTrackingField<float> ,openvdb::util::NullInterrupter> >(new SpringLevelSetFieldDeformation<FluidTrackingField<float> ,openvdb::util::NullInterrupter>(
 				mSource,*mTrackingField,mMotionScheme));
@@ -435,6 +425,8 @@ bool FluidSimulation::init() {
 		mTrack->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
 		mTrack->setConvergenceThreshold(0.0f);
 		mTrack->setTrackingIterations(16);
+		*/
+
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 	#pragma omp for
 		for(int n=0;n<velocities.size();n++){
@@ -482,7 +474,7 @@ void FluidSimulation::addExternalForce() {
 			count++;
 		}
 	}
-	if(mMotionScheme!=IMPLICIT){
+	if(mSpringlTracking){
 		//Add velocity to surface particles
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 #pragma omp for
@@ -532,7 +524,7 @@ void FluidSimulation::advectParticles() {
 			}
 		}
 	}
-	if(mMotionScheme!=IMPLICIT){
+	if(mSpringlTracking){
 		mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
 	}
 // Remove Particles That Stuck On The Up-Down Wall Cells...
@@ -590,7 +582,7 @@ bool FluidSimulation::step() {
 	correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 	updateParticleVolume();
 	createLevelSet();
-	if(mMotionScheme==MotionScheme::IMPLICIT){
+	if(!mSpringlTracking){
 		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
 		mSource.updateIsoSurface();
 	} else {
@@ -842,7 +834,7 @@ void FluidSimulation::solvePicFlip() {
 		openvdb::Vec3s velocity=p->mVelocity+currentVelocity-mVelocityLast.interpolate(p->mLocation);
 		p->mVelocity = (1.0 - mPicFlipBlendWeight) *currentVelocity  + mPicFlipBlendWeight * velocity;
 	}
-	if(mMotionScheme!=IMPLICIT){
+	if(mSpringlTracking){
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
 #pragma omp for
@@ -1082,7 +1074,7 @@ void FluidSimulation::correctParticles(std::vector<ParticlePtr>& particles, floa
 		}
 	}
 
-	if(mMotionScheme!=IMPLICIT){
+	if(mSpringlTracking){
 		std::cout<<"Re-sample velocities"<<std::endl;
 		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;

@@ -53,9 +53,6 @@ public:
 	void setTrackingIterations(int iters){
 		mTrackingIterations=iters;
 	}
-	void setTrackingIterations(int iters){
-		mTrackingIterations=iters;
-	}
 	imagesci::TemporalIntegrationScheme mTemporalScheme;
 	imagesci::MotionScheme mMotionScheme;
 	InterruptT* mInterrupt;
@@ -100,7 +97,7 @@ public:
 		mGrid.updateUnSignedLevelSet();
 		for (int iter = 0; iter < RELAX_OUTER_ITERS; iter++) {
 			mGrid.updateNearestNeighbors();
-			mGrid.relax(RELAX_INNER_ITERS);
+			//mGrid.relax(RELAX_INNER_ITERS);
 		}
 		if (mMotionScheme == MotionScheme::SEMI_IMPLICIT) {
 			mGrid.updateUnSignedLevelSet(2.5 * openvdb::LEVEL_SET_HALF_WIDTH);
@@ -122,12 +119,11 @@ public:
 			int cleaned = mGrid.clean();
 			mGrid.updateUnSignedLevelSet();
 			mGrid.updateIsoSurface();
-			mGrid.fill();
+			int added=mGrid.fill();
+			std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
 		} else {
 			mGrid.updateIsoSurface();
 		}
-
-		//std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
 	}
 	template<typename MapT> void advect1(double mStartTime, double mEndTime) {
 		double dt = 0.0;
@@ -154,7 +150,7 @@ public:
 				mParticleAdvection(springl,time,dt);
 			}
 			//need this! commented out for debugging.
-			//if (mMotionScheme == MotionScheme::SEMI_IMPLICIT)track<MapT>(time);
+			if (mMotionScheme == MotionScheme::SEMI_IMPLICIT)track<MapT>(time);
 		}
 		if (mMotionScheme == MotionScheme::EXPLICIT)track<MapT>(time);
 		mGrid.mConstellation.updateVertexNormals(0,0);
@@ -204,7 +200,6 @@ public:
 					break;
 				}
 			}
-			std::cout<<"SEMI-IMPLICIT "<<iter<<std::endl;
 			if (mParent.mInterrupt){
 				mParent.mInterrupt->end();
 			}

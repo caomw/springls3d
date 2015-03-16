@@ -112,6 +112,7 @@ class FluidSimulation :public Simulation{
 		double implicit_func( std::vector<FluidParticle*> &neighbors,openvdb::Vec3f& p, float density,float voxelSize);
 		void mapParticlesToGrid();
 		void mapGridToParticles();
+		template<class T> openvdb::math::Vec3<T> maxInterpolate(MACGrid<T>& grid,Vec3f& position,float radius);
 		inline float isWallIndicator( char a ) {
 			return ((a == static_cast<char>(ObjectType::WALL)) ? 1.0f : -1.0f);
 		}

@@ -41,8 +41,8 @@ void SplashSimulation::addFluid(){
 	obj.type = ObjectType::FLUID;
 	obj.shape = ObjectShape::SPHERE;
 	obj.mVisible = true;
-	obj.mRadius=0.025;
-	obj.mCenter=Vec3f(mVoxelSize*dims[0]*0.5f,mVoxelSize*dims[1]*0.8f,mVoxelSize*dims[2]*0.5f);
+	obj.mRadius=0.05;
+	obj.mCenter=Vec3f(mVoxelSize*dims[0]*0.5f,mVoxelSize*dims[1]*0.75f,mVoxelSize*dims[2]*0.5f);
 	mSimulationObjects.push_back(obj);
 
 	obj.type = ObjectType::FLUID;
@@ -51,7 +51,7 @@ void SplashSimulation::addFluid(){
 	obj.mBounds[0] = Vec3f(mWallThickness, mWallThickness, mWallThickness);
 	obj.mBounds[1] = Vec3f(
 			mVoxelSize*dims[0] - mWallThickness,
-			0.075,
+			0.15,
 			mVoxelSize*dims[2] - mWallThickness);
 	mSimulationObjects.push_back(obj);
 }

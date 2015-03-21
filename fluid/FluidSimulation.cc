@@ -31,6 +31,7 @@
 #include <sstream>
 #include <openvdb/openvdb.h>
 #include <openvdb/math/Math.h>
+#include <openvdb/tools/Composite.h>
 #include <openvdb/tools/GridOperators.h>
 using namespace openvdb;
 using namespace openvdb::tools;
@@ -581,17 +582,13 @@ bool FluidSimulation::step() {
 	advectParticles();
 	correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 	updateParticleVolume();
-	createLevelSet();
 	if(!mSpringlTracking){
 		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
 		mSource.updateIsoSurface();
 	} else {
+		if(mSimulationIteration%mReinitializionInterval==mReinitializionInterval-1)reinit();
 		/*
-		const float EVOLVE_DISTANCE=4.0f;
-		mDistanceField.solve(mLevelSet,mSignedDistanceField,EVOLVE_DISTANCE);
-		stringstream distFile,beforeConst,afterConst;
-		distFile<<"/home/blake/tmp/distfield" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
-		imagesci::WriteToRawFile(mSignedDistanceField,distFile.str());
+
 
 		beforeConst<<"/home/blake/tmp/before" <<std::setw(8)<<std::setfill('0')<<mSimulationIteration<< ".ply";
 		imagesci::WriteToRawFile(mSignedDistanceField,distFile.str());
@@ -623,6 +620,39 @@ bool FluidSimulation::step() {
 	} else {
 		return false;
 	}
+}
+void FluidSimulation::reinit(){
+
+	std::cout<<"Reinitialize "<<mSimulationIteration<<" ..."<<std::endl;
+	createLevelSet();
+	//stringstream distFile,signedFile,afterFile;
+	//signedFile<<"/home/blake/tmp/signedlevelset" <<std::setw(8)<<std::setfill('0')<<mSimulationIteration;
+	//imagesci::WriteToRawFile(mSource.mSignedLevelSet,signedFile.str());
+	const float EVOLVE_DISTANCE=4.0f;
+	mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
+
+
+	SLevelSetPtr levelSetCopy=std::unique_ptr<FloatGrid>(new FloatGrid());
+	levelSetCopy->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
+	openvdb::tools::copyFromDense(mSignedDistanceField,*levelSetCopy,0.25f);
+
+	//distFile<<"/home/blake/tmp/distfield" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
+	//imagesci::WriteToRawFile(levelSetCopy,distFile.str());
+
+	openvdb::tools::csgUnion(*mSource.mSignedLevelSet,*levelSetCopy,true);
+
+	std::cout<<"Springls before "<<mSource.mConstellation.getNumSpringls()<<std::endl;
+	mSource.updateUnSignedLevelSet(2.5 * openvdb::LEVEL_SET_HALF_WIDTH);
+	mSource.updateNearestNeighbors();
+	mSource.clean();
+	mSource.updateUnSignedLevelSet();
+	int count=mSource.fill();
+	std::cout<<"Springls After "<<mSource.mConstellation.getNumSpringls()<<" filled "<<count<<std::endl;
+	//afterFile<<"/home/blake/tmp/union" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
+	//imagesci::WriteToRawFile(levelSetCopy,afterFile.str());
+
+	//mSource.create(mSignedDistanceField);
+
 }
 void FluidSimulation::copyGridToBuffer() {
 	mVelocity[0].copyTo(mVelocityLast[0]);

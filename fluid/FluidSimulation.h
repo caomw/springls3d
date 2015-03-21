@@ -76,6 +76,7 @@ class FluidSimulation :public Simulation{
 		std::unique_ptr<FluidTrackingField<float> > mTrackingField;
 
 		int mStuckParticleCount;
+		int mReinitializionInterval=4;
 		float mVoxelSize;
 		float mWallThickness;
 		std::unique_ptr<ParticleLocator> mParticleLocator;
@@ -96,6 +97,7 @@ class FluidSimulation :public Simulation{
 		void repositionParticles(std::vector<int>& indices) ;
 		void addParticle( openvdb::Vec3s pt, openvdb::Vec3s center,ObjectType type );
 		void project();
+		void reinit();
 		void createLevelSet();
 		void updateParticleVolume();
 		void enforceBoundaryCondition();

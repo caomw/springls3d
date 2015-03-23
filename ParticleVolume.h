@@ -35,8 +35,9 @@ struct GLParticleVolume{
 public:
 	GLuint mVao;
 	GLuint mParticleBuffer;
+	GLuint mVelocityBuffer;
 	//GLuint mColorBuffer;
-	GLParticleVolume():mVao(0),mParticleBuffer(0){
+	GLParticleVolume():mVao(0),mVelocityBuffer(0),mParticleBuffer(0){
 	}
 };
 class ParticleVolume {
@@ -46,7 +47,11 @@ openvdb::math::Mat4f mPose;
 openvdb::math::BBox<openvdb::Vec3d> mBoundingBox;
 public:
 	GLuint mParticleCount;
+	GLuint mVelocityCount;
+	float mMaxVelocityMagnitude;
+	float mMinVelocityMagnitude;
 	std::vector<openvdb::Vec4s> mParticles;
+	std::vector<openvdb::Vec3s> mVelocities;
 	//The "w" component of the color encodes the radius.
 	//std::vector<openvdb::Vec4s> mColors;
 	ParticleVolume();

@@ -43,7 +43,6 @@ void GLSpringlShader::updateGL() {
 		std::vector<std::string> attrib;
 		attrib.push_back("vp");
 		attrib.push_back("vn");
-
 		if (!mWireframeProgram.Initialize(ReadTextFile("shaders/wireframe_depth_shader.vert"),ReadTextFile("shaders/wireframe_depth_shader.frag"),ReadTextFile("shaders/wireframe_depth_shader.geom"),
 				attrib)) {
 			throw Exception("Wireframe depth shader compilation failed.");

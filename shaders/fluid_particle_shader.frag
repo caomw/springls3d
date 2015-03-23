@@ -18,17 +18,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#version 330
+#version 330 core
 in vec2 uv;
+in float mag;
 uniform float MIN_DEPTH;
 uniform float MAX_DEPTH;
 uniform mat4 P,V,M;
 uniform float SCALE;
+uniform float maxVelocity;
+uniform float minVelocity;
 void main(void) {
 	float radius=length(uv);
 	if(radius>1.0){
 		discard;
 	} else {
-		gl_FragColor=mix(vec4(0.8,0.8,0.1,1.0),vec4(0.3,0.3,0.3,1.0),radius);
+		vec4 lum=mix(vec4(0.8,0.8,0.8,1.0),vec4(0.3,0.3,0.3,1.0),radius);
+		if(maxVelocity>0.0&&maxVelocity-minVelocity>1E-6f){
+			float hue=clamp(mag,0.0,1.0);
+			gl_FragColor=lum*vec4(hue,(1.0f-hue),0.0,1.0);
+		} else {
+			gl_FragColor=lum;
+		}
 	}
 }

@@ -18,8 +18,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#version 330
-in vec4 vp;
+#version 330 core
+#extension GL_ARB_separate_shader_objects : enable
+layout(location = 0) in vec4 vp;
+layout(location = 1) in vec3 vel;
+uniform float maxVelocity;
+uniform float minVelocity;
 void main(void) {
-  gl_Position = vp; 
+ float w=(length(vel)-minVelocity)/max(1E-10,maxVelocity-minVelocity);
+  gl_Position = vec4(vp.xyz,w);
+  gl_PointSize = vp.w;
 }

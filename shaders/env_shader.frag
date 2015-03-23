@@ -20,8 +20,16 @@
  */
 #version 330
 in vec3 normal;
+in float mag;
 uniform sampler2D matcapTexture;
+uniform float maxVelocity;
+uniform float minVelocity;
 void main() {
    vec3 normalized_normal = normalize(normal);
-    gl_FragColor=texture2D(matcapTexture,0.5f*normalized_normal.xy+0.5f);
+   vec4 c=texture2D(matcapTexture,0.5f*normalized_normal.xy+0.5f);
+   if(maxVelocity>0.0&&maxVelocity-minVelocity>1E-6f){
+      float hue=clamp(mag,0.0,1.0);
+      c=c*vec4(hue,(1.0f-hue),0.0,1.0);
+    } 
+    gl_FragColor=c;
  }

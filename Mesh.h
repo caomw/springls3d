@@ -38,6 +38,7 @@ public:
 	GLuint mNormalBuffer;
 	GLuint mParticleNormalBuffer;
 	GLuint mColorBuffer;
+	GLuint mVelocityBuffer;
 	GLuint mTriIndexBuffer;
 	GLuint mQuadIndexBuffer;
 	GLuint mLineBuffer;
@@ -48,6 +49,7 @@ public:
 		mNormalBuffer(0),
 		mParticleNormalBuffer(0),
 		mColorBuffer(0),
+		mVelocityBuffer(0),
 		mTriIndexBuffer(0),
 		mQuadIndexBuffer(0),
 		mLineBuffer(0){

@@ -31,10 +31,13 @@ void main() {
   vec3 v01 = gl_in[1].gl_Position.xyz - gl_in[0].gl_Position.xyz;
   vec3 v02 = gl_in[2].gl_Position.xyz - gl_in[0].gl_Position.xyz;
   vec3 fn =  normalize(cross( v01, v02 ));
-  
-  v0 = (VM*gl_in[0].gl_Position).xyz;
-  v1 = (VM*gl_in[1].gl_Position).xyz;
-  v2 = (VM*gl_in[2].gl_Position).xyz;
+  vec4 p0=gl_in[0].gl_Position;
+  vec4 p1=gl_in[1].gl_Position;
+  vec4 p2=gl_in[2].gl_Position;
+
+  v0 = (VM*p0).xyz;
+  v1 = (VM*p1).xyz;
+  v2 = (VM*p2).xyz;
   
   
   gl_Position=PVM*gl_in[0].gl_Position;  

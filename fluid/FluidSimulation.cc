@@ -579,15 +579,21 @@ bool FluidSimulation::step() {
 	//Add external gravity force
 	addExternalForce();
 	solvePicFlip();	
-	advectParticles();
-	correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
-	updateParticleVolume();
+
 	if(!mSpringlTracking){
+		advectParticles();
+		correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
+		updateParticleVolume();
 		createLevelSet();
 		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
 		mSource.updateIsoSurface();
 	} else {
 		if(mSimulationIteration%mReinitializionInterval==mReinitializionInterval-1)reinit();
+		//Wait to advect particles.
+		advectParticles();
+		correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
+		updateParticleVolume();
+
 		/*
 
 
@@ -626,7 +632,7 @@ void FluidSimulation::reinit(){
 
 	std::cout<<"Reinitialize "<<mSimulationIteration<<" ..."<<std::endl;
 	createLevelSet();
-	stringstream distFile,signedFile,afterFile;
+	stringstream distFile,signedFile,afterFile,isoFile;
 	//signedFile<<"/home/blake/tmp/signedlevelset" <<std::setw(8)<<std::setfill('0')<<mSimulationIteration;
 	//imagesci::WriteToRawFile(mSource.mSignedLevelSet,signedFile.str());
 	const float EVOLVE_DISTANCE=4.0f;
@@ -644,6 +650,9 @@ void FluidSimulation::reinit(){
 	mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
 	mSource.updateIsoSurface();
 
+	isoFile<<"/home/blake/tmp/isosurf" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
+	mSource.mIsoSurface.save(isoFile.str());
+
 	distFile<<"/home/blake/tmp/distfield" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
 	imagesci::WriteToRawFile(mSignedDistanceField,distFile.str());
 
@@ -653,7 +662,7 @@ void FluidSimulation::reinit(){
 	mSource.clean();
 	mSource.updateUnSignedLevelSet();
 	int count=mSource.fill();
-	mSource.updateUnSignedLevelSet(2.5 * openvdb::LEVEL_SET_HALF_WIDTH);
+	mSource.updateUnSignedLevelSet();
 	mSource.updateNearestNeighbors();
 
 	std::cout<<"Springls After "<<mSource.mConstellation.getNumSpringls()<<" filled "<<count<<std::endl;
@@ -921,6 +930,7 @@ void FluidSimulation::updateParticleVolume(){
 	//WriteToRawFile(mLevelSet,"/home/blake/tmp/levelset");
 	float voxelSize = mLevelSet.voxelSize();
 		mSource.mParticleVolume.mParticles.clear();
+		mSource.mParticleVolume.mVelocities.clear();
 		float scale = mVoxelSize / voxelSize;
 		FOR_EVERY_PARTICLE(mParticles)
 		{
@@ -929,6 +939,7 @@ void FluidSimulation::updateParticleVolume(){
 				Vec3s l = p->mLocation / voxelSize;
 				Vec4s v(l[0], l[1], l[2], scale * 0.5f * mFluidParticleDiameter);
 				mSource.mParticleVolume.mParticles.push_back(v);
+				mSource.mParticleVolume.mVelocities.push_back(p->mVelocity);
 			}
 		}
 		Coord dims(mLevelSet.rows(), mLevelSet.cols(), mLevelSet.slices());

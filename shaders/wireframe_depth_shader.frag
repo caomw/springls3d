@@ -21,11 +21,14 @@
 #version 330
 in vec3 v0, v1, v2;
 in vec3 normal, vert;
+in float mag;
 uniform float MIN_DEPTH;
 uniform float MAX_DEPTH;
 uniform mat4 P,V,M;
 uniform float SCALE;
 float DISTANCE_TOL=0.1f*SCALE;
+uniform float maxVelocity;
+uniform float minVelocity;
 void main(void) {
   vec3 line, vec, proj;
   float dist1,dist2,dist;
@@ -54,7 +57,7 @@ void main(void) {
     } else {
       dist=dist2;
       outNorm=normalize(mix(normal,tan2,w2));
-    }
+    } 
     if (dist <DISTANCE_TOL&&normal.z>0.0){
       gl_FragColor = vec4(outNorm,(-vert.z-MIN_DEPTH)/(MAX_DEPTH-MIN_DEPTH));
     } else {

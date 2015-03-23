@@ -18,7 +18,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#version 330
+#version 330 core
 in vec3 vp; 
 uniform vec2 IMG_POS;
 uniform vec2 IMG_DIMS;

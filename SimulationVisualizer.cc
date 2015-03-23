@@ -342,6 +342,10 @@ SimulationVisualizer::render()
 		if(mShowParticles){
 			mParticleShader.begin();
 				mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mParticleShader);
+				glUniform1f(glGetUniformLocation(mParticleShader.GetProgramHandle(),"minVelocity"),mSimulation->getSource().mParticleVolume.mMinVelocityMagnitude);
+				glUniform1f(glGetUniformLocation(mParticleShader.GetProgramHandle(),"maxVelocity"),mSimulation->getSource().mParticleVolume.mMaxVelocityMagnitude);
+				//std::cout<<"MAX VELOCITY "<<mSimulation->getSource().mParticleVolume.mMinVelocityMagnitude<<" "<< mSimulation->getSource().mParticleVolume.mMaxVelocityMagnitude<<std::endl;
+
 				mSimulation->getSource().mParticleVolume.draw();
 			mParticleShader.end();
 		}
@@ -354,6 +358,9 @@ SimulationVisualizer::render()
 		if(mShowSpringls){
 			mSpringlsShader.begin();
 				mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mSpringlsShader);
+				glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"minVelocity"),mSimulation->getSource().mParticleVolume.mMinVelocityMagnitude);
+				glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"maxVelocity"),mSimulation->getSource().mParticleVolume.mMaxVelocityMagnitude);
+
 				mSimulation->getSource().mConstellation.draw();
 			mSpringlsShader.end();
 		}

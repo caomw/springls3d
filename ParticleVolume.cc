@@ -39,7 +39,7 @@ PlyProperty ParticleVertProps[] = { // property information for a vertex
 
 
 ParticleVolume::ParticleVolume() :
-		mBoundingBox(Vec3d(0, 0, 0), Vec3d(1, 1, 1)), mGL(), mParticleCount(0), mPose(
+		mBoundingBox(Vec3d(0, 0, 0), Vec3d(1, 1, 1)), mMinVelocityMagnitude(0.0), mMaxVelocityMagnitude(0.0f),mGL(),mVelocityCount(0), mParticleCount(0), mPose(
 				openvdb::math::Mat4f::identity()) {
 	// TODO Auto-generated constructor stub
 }
@@ -175,8 +175,14 @@ void ParticleVolume::draw() {
 		glBindBuffer(GL_ARRAY_BUFFER, mGL.mParticleBuffer);
 		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 	}
+	if (mGL.mVelocityBuffer > 0) {
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mVelocityBuffer);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	}
 	glDrawArrays(GL_POINTS, 0, mParticleCount);
 	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
 	glBindVertexArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
@@ -196,6 +202,32 @@ void ParticleVolume::updateGL() {
 				&mParticles[0], GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		mParticleCount = mParticles.size();
+	}
+	if (mVelocities.size() > 0) {
+		if (glIsBuffer(mGL.mVelocityBuffer) == GL_TRUE)
+			glDeleteBuffers(1, &mGL.mVelocityBuffer);
+		glGenBuffers(1, &mGL.mVelocityBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mVelocityBuffer);
+		if (glIsBuffer(mGL.mVelocityBuffer) == GL_FALSE)
+			throw Exception("Error: Unable to create velocity buffer");
+
+		mMaxVelocityMagnitude=0.0f;
+		mMinVelocityMagnitude=std::numeric_limits<float>::min();
+		int count=0;
+		for(openvdb::Vec3s& vel:mVelocities){
+			//vel=Vec3s((float)(count++)/(float)mVelocities.size(),0.0f,0.0f);
+			float l=vel.lengthSqr();
+			mMaxVelocityMagnitude=std::max(l,mMaxVelocityMagnitude);
+			mMinVelocityMagnitude=std::min(l,mMinVelocityMagnitude);
+		}
+		mMaxVelocityMagnitude=std::sqrt(mMaxVelocityMagnitude);
+		mMinVelocityMagnitude=std::sqrt(mMinVelocityMagnitude);
+
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * mVelocities.size(),
+				&mVelocities[0], GL_STATIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		mVelocityCount = mVelocities.size();
 	}
 	/*
 	if (mColors.size() > 0) {

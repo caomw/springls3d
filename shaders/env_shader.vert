@@ -19,12 +19,16 @@
  * THE SOFTWARE.
  */
 #version 330
-in vec3 vp; // positions from mesh
-in vec3 vn; // normals from mesh
+layout(location = 0) in vec3 vp; // positions from mesh
+layout(location = 1) in vec3 vn; // normals from mesh
+layout(location = 2) in vec3 vel;
 uniform mat4 P, V, M; // proj, view, model matrices
 out vec3 normal;
-
+out float mag;
+uniform float maxVelocity;
+uniform float minVelocity;
 void main () {
+  mag =(length(vel)-minVelocity)/max(1E-10,maxVelocity-minVelocity);
   normal = vec3 (V * M * vec4 (vn, 0.0));
   gl_Position = P * V * M * vec4 (vp, 1.0);
 }

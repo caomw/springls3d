@@ -21,6 +21,7 @@
 #version 330
 in vec3 vp; // positions from mesh
 in vec3 vn; // normals from mesh
+in vec3 vel;
 uniform mat4 P, V, M; // proj, view, model matrices
 out vec3 pos_eye;
 out vec3 normal;

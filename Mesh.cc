@@ -633,11 +633,19 @@ void Mesh::draw() {
 		glBindBuffer(GL_ARRAY_BUFFER, mGL.mNormalBuffer);
 		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	}
-	if (mGL.mColorBuffer > 0) {
+
+	if (mGL.mVelocityBuffer > 0) {
 		glEnableVertexAttribArray(2);
-		glBindBuffer(GL_ARRAY_BUFFER, mGL.mColorBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mVelocityBuffer);
 		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	}
+
+	if (mGL.mColorBuffer > 0) {
+		glEnableVertexAttribArray(3);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mColorBuffer);
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	}
+
 	if (mQuadIndexCount > 0) {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mGL.mQuadIndexBuffer);
 		glDrawElements(GL_TRIANGLES, mQuadIndexCount, GL_UNSIGNED_INT, NULL);
@@ -656,7 +664,7 @@ void Mesh::draw() {
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(2);
-
+	glDisableVertexAttribArray(3);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 }
@@ -707,6 +715,24 @@ void Mesh::updateGL() {
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * mColors.size(),
 				&mColors[0], GL_STATIC_DRAW);
 
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
+	if (mParticleVelocity.size() > 0) {
+		if (glIsBuffer(mGL.mVelocityBuffer) == GL_TRUE)
+			glDeleteBuffers(1, &mGL.mVelocityBuffer);
+		glGenBuffers(1, &mGL.mVelocityBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, mGL.mVelocityBuffer);
+		if (glIsBuffer(mGL.mVelocityBuffer) == GL_FALSE)
+			throw Exception("Error: Unable to create velocity buffer");
+
+		std::vector<Vec3s> tmp;
+		int N=mVertexes.size()/mParticleVelocity.size();
+		tmp.reserve(mVertexes.size());
+		for(Vec3s& vel:mParticleVelocity){
+			for(int n=0;n<N;n++)tmp.push_back(vel);
+		}
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * tmp.size(),
+				&tmp[0], GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 	if (mLines.size() > 0) {

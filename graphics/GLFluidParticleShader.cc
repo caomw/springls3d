@@ -36,11 +36,14 @@ GLFluidParticleShader::GLFluidParticleShader():GLShader(),mTextureId(0) {
 bool GLFluidParticleShader::Init(){
 	std::vector<std::string> attrib;
 	attrib.push_back("vp");
-	//attrib.push_back("vc");
+	attrib.push_back("vel");
 	return Initialize(ReadTextFile("shaders/fluid_particle_shader.vert"),ReadTextFile("shaders/fluid_particle_shader.frag"),ReadTextFile("shaders/fluid_particle_shader.geom"),attrib);
+
 }
 void GLFluidParticleShader::begin(){
 	glUseProgram(GetProgramHandle());
+
+
 }
 void GLFluidParticleShader::end(){
 	glUseProgram(0);

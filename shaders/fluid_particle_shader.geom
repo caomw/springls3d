@@ -18,8 +18,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#version 330
+#version 330 core
+#extension GL_ARB_separate_shader_objects : enable
+
+//in vec3 velocity;
 out vec2 uv;
+//out vec3 velocity;
+
+out float mag;
 layout (points) in;
 layout (triangle_strip, max_vertices=4) out;
 uniform mat4 P,V,M;
@@ -27,12 +33,14 @@ void main() {
   mat4 PVM=P*V*M;
   mat4 VM=V*M;
   vec4 pt=gl_in[0].gl_Position;
-  float r=pt.w;
+  mag =pt.w;
+  float r=gl_in[0].gl_PointSize;
   pt.w=1.0;
   vec4 v = VM*pt;
   r=length(VM*vec4(0,0,r,0));
   gl_Position=P*(v+vec4(-r,-r,0,0));  
   uv=vec2(-1.0,-1.0);
+
   EmitVertex();
   
   gl_Position=P*(v+vec4(+r,-r,0,0));  

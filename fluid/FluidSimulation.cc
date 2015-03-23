@@ -625,28 +625,35 @@ void FluidSimulation::reinit(){
 
 	std::cout<<"Reinitialize "<<mSimulationIteration<<" ..."<<std::endl;
 	createLevelSet();
-	//stringstream distFile,signedFile,afterFile;
+	stringstream distFile,signedFile,afterFile;
 	//signedFile<<"/home/blake/tmp/signedlevelset" <<std::setw(8)<<std::setfill('0')<<mSimulationIteration;
 	//imagesci::WriteToRawFile(mSource.mSignedLevelSet,signedFile.str());
 	const float EVOLVE_DISTANCE=4.0f;
 	mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
 
 
-	SLevelSetPtr levelSetCopy=std::unique_ptr<FloatGrid>(new FloatGrid());
-	levelSetCopy->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
-	openvdb::tools::copyFromDense(mSignedDistanceField,*levelSetCopy,0.25f);
+	//SLevelSetPtr levelSetCopy
+	//levelSetCopy->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
 
-	//distFile<<"/home/blake/tmp/distfield" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
-	//imagesci::WriteToRawFile(levelSetCopy,distFile.str());
+	mSource.mSignedLevelSet->setTransform(mSignedDistanceField.transformPtr());
+	mSource.mSignedLevelSet=std::unique_ptr<FloatGrid>(new FloatGrid());
+	mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
+	mSource.mSignedLevelSet->setGridClass(GridClass::GRID_LEVEL_SET);
+	openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,openvdb::LEVEL_SET_HALF_WIDTH);
+	mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
 
-	openvdb::tools::csgUnion(*mSource.mSignedLevelSet,*levelSetCopy,true);
+	distFile<<"/home/blake/tmp/distfield" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
+	imagesci::WriteToRawFile(mSignedDistanceField,distFile.str());
+
+	//openvdb::tools::csgUnion(*mSource.mSignedLevelSet,*levelSetCopy,true);
 
 	std::cout<<"Springls before "<<mSource.mConstellation.getNumSpringls()<<std::endl;
-	mSource.updateUnSignedLevelSet(2.5 * openvdb::LEVEL_SET_HALF_WIDTH);
-	mSource.updateNearestNeighbors();
 	mSource.clean();
 	mSource.updateUnSignedLevelSet();
 	int count=mSource.fill();
+	mSource.updateUnSignedLevelSet(2.5 * openvdb::LEVEL_SET_HALF_WIDTH);
+	mSource.updateNearestNeighbors();
+
 	std::cout<<"Springls After "<<mSource.mConstellation.getNumSpringls()<<" filled "<<count<<std::endl;
 	//afterFile<<"/home/blake/tmp/union" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
 	//imagesci::WriteToRawFile(levelSetCopy,afterFile.str());

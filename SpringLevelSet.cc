@@ -375,7 +375,6 @@ void SpringLevelSet::updateNearestNeighbors(bool threaded) {
 	using namespace openvdb;
 	NearestNeighbors<openvdb::util::NullInterrupter> nn(*this);
 	nn.process();
-
 }
 void SpringLevelSet::updateLines() {
 	std::vector<Vec3s>& lines = mConstellation.mLines;

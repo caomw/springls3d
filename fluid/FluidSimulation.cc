@@ -583,6 +583,7 @@ bool FluidSimulation::step() {
 	correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 	updateParticleVolume();
 	if(!mSpringlTracking){
+		createLevelSet();
 		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
 		mSource.updateIsoSurface();
 	} else {
@@ -635,12 +636,13 @@ void FluidSimulation::reinit(){
 	//SLevelSetPtr levelSetCopy
 	//levelSetCopy->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
 
-	mSource.mSignedLevelSet->setTransform(mSignedDistanceField.transformPtr());
-	mSource.mSignedLevelSet=std::unique_ptr<FloatGrid>(new FloatGrid());
-	mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
-	mSource.mSignedLevelSet->setGridClass(GridClass::GRID_LEVEL_SET);
+	//mSource.mSignedLevelSet->setTransform(mSignedDistanceField.transformPtr());
+	//mSource.mSignedLevelSet=std::unique_ptr<FloatGrid>(new FloatGrid());
+	//mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
+	//mSource.mSignedLevelSet->setGridClass(GridClass::GRID_LEVEL_SET);
 	openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,openvdb::LEVEL_SET_HALF_WIDTH);
 	mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
+	mSource.updateIsoSurface();
 
 	distFile<<"/home/blake/tmp/distfield" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
 	imagesci::WriteToRawFile(mSignedDistanceField,distFile.str());

@@ -36,6 +36,7 @@
 #include "ImageSciUtil.h"
 #include "AdvectionForce.h"
 #include "json/JsonSerializable.h"
+#include "fluid/fluid_common.h"
 #undef OPENVDB_REQUIRE_VERSION_NAME
 
 namespace imagesci {
@@ -154,6 +155,7 @@ class SpringLevelSet {
 protected:
 	openvdb::tools::VolumeToMesh mVolToMesh;
 	openvdb::math::Transform::Ptr mTransform;
+	std::list<int> fillList;
 	int mFillCount;
 	int mCleanCount;
 public:
@@ -205,6 +207,8 @@ public:
 	void draw();
 	int clean();
 	int fill();
+	void fillWithNearestNeighbors();
+	void fillWithVelocityField(fluid::MACGrid<float>& grid,float radius);
 	void evolve();
 	void updateLines();
 	void updateGradient();

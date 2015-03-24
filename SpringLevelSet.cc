@@ -501,6 +501,7 @@ void SpringLevelSet::create(Mesh* mesh,
 		clean();
 		updateUnSignedLevelSet();
 		fill();
+		fillWithNearestNeighbors();
 	}
 	updateGradient();
 
@@ -522,6 +523,7 @@ void SpringLevelSet::create(FloatGrid& grid) {
 		clean();
 		updateUnSignedLevelSet();
 		fill();
+		fillWithNearestNeighbors();
 	}
 	updateGradient();
 }
@@ -544,6 +546,7 @@ void SpringLevelSet::create(RegularGrid<float>& grid) {
 		clean();
 		updateUnSignedLevelSet();
 		fill();
+		fillWithNearestNeighbors();
 	}
 	updateGradient();
 }
@@ -576,7 +579,7 @@ int SpringLevelSet::fill() {
 	const float D2 = FILL_DISTANCE * FILL_DISTANCE;
 	Index64 N = mVolToMesh.polygonPoolListSize();
 	Index64 I;
-	std::list<int> fillList;
+	fillList.clear();
 	for (Index64 n = 0; n < N; ++n) {
 		const openvdb::tools::PolygonPool& polygons = polygonPoolList[n];
 		I = polygons.numQuads();
@@ -723,6 +726,19 @@ int SpringLevelSet::fill() {
 			}
 		}
 	}
+
+	mFillCount += added;
+	return added;
+}
+void SpringLevelSet::fillWithVelocityField(fluid::MACGrid<float>& grid,float radius){
+	for (int fid : fillList) {
+		Springl& springl = mConstellation.springls[fid];
+		//Is particle() in the correct coordinate space?
+		Vec3d wpt=transform().indexToWorld(springl.particle());
+		mConstellation.mParticleVelocity[fid] = grid.maxInterpolate(Vec3s(wpt),radius);
+	}
+}
+void SpringLevelSet::fillWithNearestNeighbors(){
 	if (fillList.size() > 0) {
 		updateUnSignedLevelSet();
 		updateNearestNeighbors();
@@ -757,8 +773,6 @@ int SpringLevelSet::fill() {
 			std::cout << cycle << ":: un-filled " << unfilledCount << std::endl;
 		}
 	}
-	mFillCount += added;
-	return added;
 }
 void SpringLevelSet::computeStatistics(Mesh& mesh) {
 	float area;

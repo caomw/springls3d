@@ -662,6 +662,8 @@ void FluidSimulation::reinit(){
 	mSource.clean();
 	mSource.updateUnSignedLevelSet();
 	int count=mSource.fill();
+
+	mSource.fillWithVelocityField(mVelocity,0.5f*mVoxelSize);
 	mSource.updateUnSignedLevelSet();
 	mSource.updateNearestNeighbors();
 
@@ -888,44 +890,13 @@ void FluidSimulation::solvePicFlip() {
 #pragma omp for
 		for(int n=0;n<velocities.size();n++){
 			Vec3s pt=0.5f*mVoxelSize*positions[n];
-			openvdb::Vec3s currentVelocity=maxInterpolate(mVelocity,pt,0.5f*mVoxelSize);
-			openvdb::Vec3s velocity=velocities[n]+currentVelocity-maxInterpolate(mVelocityLast,pt,0.5f*mVoxelSize);
+			openvdb::Vec3s currentVelocity=mVelocity.maxInterpolate(pt,0.5f*mVoxelSize);
+			openvdb::Vec3s velocity=velocities[n]+currentVelocity-mVelocityLast.maxInterpolate(pt,0.5f*mVoxelSize);
 			velocities[n] = (1.0 - mPicFlipBlendWeight) *currentVelocity  + mPicFlipBlendWeight * velocity;
 		}
 	}
 }
-template<class T> openvdb::math::Vec3<T> FluidSimulation::maxInterpolate(MACGrid<T>& grid,Vec3f& position,float radius){
-	Vec3<T> values[15];
-	const float n3=1.0f/std::sqrt(3.0f);
 
-	values[0]=grid.interpolate(position);
-	values[1]=grid.interpolate(position+Vec3f(+radius,0,0));
-	values[2]=grid.interpolate(position+Vec3f(-radius,0,0));
-	values[3]=grid.interpolate(position+Vec3f(0,0,+radius));
-	values[4]=grid.interpolate(position+Vec3f(0,0,-radius));
-	values[5]=grid.interpolate(position+Vec3f(0,+radius,0));
-	values[6]=grid.interpolate(position+Vec3f(0,-radius,0));
-
-	values[7 ]=grid.interpolate(position+Vec3f(+radius*n3,+radius*n3,+radius*n3));
-	values[8 ]=grid.interpolate(position+Vec3f(+radius*n3,-radius*n3,+radius*n3));
-	values[9 ]=grid.interpolate(position+Vec3f(-radius*n3,+radius*n3,+radius*n3));
-	values[10]=grid.interpolate(position+Vec3f(-radius*n3,-radius*n3,+radius*n3));
-	values[11]=grid.interpolate(position+Vec3f(+radius*n3,+radius*n3,-radius*n3));
-	values[12]=grid.interpolate(position+Vec3f(+radius*n3,-radius*n3,-radius*n3));
-	values[13]=grid.interpolate(position+Vec3f(-radius*n3,+radius*n3,-radius*n3));
-	values[14]=grid.interpolate(position+Vec3f(-radius*n3,-radius*n3,-radius*n3));
-
-	T maxVal=std::numeric_limits<T>::min();
-	openvdb::math::Vec3<T> final=values[0];
-	for(int i=0;i<15;i++){
-		T lsqr=values[i].lengthSqr();
-		if(lsqr>maxVal){
-			maxVal=lsqr;
-			final=values[i];
-		}
-	}
-	return final;
-}
 void FluidSimulation::updateParticleVolume(){
 	//WriteToRawFile(mLevelSet,"/home/blake/tmp/levelset");
 	float voxelSize = mLevelSet.voxelSize();

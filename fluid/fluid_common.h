@@ -148,7 +148,38 @@ public:
 		u[2] = mZ.interpolate(mRows*p[0]-0.5, mCols*p[1]-0.5, mSlices*p[2]);
 		return u;
 	}
+	inline openvdb::math::Vec3<ValueT> maxInterpolate(const openvdb::Vec3f& position,float radius){
+		openvdb::math::Vec3<ValueT> values[15];
+		const float n3=1.0f/std::sqrt(3.0f);
+		MACGrid<ValueT>& grid=*this;
+		values[0]=grid.interpolate(position);
+		values[1]=grid.interpolate(position+openvdb::Vec3f(+radius,0,0));
+		values[2]=grid.interpolate(position+openvdb::Vec3f(-radius,0,0));
+		values[3]=grid.interpolate(position+openvdb::Vec3f(0,0,+radius));
+		values[4]=grid.interpolate(position+openvdb::Vec3f(0,0,-radius));
+		values[5]=grid.interpolate(position+openvdb::Vec3f(0,+radius,0));
+		values[6]=grid.interpolate(position+openvdb::Vec3f(0,-radius,0));
 
+		values[7 ]=grid.interpolate(position+openvdb::Vec3f(+radius*n3,+radius*n3,+radius*n3));
+		values[8 ]=grid.interpolate(position+openvdb::Vec3f(+radius*n3,-radius*n3,+radius*n3));
+		values[9 ]=grid.interpolate(position+openvdb::Vec3f(-radius*n3,+radius*n3,+radius*n3));
+		values[10]=grid.interpolate(position+openvdb::Vec3f(-radius*n3,-radius*n3,+radius*n3));
+		values[11]=grid.interpolate(position+openvdb::Vec3f(+radius*n3,+radius*n3,-radius*n3));
+		values[12]=grid.interpolate(position+openvdb::Vec3f(+radius*n3,-radius*n3,-radius*n3));
+		values[13]=grid.interpolate(position+openvdb::Vec3f(-radius*n3,+radius*n3,-radius*n3));
+		values[14]=grid.interpolate(position+openvdb::Vec3f(-radius*n3,-radius*n3,-radius*n3));
+
+		ValueT maxVal=std::numeric_limits<ValueT>::min();
+		openvdb::math::Vec3<ValueT> final=values[0];
+		for(int i=0;i<15;i++){
+			ValueT lsqr=values[i].lengthSqr();
+			if(lsqr>maxVal){
+				maxVal=lsqr;
+				final=values[i];
+			}
+		}
+		return final;
+	}
 };
 inline bool WriteToRawFile(MACGrid<float>& mac, const std::string& fileName) {
 	bool r1 = WriteToRawFile(mac[0], fileName + "_x");

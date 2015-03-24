@@ -168,6 +168,7 @@ public:
 			mGrid.updateUnSignedLevelSet();
 			mGrid.updateIsoSurface();
 			int added=mGrid.fill();
+			mGrid.fillWithNearestNeighbors();
 			std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
 
 		} else {

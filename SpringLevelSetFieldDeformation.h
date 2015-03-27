@@ -117,7 +117,7 @@ public:
 				mGrid.mSignedLevelSet->setTransform(mGrid.transformPtr());
 				double et = std::min(time + dt, endTime);
 				mImplicitAdvection->advect(time, et);
-				std::cout<<"Advect ["<<time<<","<<et<<"] "<<dt<<" max:: "<<maxV<<" duration:: "<<(endTime - startTime)<<std::endl;
+				//std::cout<<"Advect ["<<time<<","<<et<<"] "<<dt<<" max:: "<<maxV<<" duration:: "<<(endTime - startTime)<<std::endl;
 				mGrid.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0f));
 			}
 			mGrid.updateIsoSurface();
@@ -169,7 +169,7 @@ public:
 			mGrid.updateIsoSurface();
 			int added=mGrid.fill();
 			mGrid.fillWithNearestNeighbors();
-			std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
+			std::cout<<"Surface Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
 
 		} else {
 			mGrid.updateIsoSurface();

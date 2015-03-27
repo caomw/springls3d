@@ -427,7 +427,6 @@ bool FluidSimulation::init() {
 		mTrack->setConvergenceThreshold(0.0f);
 		mTrack->setTrackingIterations(16);
 		*/
-
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 	#pragma omp for
 		for(int n=0;n<velocities.size();n++){
@@ -528,6 +527,7 @@ void FluidSimulation::advectParticles() {
 	if(mSpringlTracking){
 		mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
 	}
+
 // Remove Particles That Stuck On The Up-Down Wall Cells...
 	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles)
 	{
@@ -589,7 +589,6 @@ bool FluidSimulation::step() {
 		mSource.updateIsoSurface();
 	} else {
 		if(mSimulationIteration%mReinitializionInterval==mReinitializionInterval-1)reinit();
-		//Wait to advect particles.
 		advectParticles();
 		correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 		updateParticleVolume();
@@ -632,45 +631,28 @@ void FluidSimulation::reinit(){
 
 	std::cout<<"Reinitialize "<<mSimulationIteration<<" ..."<<std::endl;
 	createLevelSet();
-	stringstream distFile,signedFile,afterFile,isoFile;
-	//signedFile<<"/home/blake/tmp/signedlevelset" <<std::setw(8)<<std::setfill('0')<<mSimulationIteration;
-	//imagesci::WriteToRawFile(mSource.mSignedLevelSet,signedFile.str());
-	const float EVOLVE_DISTANCE=4.0f;
-	mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
-
-
-	//SLevelSetPtr levelSetCopy
-	//levelSetCopy->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
-
-	//mSource.mSignedLevelSet->setTransform(mSignedDistanceField.transformPtr());
-	//mSource.mSignedLevelSet=std::unique_ptr<FloatGrid>(new FloatGrid());
-	//mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
-	//mSource.mSignedLevelSet->setGridClass(GridClass::GRID_LEVEL_SET);
-	openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,openvdb::LEVEL_SET_HALF_WIDTH);
+	stringstream distFile,signedFile,afterFile,beforeFile;
+	mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
+	mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
 	mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
-	mSource.updateIsoSurface();
-
-	isoFile<<"/home/blake/tmp/isosurf" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
-	mSource.mIsoSurface.save(isoFile.str());
-
-	distFile<<"/home/blake/tmp/distfield" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
-	imagesci::WriteToRawFile(mSignedDistanceField,distFile.str());
-
+	mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
+	openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
+	//imagesci::WriteToRawFile(mSource.mSignedLevelSet,MakeString()<<"/home/blake/tmp/signed_levelset_after");
+	//mSource.mIsoSurface.create(mSource.mSignedLevelSet);
+	//mSource.updateSignedLevelSet();
 	//openvdb::tools::csgUnion(*mSource.mSignedLevelSet,*levelSetCopy,true);
-
-	std::cout<<"Springls before "<<mSource.mConstellation.getNumSpringls()<<std::endl;
+	//std::cout<<"Springls before "<<mSource.mConstellation.getNumSpringls()<<std::endl;
+	//std::cout<<"Clean"<<std::endl;
 	mSource.clean();
 	mSource.updateUnSignedLevelSet();
 	int count=mSource.fill();
-
 	mSource.fillWithVelocityField(mVelocity,0.5f*mVoxelSize);
 	mSource.updateUnSignedLevelSet();
 	mSource.updateNearestNeighbors();
 
-	std::cout<<"Springls After "<<mSource.mConstellation.getNumSpringls()<<" filled "<<count<<std::endl;
-	//afterFile<<"/home/blake/tmp/union" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
-	//imagesci::WriteToRawFile(levelSetCopy,afterFile.str());
-
+	//std::cout<<"Springls After "<<mSource.mConstellation.getNumSpringls()<<" filled "<<count<<std::endl;
+	//afterFile<<"/home/blake/tmp/after" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration<<".ply";
+	//mSource.mConstellation.save(afterFile.str());
 	//mSource.create(mSignedDistanceField);
 
 }
@@ -1128,7 +1110,6 @@ void FluidSimulation::correctParticles(std::vector<ParticlePtr>& particles, floa
 	}
 
 	if(mSpringlTracking){
-		std::cout<<"Re-sample velocities"<<std::endl;
 		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 		#pragma omp for

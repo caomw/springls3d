@@ -66,6 +66,7 @@ public:
 			mSignChanges(0), mMotionScheme(scheme), mGrid(grid), mInterrupt(interrupt), mTemporalScheme(
 					imagesci::TemporalIntegrationScheme::RK4b), mResample(true) {
 		mGrid.mConstellation.mParticleVelocity.resize(mGrid.mConstellation.mParticles.size(),Vec3s(0.0));
+		mGrid.mConstellation.mParticleLabel.resize(mGrid.mConstellation.mParticles.size(),0);
 	}
 	/// @return the temporal integration scheme
 	imagesci::TemporalIntegrationScheme getTemporalScheme() const {
@@ -95,16 +96,22 @@ public:
 		const int RELAX_OUTER_ITERS = 1;
 		const int RELAX_INNER_ITERS = 5;
 		mGrid.updateUnSignedLevelSet();
-		for (int iter = 0; iter < RELAX_OUTER_ITERS; iter++) {
-			mGrid.updateNearestNeighbors();
+		mGrid.updateNearestNeighbors();
+		//Need this for original method
+		//for (int iter = 0; iter < RELAX_OUTER_ITERS; iter++) {
+			//mGrid.updateNearestNeighbors();
 			//mGrid.relax(RELAX_INNER_ITERS);
-		}
+		//}
+		static int counter=0;
 		if (mMotionScheme == MotionScheme::SEMI_IMPLICIT) {
 			mGrid.updateUnSignedLevelSet(2.5 * openvdb::LEVEL_SET_HALF_WIDTH);
 			mGrid.updateGradient();
+			//imagesci::WriteToRawFile(mGrid.mUnsignedLevelSet,MakeString()<<"/home/blake/tmp/unsigned"<<counter);
 			TrackerT mTracker(*mGrid.mSignedLevelSet, mInterrupt);
 			SpringLevelSetEvolve<MapT> evolve(*this, mTracker, time, 0.75, mTrackingIterations,mConvergenceThresold);
 			evolve.process();
+			//imagesci::WriteToRawFile(mGrid.mSignedLevelSet,MakeString()<<"/home/blake/tmp/signed_after"<<counter);
+			counter++;
 		} else if (mMotionScheme == MotionScheme::EXPLICIT) {
 			mGrid.mIsoSurface.updateVertexNormals(0);
 			mGrid.mIsoSurface.dilate(0.5f);
@@ -121,7 +128,7 @@ public:
 			mGrid.updateIsoSurface();
 			int added=mGrid.fill();
 			mGrid.fillWithNearestNeighbors();
-			std::cout<<"Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"%"<<std::endl;
+			//std::cout<<"Particle Filled "<<added<<" "<<100*added/(double)mGrid.mConstellation.getNumSpringls()<<"% "<<std::endl;
 		} else {
 			mGrid.updateIsoSurface();
 		}

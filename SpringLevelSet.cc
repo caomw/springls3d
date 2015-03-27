@@ -515,6 +515,7 @@ void SpringLevelSet::create(FloatGrid& grid) {
 	updateSignedLevelSet();
 	mConstellation.create(&mIsoSurface);
 	updateIsoSurface();
+	std::cout<<"CREATE SPRING LEVEL SET"<<std::endl;
 	for (int iter = 0; iter < 2; iter++) {
 		updateUnSignedLevelSet();
 		updateNearestNeighbors();
@@ -643,6 +644,9 @@ int SpringLevelSet::fill() {
 						fillList.push_back(springl.id);
 						mConstellation.mParticleVelocity.push_back(Vec3s(0.0f));
 					}
+					if(mConstellation.mParticleLabel.size()>0){
+						mConstellation.mParticleLabel.push_back(0);
+					}
 					openvdb::Vec3s norm = springl.computeNormal();
 					mConstellation.mParticleNormals.push_back(norm);
 					mConstellation.mVertexNormals.push_back(norm);
@@ -713,6 +717,9 @@ int SpringLevelSet::fill() {
 						fillList.push_back(springl.id);
 						mConstellation.mParticleVelocity.push_back(Vec3s(0.0f));
 					}
+					if(mConstellation.mParticleLabel.size()>0){
+						mConstellation.mParticleLabel.push_back(0);
+					}
 					openvdb::Vec3s norm = springl.computeNormal();
 
 					mConstellation.mParticleNormals.push_back(norm);
@@ -737,12 +744,13 @@ void SpringLevelSet::fillWithVelocityField(fluid::MACGrid<float>& grid,float rad
 		Vec3d wpt=transform().indexToWorld(springl.particle());
 		mConstellation.mParticleVelocity[fid] = grid.maxInterpolate(Vec3s(wpt),radius);
 	}
+	fillList.clear();
 }
 void SpringLevelSet::fillWithNearestNeighbors(){
 	if (fillList.size() > 0) {
 		updateUnSignedLevelSet();
 		updateNearestNeighbors();
-		for (int cycle = 0; cycle < 8; cycle++) {
+		for (int cycle = 0; cycle < 16; cycle++) {
 			int unfilledCount = 0;
 			for (int fid : fillList) {
 				Springl& springl = mConstellation.springls[fid];
@@ -772,6 +780,7 @@ void SpringLevelSet::fillWithNearestNeighbors(){
 				break;
 			std::cout << cycle << ":: un-filled " << unfilledCount << std::endl;
 		}
+		fillList.clear();
 	}
 }
 void SpringLevelSet::computeStatistics(Mesh& mesh) {
@@ -1023,6 +1032,7 @@ int SpringLevelSet::clean() {
 	levelSetValues.clear();
 	meanls /= count;
 	bias /= count;
+
 	std::cout << "Clean mean=" << meanls << " bias=" << bias << " [" << minls<< "," << maxls << "] [far:" << removeFarCount << ", small:"<< removeSmallCount << ", aspect:" << removeAspectCount << "]" << std::endl;
 
 	if (newSpringlCount == N)
@@ -1040,10 +1050,11 @@ int SpringLevelSet::clean() {
 					mConstellation.mParticles[n];
 
 			if (mConstellation.mParticleVelocity.size() > 0) {
-				mConstellation.mParticleVelocity[springlOffset] =
-						mConstellation.mParticleVelocity[n];
+				mConstellation.mParticleVelocity[springlOffset]=mConstellation.mParticleVelocity[n];
 			}
-
+			if(mConstellation.mParticleLabel.size()>0){
+				mConstellation.mParticleLabel[springlOffset]=mConstellation.mParticleLabel[n];
+			}
 			mConstellation.mParticleNormals[springlOffset] =
 					mConstellation.mParticleNormals[n];
 			springl.offset = vertexOffset;

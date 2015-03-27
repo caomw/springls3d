@@ -46,6 +46,11 @@ typedef openvdb::math::Vec2<float> UV;
 typedef openvdb::math::Vec3<float> float3;
 typedef openvdb::math::Vec4<float> float4;
 typedef openvdb::math::Mat4f Matrix4f;
+struct MakeString{
+	std::ostringstream ss;
+	operator std::string() const { return ss.str(); }
+	template<class T> MakeString & operator << (const T & val) { ss << val; return *this; }
+};
 template<typename T> T clamp(T val, T min, T max) {
 	return std::min(std::max(val, min), max);
 }

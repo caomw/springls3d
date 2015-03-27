@@ -248,7 +248,7 @@ static void conjGrad(RegularGrid<char>& A, RegularGrid<double>& P,
 		// Dump Progress
 		double rate = 1.0
 				- max(0.0, min(1.0, (error2 - eps) / (error2_0 - eps)));
-		std::cout<<"Laplace iteration "<<(k + 1)<<" ["<<100.0f * powf(rate, 6)<<"%]"<<std::endl;
+		//std::cout<<"Laplace iteration "<<(k + 1)<<" ["<<100.0f * powf(rate, 6)<<"%]"<<std::endl;
 		if (error2 <= eps)
 			break;
 		applyPreconditioner(z, r, P, L, A);	// Apply Conditioner z = f(r)

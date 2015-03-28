@@ -524,8 +524,26 @@ void FluidSimulation::advectParticles() {
 			}
 		}
 	}
+	/*
 	if(mSpringlTracking){
 		mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
+	}
+	*/
+	if(mSpringlTracking){
+		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
+		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
+		std::vector<Vec3s>& springls=mSource.mConstellation.mVertexes;
+		float invScale=mTimeStep/(0.5f*mVoxelSize);
+		//std::cout<<"Voxel size "<<mVoxelSize<<" "<<invScale<<std::endl;
+#pragma omp for
+		for(int n=0;n<velocities.size();n++){
+			Vec3f v=invScale*velocities[n];
+			positions[n]+=v;
+			size_t offset=n*4;
+			for(int i=0;i<4;i++){
+				springls[offset++]+=v;
+			}
+		}
 	}
 
 // Remove Particles That Stuck On The Up-Down Wall Cells...
@@ -588,10 +606,7 @@ bool FluidSimulation::step() {
 		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
 		mSource.updateIsoSurface();
 	} else {
-		if(mSimulationIteration%mReinitializionInterval==mReinitializionInterval-1)reinit();
-		advectParticles();
-		correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
-		updateParticleVolume();
+		reinit();
 
 		/*
 
@@ -637,18 +652,25 @@ void FluidSimulation::reinit(){
 	mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
 	mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
 	openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
-	//imagesci::WriteToRawFile(mSource.mSignedLevelSet,MakeString()<<"/home/blake/tmp/signed_levelset_after");
-	//mSource.mIsoSurface.create(mSource.mSignedLevelSet);
-	//mSource.updateSignedLevelSet();
-	//openvdb::tools::csgUnion(*mSource.mSignedLevelSet,*levelSetCopy,true);
-	//std::cout<<"Springls before "<<mSource.mConstellation.getNumSpringls()<<std::endl;
-	//std::cout<<"Clean"<<std::endl;
+	mSource.updateIsoSurface();
 	mSource.clean();
 	mSource.updateUnSignedLevelSet();
 	int count=mSource.fill();
+	std::cout<<"Fill "<<count<<std::endl;
 	mSource.fillWithVelocityField(mVelocity,0.5f*mVoxelSize);
 	mSource.updateUnSignedLevelSet();
 	mSource.updateNearestNeighbors();
+
+	advectParticles();
+	correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
+	updateParticleVolume();
+	createLevelSet();
+	mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
+	mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
+	mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
+	mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
+	openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
+	mSource.updateIsoSurface();
 
 	//std::cout<<"Springls After "<<mSource.mConstellation.getNumSpringls()<<" filled "<<count<<std::endl;
 	//afterFile<<"/home/blake/tmp/after" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration<<".ply";

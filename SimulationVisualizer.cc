@@ -181,7 +181,7 @@ bool SimulationVisualizer::run(int width,int height){
     std::list<std::string> attrib;
 	attrib.push_back("vp");
 	attrib.push_back("vn");
-	mIsoSurfaceShader.Init("./matcap/JG_Red.png");
+	mIsoSurfaceShader.Init("./matcap/JG_Gold.png");
 	mSpringlsShader.Init("./matcap/JG_Silver.png");
 
 	mParticleShader.Init();

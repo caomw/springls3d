@@ -35,7 +35,15 @@ PlyProperty ParticleVertProps[] = { // property information for a vertex
 				static_cast<int>(offsetof(plyParticle, x) + sizeof(float)
 						+ sizeof(float)), 0, 0, 0, 0 },
 		{ "intensity", Float32, Float32,
-				static_cast<int>(offsetof(plyParticle, radius)), 0, 0, 0, 0 }, };
+								static_cast<int>(offsetof(plyParticle, radius)), 0, 0, 0, 0 },
+		{ "nx", Float32, Float32, static_cast<int>(offsetof(plyParticle, n)), 0, 0,
+								0, 0 },
+		{ "ny", Float32, Float32,
+								static_cast<int>(offsetof(plyParticle, n) + sizeof(float)), 0, 0,
+								0, 0 },
+		{ "nz", Float32, Float32,
+								static_cast<int>(offsetof(plyParticle, n) + sizeof(float)
+										+ sizeof(float)), 0, 0, 0, 0 }};
 
 
 ParticleVolume::ParticleVolume() :
@@ -74,6 +82,11 @@ bool ParticleVolume::save(const std::string& f) {
 	ply_describe_property(ply, "vertex", &ParticleVertProps[1]);
 	ply_describe_property(ply, "vertex", &ParticleVertProps[2]);
 	ply_describe_property(ply, "vertex", &ParticleVertProps[3]);
+	if(mVelocities.size()>0){
+		ply_describe_property(ply, "vertex", &ParticleVertProps[4]);
+		ply_describe_property(ply, "vertex", &ParticleVertProps[5]);
+		ply_describe_property(ply, "vertex", &ParticleVertProps[6]);
+	}
 	// write a comment and an object information field
 	append_comment_ply(ply, "PLY File");
 	append_obj_info_ply(ply, "ImageSci");
@@ -87,6 +100,12 @@ bool ParticleVolume::save(const std::string& f) {
 		vert.x[0] = pt[0];
 		vert.x[1] = pt[1];
 		vert.x[2] = pt[2];
+		if(mVelocities.size()>0){
+			Vec3s n=mVelocities[i];
+			vert.n[0]=n[0];
+			vert.n[1]=n[1];
+			vert.n[2]=n[2];
+		}
 		vert.radius=pt[3];
 		put_element_ply(ply, (void *) &vert);
 	}
@@ -124,7 +143,12 @@ bool ParticleVolume::open(const std::string& file) {
 		close_ply(ply);
 		return false;
 	}
+	bool hasVelocity=false;
+	if(find_property(elem, "nx", &index) !=NULL&&find_property(elem, "ny", &index) !=NULL&&find_property(elem, "nz", &index) !=NULL){
+		hasVelocity=true;
+	}
 	this->mParticles.clear();
+	this->mVelocities.clear();
 	plyParticle vertex;
 	// Okay, now we can grab the data
 	for (i = 0; i < nelems; i++) {
@@ -136,15 +160,22 @@ bool ParticleVolume::open(const std::string& file) {
 			// Create a list of points
 			numPts = numElems;
 			this->mParticles.resize(numPts,Vec4s(0.0f));
+
 			// Setup to read the PLY elements
 			ply_get_property(ply, elemName, &ParticleVertProps[0]);
 			ply_get_property(ply, elemName, &ParticleVertProps[1]);
 			ply_get_property(ply, elemName, &ParticleVertProps[2]);
 			ply_get_property(ply, elemName, &ParticleVertProps[3]);
-
+			if(hasVelocity){
+				ply_get_property(ply, elemName, &ParticleVertProps[4]);
+				ply_get_property(ply, elemName, &ParticleVertProps[5]);
+				ply_get_property(ply, elemName, &ParticleVertProps[6]);
+				this->mVelocities.resize(numPts,Vec3s(0.0f));
+			}
 			for (j = 0; j < numPts; j++) {
 				get_element_ply(ply, &vertex);
 				this->mParticles[j] = Vec4s(vertex.x[0], vertex.x[1], vertex.x[2],vertex.radius);
+				if(hasVelocity)this->mVelocities[j]=Vec3s(vertex.n[0],vertex.n[1],vertex.n[2]);
 			}
 		}
 	} //for all elements of the PLY file

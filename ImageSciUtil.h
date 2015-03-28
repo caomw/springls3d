@@ -230,6 +230,7 @@ public:
 
 struct plyVertex {
 	float x[3];             // the usual 3-space position of a vertex
+	float n[3];
 	unsigned char red;
 	unsigned char green;
 	unsigned char blue;
@@ -238,6 +239,9 @@ struct plyVertex {
 		x[0] = 0;
 		x[1] = 0;
 		x[2] = 0;
+		n[0] = 0;
+		n[1] = 0;
+		n[2] = 0;
 		red = 0;
 		green = 0;
 		blue = 0;
@@ -246,11 +250,15 @@ struct plyVertex {
 };
 struct plyParticle {
 	float x[3];             // the usual 3-space position of a vertex
+	float n[3];
 	float radius;
 	plyParticle() {
 		x[0] = 0;
 		x[1] = 0;
 		x[2] = 0;
+		n[0] = 0;
+		n[1] = 0;
+		n[2] = 0;
 		radius=0.0f;
 	}
 };
@@ -258,24 +266,33 @@ struct plyParticle {
 
 typedef struct _plyFace {
 	unsigned char nverts;    // number of vertex indices in list
+	unsigned char nvels;    // number of vertex indices in list
 	int *verts;              // vertex index list
+	float* velocity;
 	_plyFace() {
 		nverts = 0;
 		verts = NULL;
+		velocity=NULL;
+		nvels=3;
 	}
 } plyFace;
 typedef struct _plyFaceTexutre {
 	unsigned char nverts;    // number of vertex indices in list
+	unsigned char nvels;    // number of vertex indices in list
+
 	int *verts;              // vertex index list
+	float* velocity;
 	unsigned char uvcount;
 	float* uvs;
 	_plyFaceTexutre(){
 		nverts = 0;
 		uvs=NULL;
 		verts = NULL;
+		velocity=NULL;
 		uvcount = 6;
+		nvels=3;
 	}
-} plyFaceTexutre;
+} plyFaceTexture;
 
 class Exception:public std::exception{
 protected:

@@ -917,6 +917,7 @@ void Constellation::create(Mesh* mesh) {
 	mParticles.resize(faceCount);
 	mParticleNormals.resize(faceCount);
 	mVertexNormals.resize(mVertexes.size());
+	mParticleVelocity=mesh->mParticleVelocity;
 	for (openvdb::Vec4I face : mesh->mFaces) {
 		Springl springl(this);
 		springl.offset = counter;

@@ -658,14 +658,17 @@ void FluidSimulation::reinit(){
 	mSource.clean();
 	mSource.updateUnSignedLevelSet();
 	int count=mSource.fill();
-	std::cout<<"Fill "<<count<<std::endl;
 	mSource.fillWithVelocityField(mVelocity,0.5f*mVoxelSize);
-	mSource.updateNearestNeighbors();
+
+	//Not needed if we;re not going to relax.
+	//mSource.updateNearestNeighbors();
+	//mSource.relax(5);
 
 	advectParticles();
 	correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 	updateParticleVolume();
 	createLevelSet();
+
 	mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
 	mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
 	mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));

@@ -69,7 +69,8 @@ class Mesh{
 		GLuint mQuadCount;
 		GLuint mTriangleIndexCount;
 		GLuint mQuadIndexCount;
-
+		float mMaxVelocityMagnitude=0;
+		float mMinVelocityMagnitude=0;
 
 		std::vector<openvdb::Vec3s> mLines;
 		std::vector<openvdb::Vec3s> mParticles;

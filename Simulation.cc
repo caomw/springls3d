@@ -105,9 +105,9 @@ bool Simulation::stash(const std::string& directory){
 }
 bool Simulation::updateGL(){
 	if(mIsMeshDirty){
+		mSource.mParticleVolume.updateGL();
 		mSource.mConstellation.updateGL();
 		mSource.mIsoSurface.updateGL();
-		mSource.mParticleVolume.updateGL();
 		mIsMeshDirty=false;
 		return true;
 	} else return false;

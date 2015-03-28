@@ -643,22 +643,23 @@ bool FluidSimulation::step() {
 	}
 }
 void FluidSimulation::reinit(){
-
-	std::cout<<"Reinitialize "<<mSimulationIteration<<" ..."<<std::endl;
-	createLevelSet();
 	stringstream distFile,signedFile,afterFile,beforeFile;
+
+	/*
+	createLevelSet();
 	mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
 	mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
 	mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
 	mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
 	openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
 	mSource.updateIsoSurface();
+*/
+	mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
 	mSource.clean();
 	mSource.updateUnSignedLevelSet();
 	int count=mSource.fill();
 	std::cout<<"Fill "<<count<<std::endl;
 	mSource.fillWithVelocityField(mVelocity,0.5f*mVoxelSize);
-	mSource.updateUnSignedLevelSet();
 	mSource.updateNearestNeighbors();
 
 	advectParticles();

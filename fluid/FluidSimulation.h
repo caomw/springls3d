@@ -97,7 +97,6 @@ class FluidSimulation :public Simulation{
 		void repositionParticles(std::vector<int>& indices) ;
 		void addParticle( openvdb::Vec3s pt, openvdb::Vec3s center,ObjectType type );
 		void project();
-		void reinit();
 		void createLevelSet();
 		void updateParticleVolume();
 		void enforceBoundaryCondition();

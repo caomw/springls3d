@@ -48,8 +48,8 @@ openvdb::math::BBox<openvdb::Vec3d> mBoundingBox;
 public:
 	GLuint mParticleCount;
 	GLuint mVelocityCount;
-	float mMaxVelocityMagnitude;
-	float mMinVelocityMagnitude;
+	float mMaxVelocityMagnitude=0;
+	float mMinVelocityMagnitude=0;
 	std::vector<openvdb::Vec4s> mParticles;
 	std::vector<openvdb::Vec3s> mVelocities;
 	//The "w" component of the color encodes the radius.

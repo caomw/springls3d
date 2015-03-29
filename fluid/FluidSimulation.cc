@@ -597,16 +597,41 @@ bool FluidSimulation::step() {
 	//Add external gravity force
 	addExternalForce();
 	solvePicFlip();	
-
 	if(!mSpringlTracking){
 		advectParticles();
 		correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 		updateParticleVolume();
 		createLevelSet();
-		openvdb::tools::copyFromDense(mLevelSet,*mSource.mSignedLevelSet,0.25);
+		mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
+		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
+		mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
+		mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
+		openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
 		mSource.updateIsoSurface();
 	} else {
-		reinit();
+		stringstream distFile,signedFile,afterFile,beforeFile;
+		createLevelSet();
+		mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
+		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
+		mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
+		mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
+		openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
+		mSource.updateIsoSurface();
+		mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
+		mSource.clean();
+		mSource.updateUnSignedLevelSet();
+		int count=mSource.fill();
+		mSource.fillWithVelocityField(mVelocity,0.5f*mVoxelSize);
+		advectParticles();
+		correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
+		updateParticleVolume();
+		createLevelSet();
+		mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
+		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
+		mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
+		mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
+		openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
+		mSource.updateIsoSurface();
 	}
 	mSimulationIteration++;
 	mSimulationTime = mSimulationIteration * mTimeStep;
@@ -615,39 +640,6 @@ bool FluidSimulation::step() {
 	} else {
 		return false;
 	}
-}
-void FluidSimulation::reinit(){
-	stringstream distFile,signedFile,afterFile,beforeFile;
-	createLevelSet();
-	mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
-	mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
-	mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
-	mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
-	openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
-	mSource.updateIsoSurface();
-	mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
-	mSource.clean();
-	mSource.updateUnSignedLevelSet();
-	int count=mSource.fill();
-	mSource.fillWithVelocityField(mVelocity,0.5f*mVoxelSize);
-
-	//Not needed if we;re not going to relax.
-	//mSource.updateNearestNeighbors();
-	//mSource.relax(5);
-
-	advectParticles();
-	correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
-	updateParticleVolume();
-
-	createLevelSet();
-	mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
-	mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
-	mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
-	mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
-	openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
-	mSource.updateIsoSurface();
-
-
 }
 void FluidSimulation::copyGridToBuffer() {
 	mVelocity[0].copyTo(mVelocityLast[0]);

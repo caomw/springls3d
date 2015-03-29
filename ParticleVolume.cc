@@ -254,6 +254,10 @@ void ParticleVolume::updateGL() {
 		mMaxVelocityMagnitude=std::sqrt(mMaxVelocityMagnitude);
 		mMinVelocityMagnitude=std::sqrt(mMinVelocityMagnitude);
 
+		if(mMaxVelocityMagnitude-mMinVelocityMagnitude<1E-6f){
+			mMaxVelocityMagnitude=1.0f;
+			mMinVelocityMagnitude=0.0f;
+		}
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * mVelocities.size(),
 				&mVelocities[0], GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);

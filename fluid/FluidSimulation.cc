@@ -607,33 +607,7 @@ bool FluidSimulation::step() {
 		mSource.updateIsoSurface();
 	} else {
 		reinit();
-
-		/*
-
-
-		beforeConst<<"/home/blake/tmp/before" <<std::setw(8)<<std::setfill('0')<<mSimulationIteration<< ".ply";
-		imagesci::WriteToRawFile(mSignedDistanceField,distFile.str());
-		mSource.mConstellation.save(beforeConst.str());
-		mTrack->advect(0,0.25f);
-		afterConst<<"/home/blake/tmp/after" <<std::setw(8)<<std::setfill('0')<<mSimulationIteration<< ".ply";
-		mSource.mConstellation.save(afterConst.str());
-		*/
 	}
-	//RegularGrid<float> distField(mLevelSet.dimensions(),1.0f,0.0);
-	//
-	//mSparseLevelSet->clear();
-	//stringstream velFile,levelFile,unsignedFile,mapFile,distFile;
-	//velFile<<"/home/blake/tmp/velocity" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
-	//levelFile<<"/home/blake/tmp/levelset" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
-	//distFile<<"/home/blake/tmp/distfield" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
-	//unsignedFile<<"/home/blake/tmp/unsigned" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
-	//mapFile<<"/home/blake/tmp/densemap" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration;
-	//WriteToRawFile(mVelocity,"/home/blake/tmp/velocity");
-	//imagesci::WriteToRawFile(mLevelSet,levelFile.str());
-	//imagesci::WriteToRawFile(distField,distFile.str());
-	//imagesci::WriteToRawFile(mSource.mUnsignedLevelSet,unsignedFile.str());
-	//imagesci::WriteToRawFile(mDenseMap,mapFile.str());
-	//imagesci::fluid::WriteToRawFile(mVelocity,velFile.str());
 	mSimulationIteration++;
 	mSimulationTime = mSimulationIteration * mTimeStep;
 	if (mSimulationTime <= mSimulationDuration && mRunning) {
@@ -644,8 +618,6 @@ bool FluidSimulation::step() {
 }
 void FluidSimulation::reinit(){
 	stringstream distFile,signedFile,afterFile,beforeFile;
-
-	/*
 	createLevelSet();
 	mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
 	mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
@@ -653,7 +625,6 @@ void FluidSimulation::reinit(){
 	mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
 	openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
 	mSource.updateIsoSurface();
-*/
 	mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
 	mSource.clean();
 	mSource.updateUnSignedLevelSet();
@@ -667,8 +638,8 @@ void FluidSimulation::reinit(){
 	advectParticles();
 	correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 	updateParticleVolume();
-	createLevelSet();
 
+	createLevelSet();
 	mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
 	mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
 	mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
@@ -676,10 +647,6 @@ void FluidSimulation::reinit(){
 	openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
 	mSource.updateIsoSurface();
 
-	//std::cout<<"Springls After "<<mSource.mConstellation.getNumSpringls()<<" filled "<<count<<std::endl;
-	//afterFile<<"/home/blake/tmp/after" <<std::setw(8)<<std::setfill('0')<< mSimulationIteration<<".ply";
-	//mSource.mConstellation.save(afterFile.str());
-	//mSource.create(mSignedDistanceField);
 
 }
 void FluidSimulation::copyGridToBuffer() {

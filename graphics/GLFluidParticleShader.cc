@@ -29,12 +29,28 @@
 #include <list>
 namespace imagesci {
 
-GLFluidParticleShader::GLFluidParticleShader():GLShader(),mTextureId(0) {
+GLFluidParticleShader::GLFluidParticleShader():GLShader(),mColormapId(0),colorMapValue(10.5f/12.0f) {
 	// TODO Auto-generated constructor stub
 
 }
-bool GLFluidParticleShader::Init(){
+bool GLFluidParticleShader::Init(const std::string& colormapFile){
 	std::vector<std::string> attrib;
+	std::vector<RGBA> tmp2;
+	int iW,iH;
+	if(ReadImageFromFile(colormapFile,tmp2,iW,iH)){
+		glGenTextures(1, &mColormapId);
+		glBindTexture( GL_TEXTURE_2D, mColormapId);
+		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, iW, iH, 0, GL_RGBA,GL_UNSIGNED_BYTE, &tmp2[0]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glBindTexture( GL_TEXTURE_2D, 0);
+	} else {
+		std::cerr<<"Could not read "<<colormapFile<<std::endl;
+		return false;
+
+	}
 	attrib.push_back("vp");
 	attrib.push_back("vel");
 	return Initialize(ReadTextFile("shaders/fluid_particle_shader.vert"),ReadTextFile("shaders/fluid_particle_shader.frag"),ReadTextFile("shaders/fluid_particle_shader.geom"),attrib);
@@ -43,9 +59,14 @@ bool GLFluidParticleShader::Init(){
 void GLFluidParticleShader::begin(){
 	glUseProgram(GetProgramHandle());
 
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture( GL_TEXTURE_2D, mColormapId);
+	glUniform1i(glGetUniformLocation(GetProgramHandle(),"colormapTexture"),0);
+	glUniform1f(glGetUniformLocation(GetProgramHandle(),"colorMapValue"),colorMapValue);
 
 }
 void GLFluidParticleShader::end(){
+	glBindTexture( GL_TEXTURE_2D, 0);
 	glUseProgram(0);
 }
 GLFluidParticleShader::~GLFluidParticleShader() {

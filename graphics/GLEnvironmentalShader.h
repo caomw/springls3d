@@ -26,9 +26,15 @@ namespace imagesci {
 class GLEnvironmentalShader: public GLShader{
 protected:
 	unsigned int mTextureId;
+	unsigned int mColormapId;
+	float colorMapValue;
 public:
 	GLEnvironmentalShader();
-	bool Init(const std::string& matcapFile);
+	void setColorMapIndex(int i,bool flip){
+		colorMapValue=(i+0.5f)/12.0f;
+		if(flip)colorMapValue=-colorMapValue;
+	}
+	bool Init(const std::string& matcapFile,const std::string& colormapFile="./matcap/colormaps.png");
 	virtual void begin();
 	virtual void end();
 	virtual ~GLEnvironmentalShader();

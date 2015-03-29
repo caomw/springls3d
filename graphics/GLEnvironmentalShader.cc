@@ -29,24 +29,38 @@
 #include <list>
 namespace imagesci {
 
-GLEnvironmentalShader::GLEnvironmentalShader():GLShader(),mTextureId(0) {
+GLEnvironmentalShader::GLEnvironmentalShader():GLShader(),mTextureId(0),mColormapId(0),colorMapValue(10.5f/12.0f) {
 	// TODO Auto-generated constructor stub
 
 }
-bool GLEnvironmentalShader::Init(const std::string& matcapFile){
-	std::vector<RGBA> tmp1;
+bool GLEnvironmentalShader::Init(const std::string& matcapFile,const std::string& colormapFile){
+	std::vector<RGBA> tmp1,tmp2;
 	int iW,iH;
 	if(ReadImageFromFile(matcapFile,tmp1,iW,iH)){
 		glGenTextures(1, &mTextureId);
 		glBindTexture( GL_TEXTURE_2D, mTextureId);
 		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, iW, iH, 0, GL_RGBA,GL_UNSIGNED_BYTE, &tmp1[0]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glBindTexture( GL_TEXTURE_2D, 0);
+	} else {
+		std::cerr<<"Could not read "<<matcapFile<<std::endl;
+		return false;
+
+	}
+	if(ReadImageFromFile(colormapFile,tmp2,iW,iH)){
+		glGenTextures(1, &mColormapId);
+		glBindTexture( GL_TEXTURE_2D, mColormapId);
+		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, iW, iH, 0, GL_RGBA,GL_UNSIGNED_BYTE, &tmp2[0]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glBindTexture( GL_TEXTURE_2D, 0);
 	} else {
-		std::cerr<<"Could not read "<<matcapFile<<std::endl;
+		std::cerr<<"Could not read "<<colormapFile<<std::endl;
 		return false;
 
 	}
@@ -58,11 +72,16 @@ bool GLEnvironmentalShader::Init(const std::string& matcapFile){
 }
 void GLEnvironmentalShader::begin(){
 	glUseProgram(GetProgramHandle());
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture( GL_TEXTURE_2D, mTextureId);
 
-	glUniform1i(glGetUniformLocation(GetProgramHandle(),"matcapTexture"),0);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture( GL_TEXTURE_2D, mColormapId);
 
+	glUniform1i(glGetUniformLocation(GetProgramHandle(),"matcapTexture"),0);
+	glUniform1i(glGetUniformLocation(GetProgramHandle(),"colormapTexture"),1);
+	glUniform1f(glGetUniformLocation(GetProgramHandle(),"colorMapValue"),colorMapValue);
 }
 void GLEnvironmentalShader::end(){
 	glBindTexture(GL_TEXTURE_2D,0);

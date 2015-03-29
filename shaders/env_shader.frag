@@ -22,14 +22,17 @@
 in vec3 normal;
 in float mag;
 uniform sampler2D matcapTexture;
+uniform sampler2D colormapTexture;
 uniform float maxVelocity;
 uniform float minVelocity;
+uniform float colorMapValue;
 void main() {
    vec3 normalized_normal = normalize(normal);
    vec4 c=texture2D(matcapTexture,0.5f*normalized_normal.xy+0.5f);
    if(maxVelocity>0.0&&maxVelocity-minVelocity>1E-6f){
       float hue=clamp(mag,0.0,1.0);
-      c=c*vec4(hue,(1.0f-hue),0.0,1.0);
-    } 
+      vec4 colormap=texture2D(colormapTexture,vec2(((colorMapValue<0)?1.0-hue:hue),abs(colorMapValue)));
+      c=mix(c,colormap,0.5);//*vec4(hue,(1.0f-hue),0.0,1.0);
+    }
     gl_FragColor=c;
  }

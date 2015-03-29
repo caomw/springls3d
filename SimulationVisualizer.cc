@@ -181,10 +181,12 @@ bool SimulationVisualizer::run(int width,int height){
     std::list<std::string> attrib;
 	attrib.push_back("vp");
 	attrib.push_back("vn");
-	mIsoSurfaceShader.Init("./matcap/JG_Gold.png");
+	mIsoSurfaceShader.Init("./matcap/JG_Silver.png");
 	mSpringlsShader.Init("./matcap/JG_Silver.png");
-
 	mParticleShader.Init();
+	int colormap=8;
+	mParticleShader.setColorMapIndex(colormap,true);
+	mSpringlsShader.setColorMapIndex(colormap,true);
 	std::vector<std::string> args;
 	args.push_back("vp");
 	args.push_back("uv");
@@ -363,7 +365,6 @@ SimulationVisualizer::render()
 				glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"minVelocity"),mSimulation->getSource().mParticleVolume.mMinVelocityMagnitude);
 				glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"maxVelocity"),mSimulation->getSource().mParticleVolume.mMaxVelocityMagnitude);
 				mSimulation->getSource().mConstellation.draw();
-
 			mSpringlsShader.end();
 		}
 		mParticleTexture->end();

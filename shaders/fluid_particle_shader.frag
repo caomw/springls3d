@@ -19,6 +19,7 @@
  * THE SOFTWARE.
  */
 #version 330 core
+uniform sampler2D colormapTexture;
 in vec2 uv;
 in float mag;
 uniform float MIN_DEPTH;
@@ -27,15 +28,20 @@ uniform mat4 P,V,M;
 uniform float SCALE;
 uniform float maxVelocity;
 uniform float minVelocity;
+uniform float colorMapValue;
 void main(void) {
 	float radius=length(uv);
 	if(radius>1.0){
 		discard;
 	} else {
 		vec4 lum=mix(vec4(0.8,0.8,0.8,1.0),vec4(0.3,0.3,0.3,1.0),radius);
+		   if(maxVelocity>0.0&&maxVelocity-minVelocity>1E-6f){
+
+    }
 		if(maxVelocity>0.0&&maxVelocity-minVelocity>1E-6f){
-			float hue=clamp(mag,0.0,1.0);
-			gl_FragColor=lum*vec4(hue,(1.0f-hue),0.0,1.0);
+      float hue=clamp(mag,0.0,1.0);
+      vec4 colormap=texture2D(colormapTexture,vec2(((colorMapValue<0)?1.0-hue:hue),abs(colorMapValue)));
+			gl_FragColor=lum*colormap;
 		} else {
 			gl_FragColor=lum;
 		}

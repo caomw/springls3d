@@ -33,6 +33,7 @@
 #include <openvdb/math/Math.h>
 #include <openvdb/tools/Composite.h>
 #include <openvdb/tools/GridOperators.h>
+#include <openvdb/tools/MeshToVolume.h>
 using namespace openvdb;
 using namespace openvdb::tools;
 using namespace openvdb::math;
@@ -97,13 +98,18 @@ void FluidSimulation::computeParticleDensity(float maxDensity) {
 }
 void FluidSimulation::placeWalls() {
 	SimulationObject obj;
+	Coord dims=mLabel.dimensions();
+	float mx=mVoxelSize*dims[0];
+	float my=mVoxelSize*dims[1];
+	float mz=mVoxelSize*dims[2];
+
 	// Left Wall
 	obj.type = ObjectType::WALL;
 	obj.shape = ObjectShape::BOX;
 	obj.material = ObjectMaterial::GLASS;
 	obj.mVisible = 0;
 	obj.mBounds[0] = Vec3f(0.0, 0.0, 0.0);
-	obj.mBounds[1] = Vec3f(mWallThickness, 1.0, 1.0);
+	obj.mBounds[1] = Vec3f(mWallThickness, my,mz);
 	mSimulationObjects.push_back(obj);
 
 	// Right Wall
@@ -111,8 +117,8 @@ void FluidSimulation::placeWalls() {
 	obj.shape = ObjectShape::BOX;
 	obj.material = ObjectMaterial::GLASS;
 	obj.mVisible = 0;
-	obj.mBounds[0] = Vec3f(1.0 - mWallThickness, 0.0, 0.0);
-	obj.mBounds[1] = Vec3f(1.0, 1.0, 1.0);
+	obj.mBounds[0] = Vec3f(mx - mWallThickness, 0.0, 0.0);
+	obj.mBounds[1] = Vec3f(mx,my,mz);
 	mSimulationObjects.push_back(obj);
 
 	// Floor Wall
@@ -121,7 +127,7 @@ void FluidSimulation::placeWalls() {
 	obj.material = ObjectMaterial::GRAY;
 	obj.mVisible = 0;
 	obj.mBounds[0] = Vec3f(0.0, 0.0, 0.0);
-	obj.mBounds[1] = Vec3f(1.0, mWallThickness, 1.0);
+	obj.mBounds[1] = Vec3f(mx, mWallThickness, mz);
 	mSimulationObjects.push_back(obj);
 
 	// Ceiling Wall
@@ -129,8 +135,8 @@ void FluidSimulation::placeWalls() {
 	obj.shape = ObjectShape::BOX;
 	obj.material = ObjectMaterial::GLASS;
 	obj.mVisible = 0;
-	obj.mBounds[0] = Vec3f(0.0, 1.0 - mWallThickness, 0.0);
-	obj.mBounds[1] = Vec3f(1.0, 1.0, 1.0);
+	obj.mBounds[0] = Vec3f(0.0, my - mWallThickness, 0.0);
+	obj.mBounds[1] = Vec3f(mx,my,mz);
 	mSimulationObjects.push_back(obj);
 
 	// Front Wall
@@ -139,7 +145,7 @@ void FluidSimulation::placeWalls() {
 	obj.material = ObjectMaterial::GLASS;
 	obj.mVisible = 0;
 	obj.mBounds[0] = Vec3f(0.0, 0.0, 0.0);
-	obj.mBounds[1] = Vec3f(1.0, 1.0, mWallThickness);
+	obj.mBounds[1] = Vec3f(mx,my, mWallThickness);
 	mSimulationObjects.push_back(obj);
 
 	// Back Wall
@@ -147,8 +153,8 @@ void FluidSimulation::placeWalls() {
 	obj.shape = ObjectShape::BOX;
 	obj.material = ObjectMaterial::GLASS;
 	obj.mVisible = 0;
-	obj.mBounds[0] = Vec3f(0.0, 0.0, 1.0 - mWallThickness);
-	obj.mBounds[1] = Vec3f(1.0, 1.0, 1.0);
+	obj.mBounds[0] = Vec3f(0.0, 0.0, mz - mWallThickness);
+	obj.mBounds[1] = Vec3f(mx,my,mz);
 	mSimulationObjects.push_back(obj);
 }
 void FluidSimulation::placeObjects() {
@@ -281,8 +287,30 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 				}
 			}
 		} else if (obj.shape == ObjectShape::SPHERE) {
+
 			float len = distance(pt, obj.mCenter);
 			if (len < obj.mRadius) {
+				if (obj.type == ObjectType::WALL) {
+					found = true;
+					if (len < obj.mRadius - thickness) {
+						// Do nothing. Because It's too deep
+						// that's what she said.
+						inside_obj = NULL;
+						break;
+					}
+				} else if (obj.type == ObjectType::FLUID) {
+					found = true;
+				}
+			}
+		} else if (obj.shape == ObjectShape::MESH) {
+
+			BBoxd bbox=obj.mSignedLevelSet->getBoundingBox();
+			Vec3d dims=bbox.max()-bbox.min();
+			float localVoxelSize=std::max(std::max(dims[0],dims[1]),dims[2]);
+			Vec3d lpt=Vec3d(localVoxelSize/(2*obj.mRadius))*(pt-obj.mCenter+Vec3d(obj.mRadius));
+
+			float len = distance(pt, obj.mCenter);
+			if (obj.mSignedLevelSet->interpolateWorld(lpt[0],lpt[1],lpt[2])<0.0f) {
 				if (obj.type == ObjectType::WALL) {
 					found = true;
 					if (len < obj.mRadius - thickness) {
@@ -349,42 +377,58 @@ bool FluidSimulation::init() {
 	Vec3s center;
 	Vec3s pt;
 	// Place Fluid Particles And Walls
-	double w = mFluidParticleDiameter * mVoxelSize;
+	Coord dims=mLabel.dimensions();
+	float mx=mVoxelSize*dims[0];
+	float my=mVoxelSize*dims[1];
+	float mz=mVoxelSize*dims[2];
+
+	double wx = mFluidParticleDiameter * mVoxelSize;
+	double wy = mFluidParticleDiameter * mVoxelSize;
+	double wz = mFluidParticleDiameter * mVoxelSize;
+	std::cout<<"Add fluid ... "<<mx<<" "<<my<<" "<<mz<<std::endl;
+
 	FOR_EVERY_GRID_CELL(mLabel)
 		{
 			for (int ii = 0; ii < 2; ii++) {
 				for (int jj = 0; jj < 2; jj++) {
 					for (int kk = 0; kk < 2; kk++) {
-						double x = w * (2 * i + ii + 0.5);
-						double y = w * (2 * j + jj + 0.5);
-						double z = w * (2 * k + kk + 0.5);
-						if (x > mWallThickness && x < 1.0 - mWallThickness
+						double x = wx * (2 * i + ii + 0.5);
+						double y = wy * (2 * j + jj + 0.5);
+						double z = wz * (2 * k + kk + 0.5);
+						if (	   x > mWallThickness
+								&& x < mx - mWallThickness
 								&& y > mWallThickness
-								&& y < 1.0 - mWallThickness
+								&& y < my - mWallThickness
 								&& z > mWallThickness
-								&& z < 1.0 - mWallThickness) {
-
-							center = Vec3s(w * (2 * i + 1), w * (2 * j + 1),
-									w * (2 * k + 1));
+								&& z < mz - mWallThickness) {
+							center = Vec3s(
+									wx * (2 * i + 1),
+									wy * (2 * j + 1),
+									wz * (2 * k + 1));
 							addParticle(Vec3s(x, y, z), center, ObjectType::FLUID);
 						}
 					}
 				}
 			}
 		}END_FOR;
-
+		std::cout<<"Add walls ..."<<std::endl;
 // Place Wall Particles And Walls
-	w = 2 * mFluidParticleDiameter * mVoxelSize;
+	//w =  mFluidParticleDiameter * mVoxelSize;
 	FOR_EVERY_GRID_CELL(mLabel)
 		{
-			double x = i * w + w * 0.5;
-			double y = j * w + w * 0.5;
-			double z = k * w + w * 0.5;
+			double x = wx * (2 * i + 1);
+			double y = wy * (2 * j + 1);
+			double z = wz * (2 * k + 1);
 			addParticle(Vec3s(x, y, z), Vec3s(x, y, z), ObjectType::WALL);
 		}END_FOR;
+		std::cout<<"Update particles ..."<<std::endl;
+
 	mParticleLocator->update(mParticles);
+	std::cout<<"Mark water ..."<<std::endl;
+
 	mParticleLocator->markAsWater(mLabel, mWallWeight, mFluidParticleDiameter);
 // Remove Particles That Stuck On Wal Cells
+	std::cout<<"Remove stuck particles water ..."<<std::endl;
 	for (std::vector<ParticlePtr>::iterator iter = mParticles.begin();
 			iter != mParticles.end();) {
 		ParticlePtr& p = *iter;
@@ -407,8 +451,11 @@ bool FluidSimulation::init() {
 
 // Comput Normal for Walls
 	computeWallNormals();
+	std::cout<<"Create level set ..."<<std::endl;
 	createLevelSet();
+	std::cout<<"Update particle volume ..."<<std::endl;
 	updateParticleVolume();
+	std::cout<<"Create springls ..."<<std::endl;
 	mSource.create(mLevelSet);
 	if(!mSpringlTracking){
 		mSource.mConstellation.reset();
@@ -433,6 +480,7 @@ bool FluidSimulation::init() {
 			velocities[n]=Vec3s(0.0);
 		}
 	}
+	std::cout<<"Done"<<std::endl;
 	return true;
 }
 void FluidSimulation::pourWater(int limit, float maxDensity) {
@@ -633,6 +681,9 @@ bool FluidSimulation::step() {
 		openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
 		mSource.updateIsoSurface();
 	}
+	WriteToRawFile(mLevelSet,"/home/blake/tmp/levelset.xml");
+	WriteToRawFile(mSource.mSignedLevelSet,"/home/blake/tmp/signed.xml");
+	WriteToRawFile(mVelocity,"/home/blake/tmp/velocity.xml");
 	mSimulationIteration++;
 	mSimulationTime = mSimulationIteration * mTimeStep;
 	if (mSimulationTime <= mSimulationDuration && mRunning) {
@@ -707,9 +758,6 @@ void FluidSimulation::project() {
 			mLaplacian(i, j, k) = mParticleLocator->getLevelSetValue(i, j, k,
 					mWallWeight, mFluidParticleDiameter);
 		}END_FOR;
-	//WriteToRawFile(mPressure,"/home/blake/tmp/pressure");
-	//WriteToRawFile(mDivergence,"/home/blake/tmp/divergence");
-	//WriteToRawFile(mVelocity,"/home/blake/tmp/velocity");
 
 	laplace_solve(mLabel, mLaplacian, mPressure, mDivergence);
 // Subtract Pressure Gradient
@@ -888,26 +936,26 @@ void FluidSimulation::createLevelSet() {
 // Create Density Field
 	Coord dims(mLevelSet.rows(), mLevelSet.cols(), mLevelSet.slices());
 	float voxelSize = mLevelSet.voxelSize();
-	OPENMP_FOR FOR_EVERY_GRID_CELL(mLevelSet)
+	//
+	OPENMP_FOR FOR_EVERY_GRID_CELL_Y(mLevelSet)
 		{
 			double x = i * voxelSize;
 			double y = j * voxelSize;
 			double z = k * voxelSize;
 			Vec3f p(x, y, z);
-			double value = implicit_func( p,mFluidParticleDiameter);
-			//std::cout<<i<<" "<<j<<" "<<k<<" P "<<p<<" "<<value<<std::endl;
+
 			if (i == 0 || i == dims[0] - 1 || j == 0 || j == dims[1] - 1
 					|| k == 0 || k == dims[2] - 1) {
 				//value = max(value,0.01);
 				mLevelSet(i, j, k) = 0.001;
 			} else {
+				double value = implicit_func(p,mFluidParticleDiameter);
+				//std::cout<<i<<" "<<j<<" "<<k<<":: "<<value<<std::endl;
 				mLevelSet(i, j, k) = clamp(value / mVoxelSize,
 						-openvdb::LEVEL_SET_HALF_WIDTH,
 						openvdb::LEVEL_SET_HALF_WIDTH);
 			}
 		}END_FOR;
-
-
 }
 float FluidSimulation::lengthSquared( float a, float b, float c ) {
     return a*a + b*b + c*c;

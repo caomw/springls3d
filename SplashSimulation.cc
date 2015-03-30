@@ -21,11 +21,13 @@
 
 #include "SplashSimulation.h"
 #include <openvdb/tools/DenseSparseTools.h>
+#include <openvdb/tools/MeshToVolume.h>
+#include <memory>
 namespace imagesci {
 using namespace openvdb::tools;
 using namespace imagesci::fluid;
 SplashSimulation::SplashSimulation(const std::string& fileName,int gridSize,MotionScheme scheme):FluidSimulation(Coord(
-		gridSize,gridSize,gridSize),1.0f/gridSize,scheme),mSourceFileName(fileName),mGridSize(gridSize) {
+		gridSize,2*gridSize,gridSize),1.0f/gridSize,scheme),mSourceFileName(fileName),mGridSize(gridSize) {
 }
 
 bool SplashSimulation::init(){
@@ -38,13 +40,36 @@ void SplashSimulation::addFluid(){
 	//replace with level set for falling object
 	SimulationObject obj;
 	Coord dims=mLabel.dimensions();
-	obj.type = ObjectType::FLUID;
-	obj.shape = ObjectShape::SPHERE;
-	obj.mVisible = true;
-	obj.mRadius=0.05;
-	obj.mCenter=Vec3f(mVoxelSize*dims[0]*0.5f,mVoxelSize*dims[1]*0.75f,mVoxelSize*dims[2]*0.5f);
-	mSimulationObjects.push_back(obj);
-
+	if(mSourceFileName.size()!=0){
+		obj.type = ObjectType::FLUID;
+		obj.shape = ObjectShape::SPHERE;
+		obj.mVisible = true;
+		obj.mRadius=0.05;
+		obj.mCenter=Vec3f(mVoxelSize*dims[0]*0.5f,mVoxelSize*dims[1]-0.2-obj.mRadius,mVoxelSize*dims[2]*0.5f);
+		mSimulationObjects.push_back(obj);
+	} else {
+		Mesh mesh;
+		if(mesh.openMesh(mSourceFileName)){
+			obj.type = ObjectType::FLUID;
+			obj.shape = ObjectShape::MESH;
+			mesh.updateBoundingBox();
+			mesh.mapIntoBoundingBox(2.0f*mesh.estimateVoxelSize());
+			mesh.updateBoundingBox();
+			openvdb::math::Transform::Ptr trans =openvdb::math::Transform::createLinearTransform(1.0);
+			openvdb::tools::MeshToVolume<openvdb::FloatGrid> mtol(trans);
+			mtol.convertToLevelSet(mesh.mVertexes, mesh.mFaces);
+			SLevelSetPtr levelSet= mtol.distGridPtr();
+			openvdb::CoordBBox bbox = levelSet->evalActiveVoxelBoundingBox();
+			mSourceLevelSet=std::unique_ptr<RegularGrid<float> >(new RegularGrid<float>(bbox));
+			copyToDense(*levelSet, *mSourceLevelSet);
+			obj.mSignedLevelSet=mSourceLevelSet.get();
+			obj.mVisible = true;
+			obj.mRadius=0.3;
+			obj.mCenter=Vec3f(mVoxelSize*dims[0]*0.5f,mVoxelSize*dims[1]-0.2-obj.mRadius,mVoxelSize*dims[2]*0.5f);
+			mSimulationObjects.push_back(obj);
+		}
+	}
+	std::cout<<"Simulation "<<obj.mCenter<<" "<<obj.mRadius<<std::endl;
 	obj.type = ObjectType::FLUID;
 	obj.shape = ObjectShape::BOX;
 	obj.mVisible = true;
@@ -54,6 +79,7 @@ void SplashSimulation::addFluid(){
 			0.15,
 			mVoxelSize*dims[2] - mWallThickness);
 	mSimulationObjects.push_back(obj);
+
 }
 
 void SplashSimulation::cleanup(){

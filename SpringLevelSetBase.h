@@ -211,7 +211,7 @@ public:
 	int clean();
 	int fill();
 	void fillWithNearestNeighbors();
-	void fillWithVelocityField(fluid::MACGrid<float>& grid,float radius);
+	void fillWithVelocityField(MACGrid<float>& grid,float radius);
 	void evolve();
 	void updateLines();
 	void updateGradient();

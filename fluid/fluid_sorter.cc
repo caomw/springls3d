@@ -60,10 +60,8 @@ std::vector<FluidParticle*> ParticleLocator::getNeigboringWallParticles(int i,
 		int j, int k, int w, int h, int d) {
 	std::vector<FluidParticle*> res;
 	for (int si = max(i - w, 0); si <= min(i + w - 1, mGridSize[0] - 1); si++) {
-		for (int sj = max(j - h, 0); sj <= min(j + h - 1, mGridSize[1] - 1);
-				sj++) {
-			for (int sk = max(k - d, 0); sk <= min(k + d - 1, mGridSize[2] - 1);
-					sk++) {
+		for (int sj = max(j - h, 0); sj <= min(j + h - 1, mGridSize[1] - 1);sj++) {
+			for (int sk = max(k - d, 0); sk <= min(k + d - 1, mGridSize[2] - 1);sk++) {
 				for (FluidParticle* p : cells(si, sj, sk)) {
 					res.push_back(p);
 				}

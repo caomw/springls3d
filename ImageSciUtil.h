@@ -37,7 +37,10 @@
 #define OPENMP_END
 #define OPENMP_FOR_P
 #endif
-#define FOR_EVERY_GRID_CELL(G)		for( int i=0; i<G.rows(); i++ ) for( int j=0; j<G.cols(); j++ ) for( int k=0; k<G.slices(); k++ ) {
+#define FOR_EVERY_GRID_CELL(G) for( int i=0; i<G.rows(); i++ ) for( int j=0; j<G.cols(); j++ ) for( int k=0; k<G.slices(); k++ ) {
+#define FOR_EVERY_GRID_CELL_Y(G) for( int j=0; j<G.cols(); j++ ) for( int i=0; i<G.rows(); i++ ) for( int k=0; k<G.slices(); k++ ) {
+#define FOR_EVERY_GRID_CELL_Z(G) for( int k=0; k<G.slices(); k++ ) for( int j=0; j<G.cols(); j++ ) for( int i=0; i<G.rows(); i++ )  {
+
 #define END_FOR }
 namespace imagesci {
 typedef openvdb::math::Vec4<unsigned char> RGBA;
@@ -76,19 +79,34 @@ template<typename ValueT> class RegularGrid: public openvdb::tools::Dense<
 		ValueT, openvdb::tools::MemoryLayout::LayoutZYX> {
 private:
 	ValueT* mPtr;
-	const size_t mStrideX;
-	const size_t mStrideY;
-	const size_t mRows;
-	const size_t mCols;
-	const size_t mSlices;
-	const float mVoxelSize;
-	const openvdb::BBoxd mBoundingBox;
+	size_t mStrideX;
+	size_t mStrideY;
+	size_t mRows;
+	size_t mCols;
+	size_t mSlices;
+	float mVoxelSize;
+	openvdb::BBoxd mBoundingBox;
 	openvdb::math::Transform::Ptr mTransform;
 public:
+	RegularGrid(const openvdb::CoordBBox& boundingBox) :
+		openvdb::tools::Dense<ValueT,openvdb::tools::MemoryLayout::LayoutZYX>(boundingBox) {
+
+		openvdb::Coord minPt=boundingBox.min();
+		openvdb::Coord maxPt=boundingBox.max();
+		mBoundingBox=openvdb::BBoxd(openvdb::Vec3d(minPt[0],minPt[1],minPt[2]),openvdb::Vec3d(maxPt[0],maxPt[1],maxPt[2]));
+		const openvdb::Coord dims=boundingBox.max()-boundingBox.min();
+		mPtr = this->data();
+		mStrideX = this->xStride();
+		mStrideY = this->yStride();
+		mRows = dims[0];
+		mCols = dims[1];
+		mSlices = dims[2];
+		mVoxelSize=(boundingBox.max()-boundingBox.min())[0]/dims[0];
+		mTransform=openvdb::math::Transform::createLinearTransform(mVoxelSize);
+
+	}
 	RegularGrid(const openvdb::Coord& dims, const openvdb::BBoxd& boundingBox,
-			ValueT value=0.0) :
-			openvdb::tools::Dense<ValueT,
-					openvdb::tools::MemoryLayout::LayoutZYX>(dims, openvdb::Coord(0)),mBoundingBox(boundingBox) {
+			ValueT value=0.0) :openvdb::tools::Dense<ValueT,openvdb::tools::MemoryLayout::LayoutZYX>(dims, openvdb::Coord(0)),mBoundingBox(boundingBox) {
 		this->fill(value);
 		mPtr = this->data();
 		mStrideX = this->xStride();
@@ -185,6 +203,12 @@ public:
 		const RegularGrid<ValueT>& q=*this;
 		return	(k+1-z)*(((i+1-x)*q(i,j,k)+(x-i)*q(i+1,j,k))*(j+1-y) + ((i+1-x)*q(i,j+1,k)+(x-i)*q(i+1,j+1,k))*(y-j)) +
 				(z-k)*(((i+1-x)*q(i,j,k+1)+(x-i)*q(i+1,j,k+1))*(j+1-y) + ((i+1-x)*q(i,j+1,k+1)+(x-i)*q(i+1,j+1,k+1))*(y-j));
+	}
+	inline ValueT interpolateWorld(float x, float y, float z) const {
+		openvdb::Vec3d pt(x,y,z);
+		if(!mBoundingBox.isInside(pt))return (openvdb::LEVEL_SET_HALF_WIDTH+1.0f);
+		ValueT val=interpolate(pt-mBoundingBox.min());
+		return val;
 	}
 	inline ValueT interpolate(const openvdb::Vec3d& pt) const{
 		double x = clamp(pt[0],0.0,(double)mRows);
@@ -344,6 +368,165 @@ float DistanceToQuadSqr(const openvdb::Vec3s& p, const openvdb::Vec3s& v0,
 const std::string ReadTextFile(const std::string& str);
 float Angle(openvdb::Vec3s& v0, openvdb::Vec3s& v1, openvdb::Vec3s& v2);
 openvdb::math::Mat3<float> CreateAxisAngle(openvdb::Vec3s axis, float angle);
+
+inline bool WriteToRawFile(RegularGrid<float>& dense,
+		const std::string& file) {
+	std::ostringstream vstr;
+	std::string fileName=GetFileNameWithoutExtension(file);
+	vstr << fileName << ".raw";
+
+	FILE* f = fopen(vstr.str().c_str(), "wb");
+	openvdb::CoordBBox bbox = dense.bbox();
+	std::cout << "Grid size " << dense.valueCount() << std::endl;
+	openvdb::Coord dims = bbox.max() - bbox.min() + openvdb::Coord(1, 1, 1);
+	std::cout << "Dimensions " << dims << std::endl;
+	openvdb::Coord P(0, 0, 0);
+	for (P[2] = bbox.min()[2]; P[2] <= bbox.max()[2]; ++P[2]) {
+		for (P[1] = bbox.min()[1]; P[1] <= bbox.max()[1]; ++P[1]) {
+
+			for (P[0] = bbox.min()[0]; P[0] <= bbox.max()[0]; ++P[0]) {
+				float val = dense.getValue(P);
+				fwrite(&val, sizeof(float), 1, f);
+			}
+		}
+	}
+	fclose(f);
+	std::stringstream xmlFile;
+	xmlFile << fileName << ".xml";
+	std::cout <<"Saving "<< xmlFile.str() <<" ...";
+	std::stringstream sstr;
+	sstr << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+	sstr << "<!-- MIPAV header file -->\n";
+	sstr
+			<< "<image xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" nDimensions=\"3\">\n";
+	sstr << "	<Dataset-attributes>\n";
+	sstr << "		<Image-offset>0</Image-offset>\n";
+	sstr << "		<Data-type>Float</Data-type>\n";
+	sstr << "		<Endianess>Little</Endianess>\n";
+	sstr << "		<Extents>" << dims[0] << "</Extents>\n";
+	sstr << "		<Extents>" << dims[1] << "</Extents>\n";
+	sstr << "		<Extents>" << dims[2] << "</Extents>\n";
+	sstr << "		<Resolutions>\n";
+	sstr << "			<Resolution>1.0</Resolution>\n";
+	sstr << "			<Resolution>1.0</Resolution>\n";
+	sstr << "			<Resolution>1.0</Resolution>\n";
+	sstr << "		</Resolutions>\n";
+	sstr << "		<Slice-spacing>1.0</Slice-spacing>\n";
+	sstr << "		<Slice-thickness>0.0</Slice-thickness>\n";
+	sstr << "		<Units>Millimeters</Units>\n";
+	sstr << "		<Units>Millimeters</Units>\n";
+	sstr << "		<Units>Millimeters</Units>\n";
+	sstr << "		<Compression>none</Compression>\n";
+	sstr << "		<Orientation>Unknown</Orientation>\n";
+	sstr << "		<Subject-axis-orientation>Unknown</Subject-axis-orientation>\n";
+	sstr << "		<Subject-axis-orientation>Unknown</Subject-axis-orientation>\n";
+	sstr << "		<Subject-axis-orientation>Unknown</Subject-axis-orientation>\n";
+	sstr << "		<Origin>0.0</Origin>\n";
+	sstr << "		<Origin>0.0</Origin>\n";
+	sstr << "		<Origin>0.0</Origin>\n";
+	sstr << "		<Modality>Unknown Modality</Modality>\n";
+	sstr << "	</Dataset-attributes>\n";
+	sstr << "</image>\n";
+	std::ofstream myfile;
+
+	myfile.open(xmlFile.str().c_str(), std::ios_base::out);
+	myfile << sstr.str();
+	myfile.close();
+	std::cout<<" done."<<std::endl;
+	return true;
+}
+template<typename ValueT> struct MACGrid {
+protected:
+	RegularGrid<ValueT> mX, mY, mZ;
+	const size_t mRows;
+	const size_t mCols;
+	const size_t mSlices;
+	const float mVoxelSize;
+	openvdb::math::Transform::Ptr mTransform;
+public:
+
+	MACGrid(const openvdb::Coord& dim, float voxelSize,ValueT value=0.0) :
+			mX(dim[0] + 1, dim[1], dim[2], voxelSize,value),
+			mY(dim[0], dim[1] + 1, dim[2], voxelSize ,value),
+			mZ(dim[0], dim[1], dim[2] + 1, voxelSize ,value),mRows(dim[0]),mCols(dim[1]),mSlices(dim[2]),mVoxelSize(voxelSize) {
+		mTransform=openvdb::math::Transform::createLinearTransform(mVoxelSize);
+	}
+	RegularGrid<ValueT>& operator[](size_t i) {
+		return (&mX)[i];
+	}
+	inline openvdb::math::Transform& transform() {
+		return *mTransform;
+	}
+	inline openvdb::math::Transform::Ptr transformPtr() {
+		return mTransform;
+	}
+	inline void setTrasnfrom(openvdb::math::Transform::Ptr transform){
+		mTransform=transform;
+	}
+	inline const size_t size() const {
+		return mRows * mCols * mSlices;
+	}
+	inline const size_t rows() const {
+		return mRows;
+	}
+	inline const size_t cols() const {
+		return mCols;
+	}
+	inline const size_t slices() const {
+		return mSlices;
+	}
+	inline const float voxelSize() const {
+		return mVoxelSize;
+	}
+	inline const openvdb::Coord dimensions() const {
+		return openvdb::Coord(mRows,mCols,mSlices);
+	}
+	inline openvdb::math::Vec3<ValueT> interpolate(const openvdb::Vec3s& p) const {
+		openvdb::math::Vec3<ValueT> u;
+		u[0] = mX.interpolate(mRows*p[0], mCols*p[1]-0.5, mSlices*p[2]-0.5);
+		u[1] = mY.interpolate(mRows*p[0]-0.5, mCols*p[1], mSlices*p[2]-0.5);
+		u[2] = mZ.interpolate(mRows*p[0]-0.5, mCols*p[1]-0.5, mSlices*p[2]);
+		return u;
+	}
+	inline openvdb::math::Vec3<ValueT> maxInterpolate(const openvdb::Vec3f& position,float radius){
+		openvdb::math::Vec3<ValueT> values[15];
+		const float n3=1.0f/std::sqrt(3.0f);
+		MACGrid<ValueT>& grid=*this;
+		values[0]=grid.interpolate(position);
+		values[1]=grid.interpolate(position+openvdb::Vec3f(+radius,0,0));
+		values[2]=grid.interpolate(position+openvdb::Vec3f(-radius,0,0));
+		values[3]=grid.interpolate(position+openvdb::Vec3f(0,0,+radius));
+		values[4]=grid.interpolate(position+openvdb::Vec3f(0,0,-radius));
+		values[5]=grid.interpolate(position+openvdb::Vec3f(0,+radius,0));
+		values[6]=grid.interpolate(position+openvdb::Vec3f(0,-radius,0));
+
+		values[7 ]=grid.interpolate(position+openvdb::Vec3f(+radius*n3,+radius*n3,+radius*n3));
+		values[8 ]=grid.interpolate(position+openvdb::Vec3f(+radius*n3,-radius*n3,+radius*n3));
+		values[9 ]=grid.interpolate(position+openvdb::Vec3f(-radius*n3,+radius*n3,+radius*n3));
+		values[10]=grid.interpolate(position+openvdb::Vec3f(-radius*n3,-radius*n3,+radius*n3));
+		values[11]=grid.interpolate(position+openvdb::Vec3f(+radius*n3,+radius*n3,-radius*n3));
+		values[12]=grid.interpolate(position+openvdb::Vec3f(+radius*n3,-radius*n3,-radius*n3));
+		values[13]=grid.interpolate(position+openvdb::Vec3f(-radius*n3,+radius*n3,-radius*n3));
+		values[14]=grid.interpolate(position+openvdb::Vec3f(-radius*n3,-radius*n3,-radius*n3));
+
+		ValueT maxVal=std::numeric_limits<ValueT>::min();
+		openvdb::math::Vec3<ValueT> final=values[0];
+		for(int i=0;i<15;i++){
+			ValueT lsqr=values[i].lengthSqr();
+			if(lsqr>maxVal){
+				maxVal=lsqr;
+				final=values[i];
+			}
+		}
+		return final;
+	}
+};
+inline bool WriteToRawFile(MACGrid<float>& mac, const std::string& fileName) {
+	bool r1 = WriteToRawFile(mac[0], fileName + "_x");
+	bool r2 = WriteToRawFile(mac[1], fileName + "_y");
+	bool r3 = WriteToRawFile(mac[2], fileName + "_z");
+	return (r1 && r2 && r3);
+}
 }
 
 #endif /* IMAGESCIUTIL_H_ */

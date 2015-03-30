@@ -515,7 +515,6 @@ void SpringLevelSet::create(FloatGrid& grid) {
 	updateSignedLevelSet();
 	mConstellation.create(&mIsoSurface);
 	updateIsoSurface();
-	std::cout<<"CREATE SPRING LEVEL SET"<<std::endl;
 	for (int iter = 0; iter < 2; iter++) {
 		updateUnSignedLevelSet();
 		updateNearestNeighbors();
@@ -737,7 +736,7 @@ int SpringLevelSet::fill() {
 	mFillCount += added;
 	return added;
 }
-void SpringLevelSet::fillWithVelocityField(fluid::MACGrid<float>& grid,float radius){
+void SpringLevelSet::fillWithVelocityField(MACGrid<float>& grid,float radius){
 	for (int fid : fillList) {
 		Springl& springl = mConstellation.springls[fid];
 		//Is particle() in the correct coordinate space?
@@ -746,6 +745,7 @@ void SpringLevelSet::fillWithVelocityField(fluid::MACGrid<float>& grid,float rad
 	}
 	fillList.clear();
 }
+
 void SpringLevelSet::fillWithNearestNeighbors(){
 	if (fillList.size() > 0) {
 		updateUnSignedLevelSet();

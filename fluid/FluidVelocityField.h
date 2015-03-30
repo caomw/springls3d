@@ -37,9 +37,9 @@ protected:
 public:
     typedef ScalarT             ScalarType;
     typedef openvdb::math::Vec3<ScalarT> VectorType;
-    fluid::MACGrid<ScalarT>& mGrid;
+    MACGrid<ScalarT>& mGrid;
     RegularGrid<openvdb::Vec3s>& mDenseMap;
-    FluidVelocityField(fluid::MACGrid<ScalarT>& grid,RegularGrid<openvdb::Vec3s>& denseMap):mDenseMap(denseMap),mGrid(grid){
+    FluidVelocityField(MACGrid<ScalarT>& grid,RegularGrid<openvdb::Vec3s>& denseMap):mDenseMap(denseMap),mGrid(grid){
     }
     void update(const FloatGrid& levelSet){
     	openvdb::VectorGrid::Ptr mClosestPoints=openvdb::tools::cpt(levelSet);

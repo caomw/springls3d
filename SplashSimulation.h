@@ -36,6 +36,7 @@ class SplashSimulation : public fluid::FluidSimulation{
 protected:
 	std::unique_ptr<FieldT> mField;
 	std::unique_ptr<AdvectT> mAdvect;
+	std::unique_ptr<RegularGrid<float> > mSourceLevelSet;
 	int mGridSize;
 	std::string mSourceFileName;
 	bool init();

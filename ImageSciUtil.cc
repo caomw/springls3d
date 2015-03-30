@@ -44,16 +44,13 @@ std::string GetFileWithoutExtension(const std::string& file) {
 }
 std::string GetFileNameWithoutExtension(const std::string& file) {
 	path p(file);
-
-	//std::string ext=extension(p);
-	return boost::filesystem::basename(p);
-	/*
-	 if(ext.length()>0){
-	 return file.substr(0,file.length()-ext.length());
-	 } else {
-	 return file;
-	 }
-	 */
+	//return boost::filesystem::basename(p);
+	std::string ext=extension(p);
+	if(ext.length()>0){
+		return file.substr(0,file.length()-ext.length());
+	} else {
+		return file;
+	}
 }
 std::string GetFileDirectoryPath(const std::string& FileName)
 {
@@ -289,18 +286,16 @@ bool WriteToRawFile(openvdb::tools::Dense<openvdb::Vec3s,openvdb::tools::MemoryL
 
 bool WriteToRawFile(openvdb::FloatGrid::Ptr grid, const std::string& fileName) {
 	std::ostringstream vstr;
-	vstr << fileName << ".raw";
+	std::string file=GetFileNameWithoutExtension(fileName);
+	vstr << file << ".raw";
 	FILE* f = fopen(vstr.str().c_str(), "wb");
 	openvdb::CoordBBox bbox = grid->evalActiveVoxelBoundingBox();
 	Dense<float> dense(bbox); //LayoutZYX is the default
 	copyToDense(*grid, dense);
-	std::cout << "Grid size " << dense.valueCount() << std::endl;
 	Coord dims = bbox.max() - bbox.min() + Coord(1, 1, 1);
-	std::cout << "Dimensions " << dims << std::endl;
 	openvdb::Coord P(0, 0, 0);
 	for (P[2] = bbox.min()[2]; P[2] <= bbox.max()[2]; ++P[2]) {
 		for (P[1] = bbox.min()[1]; P[1] <= bbox.max()[1]; ++P[1]) {
-
 			for (P[0] = bbox.min()[0]; P[0] <= bbox.max()[0]; ++P[0]) {
 				float val = dense.getValue(P);
 				fwrite(&val, sizeof(float), 1, f);
@@ -344,7 +339,7 @@ bool WriteToRawFile(openvdb::FloatGrid::Ptr grid, const std::string& fileName) {
 	sstr << "</image>\n";
 	std::ofstream myfile;
 	std::stringstream xmlFile;
-	xmlFile << fileName << ".xml";
+	xmlFile <<file << ".xml";
 	myfile.open(xmlFile.str().c_str(), std::ios_base::out);
 	myfile << sstr.str();
 	myfile.close();

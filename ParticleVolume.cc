@@ -61,8 +61,9 @@ void ParticleVolume::reset() {
 }
 
 //Implement me
-bool ParticleVolume::save(const std::string& f) {
+bool ParticleVolume::save(const std::string& file) {
 	if(mParticles.size()==0)return false;
+	std::string f=GetFileNameWithoutExtension(file)+".ply";
 	std::cout<<"Saving "<<f<<" ... ";
 	int i, j, idx;
 	char* elemNames[]={"vertex"};

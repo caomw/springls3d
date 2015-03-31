@@ -483,9 +483,10 @@ public:
 	}
 	inline openvdb::math::Vec3<ValueT> interpolate(const openvdb::Vec3s& p) const {
 		openvdb::math::Vec3<ValueT> u;
-		u[0] = mX.interpolate(mRows*p[0], mCols*p[1]-0.5, mSlices*p[2]-0.5);
-		u[1] = mY.interpolate(mRows*p[0]-0.5, mCols*p[1], mSlices*p[2]-0.5);
-		u[2] = mZ.interpolate(mRows*p[0]-0.5, mCols*p[1]-0.5, mSlices*p[2]);
+		float scale=1.0/mVoxelSize;
+		u[0] = mX.interpolate(scale*p[0], scale*p[1]-0.5, scale*p[2]-0.5);
+		u[1] = mY.interpolate(scale*p[0]-0.5, scale*p[1], scale*p[2]-0.5);
+		u[2] = mZ.interpolate(scale*p[0]-0.5, scale*p[1]-0.5, scale*p[2]);
 		return u;
 	}
 	inline openvdb::math::Vec3<ValueT> maxInterpolate(const openvdb::Vec3f& position,float radius){

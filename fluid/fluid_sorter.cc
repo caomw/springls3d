@@ -44,14 +44,13 @@ void ParticleLocator::update(std::vector<ParticlePtr>& particles) {
 		{
 			cells(i, j, k).clear();
 		}END_FOR
+
+	float scale=1.0f/mVoxelSize;
 	// Store Into The Cells
 	for (ParticlePtr& p : particles) {
-		int i = clamp((int) (mGridSize[0] * p->mLocation[0]), 0,
-				mGridSize[0] - 1);
-		int j = clamp((int) (mGridSize[1] * p->mLocation[1]), 0,
-				mGridSize[1] - 1);
-		int k = clamp((int) (mGridSize[2] * p->mLocation[2]), 0,
-				mGridSize[2] - 1);
+		int i = clamp((int) (scale * p->mLocation[0]), 0,mGridSize[0] - 1);
+		int j = clamp((int) (scale * p->mLocation[1]), 0,mGridSize[1] - 1);
+		int k = clamp((int) (scale * p->mLocation[2]), 0,mGridSize[2] - 1);
 		cells(i, j, k).push_back(p.get());
 	}
 }

@@ -69,7 +69,6 @@ void SplashSimulation::addFluid(){
 			mSimulationObjects.push_back(obj);
 		}
 	}
-	std::cout<<"Simulation "<<obj.mCenter<<" "<<obj.mRadius<<std::endl;
 	obj.type = ObjectType::FLUID;
 	obj.shape = ObjectShape::BOX;
 	obj.mVisible = true;

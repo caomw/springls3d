@@ -39,7 +39,7 @@ public:
 	std::vector<FluidParticle*> getNeigboringWallParticles( int i, int j, int k, int w=1, int h=1, int d=1 );
 	std::vector<FluidParticle*> getNeigboringCellParticles( int i, int j, int k, int w=1, int h=1, int d=1 );
 	float getLevelSetValue( int i, int j, int k, RegularGrid<float>& halfwall, float density );
-	const openvdb::Coord& getCellSize(){ return mGridSize; }
+	const openvdb::Coord& getGridSize(){ return mGridSize; }
 	float getVoxelSize(){return mVoxelSize;}
 	int	 getParticleCount( int i, int j, int k );
 	void markAsWater(RegularGrid<char>& A, RegularGrid<float>& halfwall, float density );

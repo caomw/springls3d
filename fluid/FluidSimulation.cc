@@ -637,6 +637,7 @@ bool FluidSimulation::step() {
 		updateParticleVolume();
 		createLevelSet();
 		mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
+		mSource.mSignedLevelSet=std::unique_ptr<FloatGrid>(new FloatGrid());
 		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
 		mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
 		mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
@@ -647,6 +648,7 @@ bool FluidSimulation::step() {
 		updateParticleVolume();
 		createLevelSet();
 		mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
+		mSource.mSignedLevelSet=std::unique_ptr<FloatGrid>(new FloatGrid());
 		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
 		mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
 		mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
@@ -662,13 +664,16 @@ bool FluidSimulation::step() {
 		updateParticleVolume();
 		createLevelSet();
 		mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
+		//WriteToRawFile(mSignedDistanceField,MakeString()<<"/home/blake/tmp/signed_after"<<mSimulationIteration<<".xml");
+		mSource.mSignedLevelSet=std::unique_ptr<FloatGrid>(new FloatGrid());
 		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
 		mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
 		mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
 		openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
 		mSource.updateIsoSurface();
+		//WriteToRawFile(mSource.mSignedLevelSet,MakeString()<<"/home/blake/tmp/signed_sparse"<<mSimulationIteration<<".xml");
+		//mSource.mIsoSurface.save(MakeString()<<"/home/blake/tmp/iso"<<mSimulationIteration<<".ply");
 	}
-	//WriteToRawFile(mSignedDistanceField,"/home/blake/tmp/levelset.xml");
 	//WriteToRawFile(mSource.mSignedLevelSet,"/home/blake/tmp/signed.xml");
 	//WriteToRawFile(mVelocity,"/home/blake/tmp/velocity");
 	mSimulationIteration++;

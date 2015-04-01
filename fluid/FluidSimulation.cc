@@ -300,22 +300,14 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 				}
 			}
 		} else if (obj.shape == ObjectShape::MESH) {
-
 			BBoxd bbox=obj.mSignedLevelSet->getBoundingBox();
 			Vec3d dims=bbox.max()-bbox.min();
-			float localVoxelSize=std::max(std::max(dims[0],dims[1]),dims[2]);
-			Vec3d lpt=Vec3d(localVoxelSize/(2*obj.mRadius))*(pt-obj.mCenter+Vec3d(obj.mRadius));
-
-			float len = distance(pt, obj.mCenter);
+			float localVoxelSize=dims[0];
+			Vec3d lpt=localVoxelSize*((pt-obj.mCenter)/(2*obj.mRadius)+0.5f);
+			//std::cout<<"CENTER "<<obj.mCenter<<" "<<obj.mRadius<<" "<<minPt<<" "<<lpt<<std::endl;
 			if (obj.mSignedLevelSet->interpolateWorld(lpt[0],lpt[1],lpt[2])<0.0f) {
 				if (obj.type == ObjectType::WALL) {
 					found = true;
-					if (len < obj.mRadius - thickness) {
-						// Do nothing. Because It's too deep
-						// that's what she said.
-						inside_obj = NULL;
-						break;
-					}
 				} else if (obj.type == ObjectType::FLUID) {
 					found = true;
 				}

@@ -40,11 +40,11 @@ void SplashSimulation::addFluid(){
 	//replace with level set for falling object
 	SimulationObject obj;
 	Coord dims=mLabel.dimensions();
-	if(mSourceFileName.size()!=0){
+	if(mSourceFileName.size()==0){
 		obj.type = ObjectType::FLUID;
 		obj.shape = ObjectShape::SPHERE;
 		obj.mVisible = true;
-		obj.mRadius=0.05;
+		obj.mRadius=0.075;
 		obj.mCenter=Vec3f(mVoxelSize*dims[0]*0.5f,mVoxelSize*dims[1]-0.2-obj.mRadius,mVoxelSize*dims[2]*0.5f);
 		mSimulationObjects.push_back(obj);
 	} else {
@@ -64,7 +64,7 @@ void SplashSimulation::addFluid(){
 			copyToDense(*levelSet, *mSourceLevelSet);
 			obj.mSignedLevelSet=mSourceLevelSet.get();
 			obj.mVisible = true;
-			obj.mRadius=0.3;
+			obj.mRadius=0.49;
 			obj.mCenter=Vec3f(mVoxelSize*dims[0]*0.5f,mVoxelSize*dims[1]-0.2-obj.mRadius,mVoxelSize*dims[2]*0.5f);
 			mSimulationObjects.push_back(obj);
 		}

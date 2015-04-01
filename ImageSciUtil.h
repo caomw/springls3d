@@ -522,10 +522,11 @@ public:
 		return final;
 	}
 };
-inline bool WriteToRawFile(MACGrid<float>& mac, const std::string& fileName) {
-	bool r1 = WriteToRawFile(mac[0], fileName + "_x");
-	bool r2 = WriteToRawFile(mac[1], fileName + "_y");
-	bool r3 = WriteToRawFile(mac[2], fileName + "_z");
+inline bool WriteToRawFile(MACGrid<float>& mac, const std::string& file) {
+	std::string fileName=GetFileNameWithoutExtension(file);
+	bool r1 = WriteToRawFile(mac[0], fileName + "_x.xml");
+	bool r2 = WriteToRawFile(mac[1], fileName + "_y.xml");
+	bool r3 = WriteToRawFile(mac[2], fileName + "_z.xml");
 	return (r1 && r2 && r3);
 }
 }

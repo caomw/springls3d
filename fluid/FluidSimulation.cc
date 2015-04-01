@@ -628,10 +628,9 @@ bool FluidSimulation::step() {
 	mParticleLocator->update(mParticles);
 	//Compute density for each cell, capped by max density as pre-computed
 	computeParticleDensity(mMaxDensity);
-
 	//Add external gravity force
 	addExternalForce();
-	solvePicFlip();	
+	solvePicFlip();
 	if(!mSpringlTracking){
 		advectParticles();
 		correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
@@ -645,6 +644,7 @@ bool FluidSimulation::step() {
 		mSource.updateIsoSurface();
 	} else {
 		stringstream distFile,signedFile,afterFile,beforeFile;
+		updateParticleVolume();
 		createLevelSet();
 		mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
 		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
@@ -668,9 +668,9 @@ bool FluidSimulation::step() {
 		openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
 		mSource.updateIsoSurface();
 	}
-	//WriteToRawFile(mLevelSet,"/home/blake/tmp/levelset.xml");
+	//WriteToRawFile(mSignedDistanceField,"/home/blake/tmp/levelset.xml");
 	//WriteToRawFile(mSource.mSignedLevelSet,"/home/blake/tmp/signed.xml");
-	//WriteToRawFile(mVelocity,"/home/blake/tmp/velocity.xml");
+	//WriteToRawFile(mVelocity,"/home/blake/tmp/velocity");
 	mSimulationIteration++;
 	mSimulationTime = mSimulationIteration * mTimeStep;
 	if (mSimulationTime <= mSimulationDuration && mRunning) {
@@ -897,7 +897,7 @@ void FluidSimulation::solvePicFlip() {
 }
 
 void FluidSimulation::updateParticleVolume(){
-	//WriteToRawFile(mLevelSet,"/home/blake/tmp/levelset");
+	//
 	float voxelSize = mLevelSet.voxelSize();
 		mSource.mParticleVolume.mParticles.clear();
 		mSource.mParticleVolume.mVelocities.clear();
@@ -967,6 +967,7 @@ void FluidSimulation::mapParticlesToGrid() {
 	// Compute Mapping
 
 	openvdb::Coord dims(mVelocity.rows(),mVelocity.cols(),mVelocity.slices());
+	float scale=1.0f/mVoxelSize;
 //OPENMP_FOR
 	FOR_EVERY_CELL(dims[0]+1,dims[1]+1,dims[2]+1) {
 		// Variales for Particle Sorter
@@ -982,9 +983,9 @@ void FluidSimulation::mapParticlesToGrid() {
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
 				if( p->mObjectType == ObjectType::FLUID ) {
-					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
-					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
-					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
+					float x = clamp(scale*p->mLocation[0],0.0f,(float)dims[0]);
+					float y = clamp(scale*p->mLocation[1],0.0f,(float)dims[1]);
+					float z = clamp(scale*p->mLocation[2],0.0f,(float)dims[2]);
 					openvdb::Vec3f pos(x, y, z);
 					float w = p->mMass * sharpKernel(distanceSquared(pos,px),RELAXATION_KERNEL_WIDTH);
 					sumx += w*p->mVelocity[0];
@@ -1003,9 +1004,9 @@ void FluidSimulation::mapParticlesToGrid() {
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
 				if( p->mObjectType == ObjectType::FLUID ) {
-					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
-					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
-					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
+					float x = clamp(scale*p->mLocation[0],0.0f,(float)dims[0]);
+					float y = clamp(scale*p->mLocation[1],0.0f,(float)dims[1]);
+					float z = clamp(scale*p->mLocation[2],0.0f,(float)dims[2]);
 					openvdb::Vec3s pos( x, y, z );
 					float w = p->mMass * sharpKernel(distanceSquared(pos,py),RELAXATION_KERNEL_WIDTH);
 					sumy += w*p->mVelocity[1];
@@ -1023,9 +1024,9 @@ void FluidSimulation::mapParticlesToGrid() {
 			for( int n=0; n<neighbors.size(); n++ ) {
 				FluidParticle *p = neighbors[n];
 				if( p->mObjectType == ObjectType::FLUID ) {
-					float x = clamp(dims[0]*p->mLocation[0],0.0f,(float)dims[0]);
-					float y = clamp(dims[1]*p->mLocation[1],0.0f,(float)dims[1]);
-					float z = clamp(dims[2]*p->mLocation[2],0.0f,(float)dims[2]);
+					float x = clamp(scale*p->mLocation[0],0.0f,(float)dims[0]);
+					float y = clamp(scale*p->mLocation[1],0.0f,(float)dims[1]);
+					float z = clamp(scale*p->mLocation[2],0.0f,(float)dims[2]);
 					openvdb::Vec3s pos( x, y, z );
 					float w = p->mMass * sharpKernel(distanceSquared(pos,pz),RELAXATION_KERNEL_WIDTH);
 					sumz += w*p->mVelocity[2];

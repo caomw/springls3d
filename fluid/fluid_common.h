@@ -41,19 +41,121 @@ enum class ObjectType {
 enum class ObjectMaterial {
 	GLASS = 0, GRAY = 1, RED = 2
 };
+
 enum class ObjectShape {
 	BOX = 0, SPHERE = 1, MESH = 2
 };
+
 struct SimulationObject {
-	ObjectType type;
-	ObjectShape shape;
-	ObjectMaterial material;
+public:
+	ObjectType mType;
+	ObjectShape mShape;
+	ObjectMaterial mMaterial;
 	bool mVisible;
-	float mRadius;
-	RegularGrid<float>* mSignedLevelSet=nullptr;
-	openvdb::Vec3f mCenter;
-	openvdb::Vec3f mBounds[2];
+	float mThickness;
+	virtual bool inside(openvdb::Vec3f& pt){return false;}
+	virtual bool insideShell(openvdb::Vec3f& pt){return false;}
+	virtual ~SimulationObject(){};
+	SimulationObject(ObjectShape shape):
+		mShape(shape),mVisible(true),mThickness(0.0f),mType(ObjectType::AIR),mMaterial(ObjectMaterial::GRAY){
+
+	}
 };
+struct SphereObject: public SimulationObject {
+public:
+	float mRadius;
+	openvdb::Vec3f mCenter;
+	SphereObject():SimulationObject(ObjectShape::SPHERE),mRadius(0),mCenter(){
+	}
+	virtual bool inside(openvdb::Vec3f& pt){
+		float len = (pt-mCenter).length();
+		if (len < mRadius) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	virtual bool insideShell(openvdb::Vec3f& pt){
+		float len = (pt-mCenter).length();
+		if (len < mRadius) {
+			if(len < mRadius - mThickness) {
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	}
+};
+struct BoxObject: public SimulationObject {
+public:
+	openvdb::Vec3f mMin;
+	openvdb::Vec3f mMax;
+	BoxObject():SimulationObject(ObjectShape::BOX),mMin(),mMax(){
+	}
+
+	virtual bool inside(openvdb::Vec3f& pt){
+		if (
+				pt[0] > mMin[0] && pt[0] < mMax[0]&&
+				pt[1] > mMin[1] && pt[1] < mMax[1]&&
+				pt[2] > mMin[2] && pt[2] < mMax[2]) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	virtual bool insideShell(openvdb::Vec3f& pt){
+		if (
+				pt[0] > mMin[0] && pt[0] < mMax[0]&&
+				pt[1] > mMin[1] && pt[1] < mMax[1]&&
+				pt[2] > mMin[2] && pt[2] < mMax[2]) {
+				if (
+						pt[0] > mMin[0]+mThickness && pt[0] < mMax[0]-mThickness&&
+						pt[1] > mMin[1]+mThickness && pt[1] < mMax[1]-mThickness&&
+						pt[2] > mMin[2]+mThickness && pt[2] < mMax[2]-mThickness) {
+				return false;
+			} else {
+				return true;
+			}
+		} else {
+			return false;
+		}
+	}
+};
+struct MeshObject: public SimulationObject {
+public:
+	float mVoxelSize;
+	openvdb::Vec3f mCenter;
+	RegularGrid<float>* mSignedLevelSet;
+	MeshObject():SimulationObject(ObjectShape::MESH),mVoxelSize(1.0f),mCenter(),mSignedLevelSet(nullptr){
+
+	}
+	virtual bool inside(openvdb::Vec3f& pt){
+		BBoxd bbox=mSignedLevelSet->getBoundingBox();
+		Vec3d dims=bbox.max()-bbox.min();
+		float localVoxelSize=dims[0];
+		Vec3d lpt=localVoxelSize*((pt-mCenter)/mVoxelSize+0.5f);
+		if (mSignedLevelSet->interpolateWorld(lpt[0],lpt[1],lpt[2])<0.0f) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	virtual bool insideShell(openvdb::Vec3f& pt){
+		BBoxd bbox=mSignedLevelSet->getBoundingBox();
+		Vec3d dims=bbox.max()-bbox.min();
+		float localVoxelSize=dims[0];
+		Vec3d lpt=localVoxelSize*((pt-mCenter)*mVoxelSize+0.5f);
+		float val=mSignedLevelSet->interpolateWorld(lpt[0],lpt[1],lpt[2]);
+		if (val>-mThickness&&val<0.0f) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+};
+
 
 struct FluidParticle {
 	openvdb::Vec3f mLocation;

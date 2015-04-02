@@ -98,65 +98,69 @@ void FluidSimulation::computeParticleDensity(float maxDensity) {
 	}
 }
 void FluidSimulation::placeWalls() {
-	SimulationObject obj;
+	BoxObject* obj;
 	Coord dims=mLabel.dimensions();
 	float mx=mVoxelSize*dims[0];
 	float my=mVoxelSize*dims[1];
 	float mz=mVoxelSize*dims[2];
-
+	obj=new BoxObject;
+	obj->mThickness=3*mVoxelSize;
 	// Left Wall
-	obj.type = ObjectType::WALL;
-	obj.shape = ObjectShape::BOX;
-	obj.material = ObjectMaterial::GLASS;
-	obj.mVisible = 0;
-	obj.mBounds[0] = Vec3f(0.0, 0.0, 0.0);
-	obj.mBounds[1] = Vec3f(mWallThickness, my,mz);
-	mSimulationObjects.push_back(obj);
+	obj->mType = ObjectType::WALL;
+	obj->mMaterial = ObjectMaterial::GLASS;
+	obj->mVisible = false;
+	obj->mMin = Vec3f(0.0, 0.0, 0.0);
+	obj->mMax = Vec3f(mWallThickness, my,mz);
+	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
 
+	obj=new BoxObject;
 	// Right Wall
-	obj.type = ObjectType::WALL;
-	obj.shape = ObjectShape::BOX;
-	obj.material = ObjectMaterial::GLASS;
-	obj.mVisible = 0;
-	obj.mBounds[0] = Vec3f(mx - mWallThickness, 0.0, 0.0);
-	obj.mBounds[1] = Vec3f(mx,my,mz);
-	mSimulationObjects.push_back(obj);
-
+	obj->mThickness=3*mVoxelSize;
+	obj->mType = ObjectType::WALL;
+	obj->mMaterial = ObjectMaterial::GLASS;
+	obj->mVisible = false;
+	obj->mMin = Vec3f(mx - mWallThickness, 0.0, 0.0);
+	obj->mMax = Vec3f(mx,my,mz);
+	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
+	obj=new BoxObject;
 	// Floor Wall
-	obj.type = ObjectType::WALL;
-	obj.shape = ObjectShape::BOX;
-	obj.material = ObjectMaterial::GRAY;
-	obj.mVisible = 0;
-	obj.mBounds[0] = Vec3f(0.0, 0.0, 0.0);
-	obj.mBounds[1] = Vec3f(mx, mWallThickness, mz);
-	mSimulationObjects.push_back(obj);
+	obj->mThickness=3*mVoxelSize;
+	obj->mType = ObjectType::WALL;
+	obj->mMaterial = ObjectMaterial::GRAY;
+	obj->mVisible = false;
+	obj->mMin = Vec3f(0.0, 0.0, 0.0);
+	obj->mMax = Vec3f(mx, mWallThickness, mz);
+	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
 
+	obj=new BoxObject;
 	// Ceiling Wall
-	obj.type = ObjectType::WALL;
-	obj.shape = ObjectShape::BOX;
-	obj.material = ObjectMaterial::GLASS;
-	obj.mVisible = 0;
-	obj.mBounds[0] = Vec3f(0.0, my - mWallThickness, 0.0);
-	obj.mBounds[1] = Vec3f(mx,my,mz);
-	mSimulationObjects.push_back(obj);
+	obj->mThickness=3*mVoxelSize;
+	obj->mType = ObjectType::WALL;
+	obj->mMaterial = ObjectMaterial::GLASS;
+	obj->mVisible = false;
+	obj->mMin = Vec3f(0.0, my - mWallThickness, 0.0);
+	obj->mMax = Vec3f(mx,my,mz);
+	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
 
+	obj=new BoxObject;
 	// Front Wall
-	obj.type = ObjectType::WALL;
-	obj.shape = ObjectShape::BOX;
-	obj.material = ObjectMaterial::GLASS;
-	obj.mVisible = 0;
-	obj.mBounds[0] = Vec3f(0.0, 0.0, 0.0);
-	obj.mBounds[1] = Vec3f(mx,my, mWallThickness);
-	mSimulationObjects.push_back(obj);
+	obj->mThickness=3*mVoxelSize;
+	obj->mType = ObjectType::WALL;
+	obj->mMaterial = ObjectMaterial::GLASS;
+	obj->mVisible = false;
+	obj->mMin = Vec3f(0.0, 0.0, 0.0);
+	obj->mMax = Vec3f(mx,my, mWallThickness);
+	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
 
+	obj=new BoxObject;
 	// Back Wall
-	obj.type = ObjectType::WALL;
-	obj.shape = ObjectShape::BOX;
-	obj.material = ObjectMaterial::GLASS;
-	obj.mVisible = 0;
-	obj.mBounds[0] = Vec3f(0.0, 0.0, mz - mWallThickness);
-	obj.mBounds[1] = Vec3f(mx,my,mz);
-	mSimulationObjects.push_back(obj);
+	obj->mThickness=3*mVoxelSize;
+	obj->mType = ObjectType::WALL;
+	obj->mMaterial = ObjectMaterial::GLASS;
+	obj->mVisible = false;
+	obj->mMin = Vec3f(0.0, 0.0, mz - mWallThickness);
+	obj->mMax = Vec3f(mx,my,mz);
+	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
 }
 void FluidSimulation::placeObjects() {
 	placeWalls();
@@ -253,8 +257,9 @@ void FluidSimulation::repositionParticles(vector<int>& indices) {
 }
 void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 		ObjectType type) {
-	SimulationObject *inside_obj = NULL;
+	SimulationObject *inside_obj = nullptr;
 	const int MAX_INT = std::numeric_limits<int>::max();
+
 	Vec3s axis(((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f,
 			((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f,
 			((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f);
@@ -264,58 +269,19 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 	float x = pt[0];
 	float y = pt[1];
 	float z = pt[2];
-	for (SimulationObject &obj : mSimulationObjects) {
-		bool found = false;
-		float thickness = 3.0 * mVoxelSize;
-		if (obj.shape == ObjectShape::BOX) {
-			if (x > obj.mBounds[0][0] && x < obj.mBounds[1][0]
-					&& y > obj.mBounds[0][1] && y < obj.mBounds[1][1]
-					&& z > obj.mBounds[0][2] && z < obj.mBounds[1][2]) {
-				if (obj.type == ObjectType::WALL && x > obj.mBounds[0][0] + thickness
-						&& x < obj.mBounds[1][0] - thickness
-						&& y > obj.mBounds[0][1] + thickness
-						&& y < obj.mBounds[1][1] - thickness
-						&& z > obj.mBounds[0][2] + thickness
-						&& z < obj.mBounds[1][2] - thickness) {
-					// Do nothing. Because It's too deep
-					inside_obj = NULL;
-					break;
-				} else {
-					found = true;
-				}
-			}
-		} else if (obj.shape == ObjectShape::SPHERE) {
-			float len = distance(pt, obj.mCenter);
-			if (len < obj.mRadius) {
-				if (obj.type == ObjectType::WALL) {
-					found = true;
-					if (len < obj.mRadius - thickness) {
-						// Do nothing. Because It's too deep
-						// that's what she said.
-						inside_obj = NULL;
-						break;
-					}
-				} else if (obj.type == ObjectType::FLUID) {
-					found = true;
-				}
-			}
-		} else if (obj.shape == ObjectShape::MESH) {
-			BBoxd bbox=obj.mSignedLevelSet->getBoundingBox();
-			Vec3d dims=bbox.max()-bbox.min();
-			float localVoxelSize=dims[0];
-			Vec3d lpt=localVoxelSize*((pt-obj.mCenter)/(2*obj.mRadius)+0.5f);
-			//std::cout<<"CENTER "<<obj.mCenter<<" "<<obj.mRadius<<" "<<minPt<<" "<<lpt<<std::endl;
-			if (obj.mSignedLevelSet->interpolateWorld(lpt[0],lpt[1],lpt[2])<0.0f) {
-				if (obj.type == ObjectType::WALL) {
-					found = true;
-				} else if (obj.type == ObjectType::FLUID) {
-					found = true;
-				}
-			}
+	bool found = false;
+	//std::cout<<"Inside objects "<<mSimulationObjects.size()<<" "<<(int)type<<std::endl;
+	for (std::shared_ptr<SimulationObject>& obj : mSimulationObjects) {
+		//std::cout<<"OBJECT "<<(int)obj->type<<" "<<(int)obj->shape<<std::endl;
+		found=false;
+		if(obj->mType==ObjectType::FLUID){
+			found=obj->inside(pt);
+		}else if(obj->mType==ObjectType::WALL){
+			found=obj->insideShell(pt);
 		}
 		if (found) {
-			if (obj.type == type) {
-				inside_obj = &obj; // Found
+			if (obj->mType == type) {
+				inside_obj = obj.get(); // Found
 				break;
 			}
 		}
@@ -323,7 +289,7 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 
 	if (inside_obj) {
 		FluidParticle *p = new FluidParticle;
-		if (inside_obj->type == ObjectType::FLUID) {
+		if (inside_obj->mType == ObjectType::FLUID) {
 			p->mLocation = center + R * (pt - center);
 		} else {
 			p->mLocation = pt;
@@ -332,7 +298,7 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 		p->mNormal = Vec3f(0.0);
 		//p->mThinParticle = 0;
 		p->mDensity = 10.0;
-		p->mObjectType = inside_obj->type;
+		p->mObjectType = inside_obj->mType;
 		//p->mVisible = inside_obj->mVisible;
 		p->mMass = 1.0;
 		mParticles.push_back(ParticlePtr(p));
@@ -429,7 +395,6 @@ bool FluidSimulation::init() {
 	computeWallNormals();
 	updateParticleVolume();
 	createLevelSet();
-
 	mSource.create(mLevelSet);
 	if(!mSpringlTracking){
 		mSource.mConstellation.reset();

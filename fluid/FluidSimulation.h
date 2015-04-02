@@ -80,7 +80,7 @@ class FluidSimulation :public Simulation{
 		float mVoxelSize;
 		float mWallThickness;
 		std::unique_ptr<ParticleLocator> mParticleLocator;
-		std::vector<SimulationObject> mSimulationObjects;
+		std::vector<std::shared_ptr<SimulationObject>> mSimulationObjects;
 		std::vector<ParticlePtr> mParticles;
 		void copyGridToBuffer();
 		void subtractGrid();

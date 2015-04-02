@@ -39,26 +39,25 @@ void DamBreakSimulation::cleanup(){
 }
 void DamBreakSimulation::addFluid(){
 	//replace with level set for falling object
-	SimulationObject obj;
+	BoxObject* obj=new BoxObject;
 	Coord dims=mLabel.dimensions();
-	obj.type = ObjectType::FLUID;
-	obj.shape = ObjectShape::BOX;
-	obj.mVisible = true;
-	obj.mBounds[0] = Vec3f(0.2, mWallThickness, 0.2);
-	obj.mBounds[1] = Vec3f(
+	obj->mType = ObjectType::FLUID;
+	obj->mVisible = true;
+	obj->mMin = Vec3f(0.2, mWallThickness, 0.2);
+	obj->mMax = Vec3f(
 			0.4*mVoxelSize*dims[0],
 			0.4*mVoxelSize*dims[1],
 			0.8*mVoxelSize*dims[2]);
-	mSimulationObjects.push_back(obj);
-	obj.type = ObjectType::FLUID;
-	obj.shape = ObjectShape::BOX;
-	obj.mVisible = true;
-	obj.mBounds[0] = Vec3f(mWallThickness, mWallThickness, mWallThickness);
-	obj.mBounds[1] = Vec3f(
+	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
+	obj=new BoxObject;
+	obj->mType = ObjectType::FLUID;
+	obj->mVisible = true;
+	obj->mMin = Vec3f(mWallThickness, mWallThickness, mWallThickness);
+	obj->mMax = Vec3f(
 			mVoxelSize*dims[0]- mWallThickness,
 			0.06*mVoxelSize*dims[1],
 			mVoxelSize*dims[2]- mWallThickness);
-	mSimulationObjects.push_back(obj);
+	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
 
 }
 bool DamBreakSimulation::step(){

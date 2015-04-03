@@ -111,7 +111,7 @@ void FluidSimulation::placeWalls() {
 	obj->mVisible = false;
 	obj->mMin = Vec3f(0.0, 0.0, 0.0);
 	obj->mMax = Vec3f(mWallThickness, my,mz);
-	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
+	addSimulationObject(static_cast<SimulationObject*>(obj));
 
 	obj=new BoxObject;
 	// Right Wall
@@ -121,7 +121,7 @@ void FluidSimulation::placeWalls() {
 	obj->mVisible = false;
 	obj->mMin = Vec3f(mx - mWallThickness, 0.0, 0.0);
 	obj->mMax = Vec3f(mx,my,mz);
-	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
+	addSimulationObject(static_cast<SimulationObject*>(obj));
 	obj=new BoxObject;
 	// Floor Wall
 	obj->mThickness=3*mVoxelSize;
@@ -130,7 +130,7 @@ void FluidSimulation::placeWalls() {
 	obj->mVisible = false;
 	obj->mMin = Vec3f(0.0, 0.0, 0.0);
 	obj->mMax = Vec3f(mx, mWallThickness, mz);
-	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
+	addSimulationObject(static_cast<SimulationObject*>(obj));
 
 	obj=new BoxObject;
 	// Ceiling Wall
@@ -140,7 +140,7 @@ void FluidSimulation::placeWalls() {
 	obj->mVisible = false;
 	obj->mMin = Vec3f(0.0, my - mWallThickness, 0.0);
 	obj->mMax = Vec3f(mx,my,mz);
-	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
+	addSimulationObject(static_cast<SimulationObject*>(obj));
 
 	obj=new BoxObject;
 	// Front Wall
@@ -150,7 +150,7 @@ void FluidSimulation::placeWalls() {
 	obj->mVisible = false;
 	obj->mMin = Vec3f(0.0, 0.0, 0.0);
 	obj->mMax = Vec3f(mx,my, mWallThickness);
-	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
+	addSimulationObject(static_cast<SimulationObject*>(obj));
 
 	obj=new BoxObject;
 	// Back Wall
@@ -160,11 +160,22 @@ void FluidSimulation::placeWalls() {
 	obj->mVisible = false;
 	obj->mMin = Vec3f(0.0, 0.0, mz - mWallThickness);
 	obj->mMax = Vec3f(mx,my,mz);
-	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
+	addSimulationObject(static_cast<SimulationObject*>(obj));
 }
 void FluidSimulation::placeObjects() {
 	placeWalls();
 	addFluid();
+}
+void FluidSimulation::addSimulationObject(SimulationObject* obj){
+		switch(obj->mType){
+			case ObjectType::AIR:
+				mAirObjects.push_back(std::shared_ptr<SimulationObject>(obj));break;
+			case ObjectType::FLUID:
+				mFluidObjects.push_back(std::shared_ptr<SimulationObject>(obj));break;
+			case ObjectType::WALL:
+				mWallObjects.push_back(std::shared_ptr<SimulationObject>(obj));break;
+
+		}
 }
 void FluidSimulation::operator()(Springl& springl,double time,double dt){
 	Transform::Ptr trans=mSource.transformPtr();
@@ -259,35 +270,32 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 		ObjectType type) {
 	SimulationObject *inside_obj = nullptr;
 	const int MAX_INT = std::numeric_limits<int>::max();
-
-	Vec3s axis(((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f,
-			((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f,
-			((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f);
-	axis.normalize(1E-6f);
 	const float MAX_ANGLE = 30.0f * M_PI / 180.0f;
-	Mat3s R = rotation<Mat3s>(axis,MAX_ANGLE * (rand() % MAX_INT) / (MAX_INT - 1.0));
-	float x = pt[0];
-	float y = pt[1];
-	float z = pt[2];
 	bool found = false;
 	//std::cout<<"Inside objects "<<mSimulationObjects.size()<<" "<<(int)type<<std::endl;
-	for (std::shared_ptr<SimulationObject>& obj : mSimulationObjects) {
-		//std::cout<<"OBJECT "<<(int)obj->type<<" "<<(int)obj->shape<<std::endl;
-		found=false;
-		if(obj->mType==ObjectType::FLUID){
+	if(type==ObjectType::FLUID){
+		for (std::shared_ptr<SimulationObject>& obj : mFluidObjects) {
 			found=obj->inside(pt);
-		}else if(obj->mType==ObjectType::WALL){
-			found=obj->insideShell(pt);
+			if(found){
+				inside_obj = obj.get(); // Found
+				break;
+			}
 		}
-		if (found) {
-			if (obj->mType == type) {
+	} else if(type==ObjectType::WALL){
+		for (std::shared_ptr<SimulationObject>& obj : mWallObjects) {
+			found=obj->insideShell(pt);
+			if(found){
 				inside_obj = obj.get(); // Found
 				break;
 			}
 		}
 	}
-
 	if (inside_obj) {
+		Vec3s axis(((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f,
+				((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f,
+				((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f);
+		axis.normalize(1E-6f);
+		Mat3s R = rotation<Mat3s>(axis,MAX_ANGLE * (rand() % MAX_INT) / (MAX_INT - 1.0));
 		FluidParticle *p = new FluidParticle;
 		if (inside_obj->mType == ObjectType::FLUID) {
 			p->mLocation = center + R * (pt - center);
@@ -1129,11 +1137,11 @@ double FluidSimulation::implicit_func( vector<FluidParticle*> &neighbors,openvdb
 	double phi = 8.0*density*voxelSize;
 	for( int m=0; m<neighbors.size(); m++ ) {
 		FluidParticle &np = *neighbors[m];
+		double d= distance(np.mLocation,p);
 		if( np.mObjectType == ObjectType::WALL ) {
-			if( distance(np.mLocation,p) < density*voxelSize) return 4.5*density*voxelSize;
+			if(d < density*voxelSize) return 4.5*density*voxelSize;
 			continue;
 		}
-		double d = distance(np.mLocation,p);
 		if( d < phi ) {
 			phi = d;
 		}

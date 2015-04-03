@@ -80,7 +80,11 @@ class FluidSimulation :public Simulation{
 		float mVoxelSize;
 		float mWallThickness;
 		std::unique_ptr<ParticleLocator> mParticleLocator;
-		std::vector<std::shared_ptr<SimulationObject>> mSimulationObjects;
+
+		std::vector<std::shared_ptr<SimulationObject>> mFluidObjects;
+		std::vector<std::shared_ptr<SimulationObject>> mWallObjects;
+		std::vector<std::shared_ptr<SimulationObject>> mAirObjects;
+
 		std::vector<ParticlePtr> mParticles;
 		void copyGridToBuffer();
 		void subtractGrid();
@@ -118,6 +122,7 @@ class FluidSimulation :public Simulation{
 			return ((a == static_cast<char>(ObjectType::WALL)) ? 1.0f : -1.0f);
 		}
 		virtual void addFluid()=0;
+		void addSimulationObject(SimulationObject* obj);
 	public:
 		void operator()(Springl& springl,double time,double dt);
 		FluidSimulation(const openvdb::Coord& dims,float voxelSize,MotionScheme scheme) ;

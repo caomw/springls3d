@@ -48,7 +48,7 @@ void DamBreakSimulation::addFluid(){
 			0.4*mVoxelSize*dims[0],
 			0.4*mVoxelSize*dims[1],
 			0.8*mVoxelSize*dims[2]);
-	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
+	addSimulationObject(static_cast<SimulationObject*>(obj));
 	obj=new BoxObject;
 	obj->mType = ObjectType::FLUID;
 	obj->mVisible = true;
@@ -57,7 +57,7 @@ void DamBreakSimulation::addFluid(){
 			mVoxelSize*dims[0]- mWallThickness,
 			0.06*mVoxelSize*dims[1],
 			mVoxelSize*dims[2]- mWallThickness);
-	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
+	addSimulationObject(static_cast<SimulationObject*>(obj));
 
 }
 bool DamBreakSimulation::step(){

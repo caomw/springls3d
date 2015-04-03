@@ -47,7 +47,7 @@ void SplashSimulation::addFluid(){
 		obj->mRadius=0.075f;
 		obj->mThickness=3.0*mVoxelSize;
 		obj->mCenter=Vec3f(mVoxelSize*dims[0]*0.5f,mVoxelSize*dims[1]-0.2-obj->mRadius,mVoxelSize*dims[2]*0.5f);
-		mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
+		addSimulationObject(static_cast<SimulationObject*>(obj));
 	} else {
 		Mesh mesh;
 		if(mesh.openMesh(mSourceFileName)){
@@ -68,7 +68,7 @@ void SplashSimulation::addFluid(){
 			obj->mThickness=3.0*mVoxelSize;
 			obj->mRadius=0.4f;
 			obj->mCenter=Vec3f(mVoxelSize*dims[0]*0.5f,mVoxelSize*dims[1]-0.2-obj->mRadius,mVoxelSize*dims[2]*0.5f);
-			mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
+			addSimulationObject(static_cast<SimulationObject*>(obj));
 		}
 	}
 	BoxObject* box=new BoxObject;
@@ -77,7 +77,7 @@ void SplashSimulation::addFluid(){
 	box->mThickness=3.0*mVoxelSize;
 	box->mMin = Vec3f(mWallThickness, mWallThickness, mWallThickness);
 	box->mMax = Vec3f(mVoxelSize*dims[0] - mWallThickness,0.15,mVoxelSize*dims[2] - mWallThickness);
-	mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(box)));
+	addSimulationObject(static_cast<SimulationObject*>(box));
 
 }
 

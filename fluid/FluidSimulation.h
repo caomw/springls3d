@@ -102,6 +102,7 @@ class FluidSimulation :public Simulation{
 		void addParticle( openvdb::Vec3s pt, openvdb::Vec3s center,ObjectType type );
 		void project();
 		void createLevelSet();
+		void initLevelSet();
 		void updateParticleVolume();
 		void enforceBoundaryCondition();
 		float smoothKernel( float r2, float h );

@@ -53,6 +53,7 @@ public:
 	ObjectMaterial mMaterial;
 	bool mVisible;
 	float mThickness;
+	virtual float signedDistance(openvdb::Vec3f& pt){return 0;}
 	virtual bool inside(openvdb::Vec3f& pt){return false;}
 	virtual bool insideShell(openvdb::Vec3f& pt){return false;}
 	virtual ~SimulationObject(){};
@@ -66,6 +67,10 @@ public:
 	float mRadius;
 	openvdb::Vec3f mCenter;
 	SphereObject():SimulationObject(ObjectShape::SPHERE),mRadius(0),mCenter(){
+	}
+	virtual float signedDistance(openvdb::Vec3f& pt){
+		float len = (pt-mCenter).length();
+		return len-mRadius;
 	}
 	virtual bool inside(openvdb::Vec3f& pt){
 		float len = (pt-mCenter).length();
@@ -105,6 +110,20 @@ public:
 			return false;
 		}
 	}
+	virtual float signedDistance(openvdb::Vec3f& pt){
+		if(inside(pt)){
+			float dx=std::min(pt[0]-mMax[0],mMin[0]-pt[0]);
+			float dy=std::min(pt[1]-mMax[1],mMin[1]-pt[1]);
+			float dz=std::min(pt[2]-mMax[2],mMin[2]-pt[2]);
+			return std::min(std::min(dx,dy),dz);
+		} else {
+			float dx=std::max(pt[0]-mMax[0],mMin[0]-pt[0]);
+			float dy=std::max(pt[1]-mMax[1],mMin[1]-pt[1]);
+			float dz=std::max(pt[2]-mMax[2],mMin[2]-pt[2]);
+			return std::max(std::max(dx,dy),dz);
+		}
+	}
+
 	virtual bool insideShell(openvdb::Vec3f& pt){
 		if (
 				pt[0] > mMin[0] && pt[0] < mMax[0]&&
@@ -126,10 +145,17 @@ public:
 struct MeshObject: public SimulationObject {
 public:
 	float mRadius;
+	float mVoxelSize;
 	openvdb::Vec3f mCenter;
 	RegularGrid<float>* mSignedLevelSet;
-	MeshObject():SimulationObject(ObjectShape::MESH),mRadius(1.0f),mCenter(),mSignedLevelSet(nullptr){
+	MeshObject():SimulationObject(ObjectShape::MESH),mVoxelSize(1.0f),mRadius(1.0f),mCenter(),mSignedLevelSet(nullptr){
 
+	}
+	virtual float signedDistance(openvdb::Vec3f& pt){
+		BBoxd bbox=mSignedLevelSet->getBoundingBox();
+		float localVoxelSize=mSignedLevelSet->rows();
+		Vec3d lpt=localVoxelSize*((pt-mCenter)/(2*mRadius)+0.5f);
+		return mSignedLevelSet->interpolateWorld(lpt[0],lpt[1],lpt[2])*mVoxelSize*(2*mRadius);
 	}
 	virtual bool inside(openvdb::Vec3f& pt){
 		BBoxd bbox=mSignedLevelSet->getBoundingBox();

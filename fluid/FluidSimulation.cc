@@ -318,7 +318,6 @@ bool FluidSimulation::init() {
 	mParticleLocator = std::unique_ptr<ParticleLocator>(
 			new ParticleLocator(mGridSize, mVoxelSize));
 	placeObjects();
-
 	// This Is A Test Part. We Generate Pseudo Particles To Measure Maximum Particle Density
 	float h = mFluidParticleDiameter * mVoxelSize;
 	FOR_EVERY_CELL(10,10,10)
@@ -402,7 +401,9 @@ bool FluidSimulation::init() {
 // Comput Normal for Walls
 	computeWallNormals();
 	updateParticleVolume();
-	createLevelSet();
+	//createLevelSet();
+	initLevelSet();
+	//WriteToRawFile(mLevelSet,"/home/blake/tmp/signed.xml");
 	mSource.create(mLevelSet);
 	if(!mSpringlTracking){
 		mSource.mConstellation.reset();
@@ -902,6 +903,28 @@ void FluidSimulation::createLevelSet() {
 			} else {
 				double value = implicit_func(p,mFluidParticleDiameter);
 				mLevelSet(i, j, k) = clamp(value / mVoxelSize,-openvdb::LEVEL_SET_HALF_WIDTH,openvdb::LEVEL_SET_HALF_WIDTH);
+			}
+		}END_FOR;
+}
+void FluidSimulation::initLevelSet() {
+// Create Density Field
+	Coord dims(mLevelSet.rows(), mLevelSet.cols(), mLevelSet.slices());
+	float voxelSize = mLevelSet.voxelSize();
+
+	OPENMP_FOR FOR_EVERY_GRID_CELL_Y(mLevelSet)
+		{
+			double x = i * voxelSize;
+			double y = j * voxelSize;
+			double z = k * voxelSize;
+			Vec3f p(x, y, z);
+			if (i == 0 || i == dims[0] - 1 || j == 0 || j == dims[1] - 1|| k == 0 || k == dims[2] - 1) {
+				mLevelSet(i, j, k) = 0.001;
+			} else {
+				float value = 1E30f;
+				for(shared_ptr<SimulationObject>& obj:mFluidObjects){
+					value=std::min(obj->signedDistance(p),value);
+				}
+				mLevelSet(i, j, k) = clamp(value / mVoxelSize,-(float)openvdb::LEVEL_SET_HALF_WIDTH,(float)openvdb::LEVEL_SET_HALF_WIDTH);
 			}
 		}END_FOR;
 }

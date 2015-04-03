@@ -67,10 +67,12 @@ void SplashSimulation::addFluid(){
 			obj->mVisible = true;
 			obj->mThickness=3.0*mVoxelSize;
 			obj->mRadius=0.4f;
+			obj->mVoxelSize=mVoxelSize;
 			obj->mCenter=Vec3f(mVoxelSize*dims[0]*0.5f,mVoxelSize*dims[1]-0.2-obj->mRadius,mVoxelSize*dims[2]*0.5f);
 			addSimulationObject(static_cast<SimulationObject*>(obj));
 		}
 	}
+
 	BoxObject* box=new BoxObject;
 	box->mType = ObjectType::FLUID;
 	box->mVisible = true;

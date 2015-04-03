@@ -125,17 +125,16 @@ public:
 };
 struct MeshObject: public SimulationObject {
 public:
-	float mVoxelSize;
+	float mRadius;
 	openvdb::Vec3f mCenter;
 	RegularGrid<float>* mSignedLevelSet;
-	MeshObject():SimulationObject(ObjectShape::MESH),mVoxelSize(1.0f),mCenter(),mSignedLevelSet(nullptr){
+	MeshObject():SimulationObject(ObjectShape::MESH),mRadius(1.0f),mCenter(),mSignedLevelSet(nullptr){
 
 	}
 	virtual bool inside(openvdb::Vec3f& pt){
 		BBoxd bbox=mSignedLevelSet->getBoundingBox();
-		Vec3d dims=bbox.max()-bbox.min();
-		float localVoxelSize=dims[0];
-		Vec3d lpt=localVoxelSize*((pt-mCenter)/mVoxelSize+0.5f);
+		float localVoxelSize=mSignedLevelSet->rows();
+		Vec3d lpt=localVoxelSize*((pt-mCenter)/(2*mRadius)+0.5f);
 		if (mSignedLevelSet->interpolateWorld(lpt[0],lpt[1],lpt[2])<0.0f) {
 			return true;
 		} else {
@@ -146,7 +145,7 @@ public:
 		BBoxd bbox=mSignedLevelSet->getBoundingBox();
 		Vec3d dims=bbox.max()-bbox.min();
 		float localVoxelSize=dims[0];
-		Vec3d lpt=localVoxelSize*((pt-mCenter)*mVoxelSize+0.5f);
+		Vec3d lpt=localVoxelSize*((pt-mCenter)*mRadius+0.5f);
 		float val=mSignedLevelSet->interpolateWorld(lpt[0],lpt[1],lpt[2]);
 		if (val>-mThickness&&val<0.0f) {
 			return true;

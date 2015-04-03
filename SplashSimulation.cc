@@ -66,8 +66,8 @@ void SplashSimulation::addFluid(){
 			obj->mSignedLevelSet=mSourceLevelSet.get();
 			obj->mVisible = true;
 			obj->mThickness=3.0*mVoxelSize;
-			obj->mVoxelSize=0.5*mVoxelSize;
-			std::cout<<"Mesh "<<mVoxelSize<<" "<<mSourceLevelSet->voxelSize()<<std::endl;
+			obj->mRadius=0.4f;
+			obj->mCenter=Vec3f(mVoxelSize*dims[0]*0.5f,mVoxelSize*dims[1]-0.2-obj->mRadius,mVoxelSize*dims[2]*0.5f);
 			mSimulationObjects.push_back(std::shared_ptr<SimulationObject>(static_cast<SimulationObject*>(obj)));
 		}
 	}

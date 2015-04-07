@@ -361,7 +361,6 @@ void NearestNeighborOperation::compute(Springl& springl, SpringLevelSet& mGrid,
 				tmpRange.push_back(bestNbr);
 			last = nbrId;
 		}
-
 		sort(tmpRange.begin(), tmpRange.end());
 		for (int nn = 0, nmax = std::min(SpringLevelSet::MAX_NEAREST_NEIGHBORS,
 				(int) tmpRange.size()); nn < nmax; nn++) {

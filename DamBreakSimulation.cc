@@ -48,6 +48,8 @@ void DamBreakSimulation::addFluid(){
 			0.4*mVoxelSize*dims[0],
 			0.4*mVoxelSize*dims[1],
 			0.8*mVoxelSize*dims[2]);
+	obj->mVoxelSize=mVoxelSize;
+
 	addSimulationObject(static_cast<SimulationObject*>(obj));
 	obj=new BoxObject;
 	obj->mType = ObjectType::FLUID;
@@ -57,6 +59,8 @@ void DamBreakSimulation::addFluid(){
 			mVoxelSize*dims[0]- mWallThickness,
 			0.06*mVoxelSize*dims[1],
 			mVoxelSize*dims[2]- mWallThickness);
+	obj->mVoxelSize=mVoxelSize;
+
 	addSimulationObject(static_cast<SimulationObject*>(obj));
 
 }

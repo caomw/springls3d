@@ -111,6 +111,7 @@ void FluidSimulation::placeWalls() {
 	obj->mVisible = false;
 	obj->mMin = Vec3f(0.0, 0.0, 0.0);
 	obj->mMax = Vec3f(mWallThickness, my,mz);
+	obj->mVoxelSize=mVoxelSize;
 	addSimulationObject(static_cast<SimulationObject*>(obj));
 
 	obj=new BoxObject;
@@ -121,7 +122,9 @@ void FluidSimulation::placeWalls() {
 	obj->mVisible = false;
 	obj->mMin = Vec3f(mx - mWallThickness, 0.0, 0.0);
 	obj->mMax = Vec3f(mx,my,mz);
+	obj->mVoxelSize=mVoxelSize;
 	addSimulationObject(static_cast<SimulationObject*>(obj));
+
 	obj=new BoxObject;
 	// Floor Wall
 	obj->mThickness=3*mVoxelSize;
@@ -130,6 +133,7 @@ void FluidSimulation::placeWalls() {
 	obj->mVisible = false;
 	obj->mMin = Vec3f(0.0, 0.0, 0.0);
 	obj->mMax = Vec3f(mx, mWallThickness, mz);
+	obj->mVoxelSize=mVoxelSize;
 	addSimulationObject(static_cast<SimulationObject*>(obj));
 
 	obj=new BoxObject;
@@ -140,6 +144,7 @@ void FluidSimulation::placeWalls() {
 	obj->mVisible = false;
 	obj->mMin = Vec3f(0.0, my - mWallThickness, 0.0);
 	obj->mMax = Vec3f(mx,my,mz);
+	obj->mVoxelSize=mVoxelSize;
 	addSimulationObject(static_cast<SimulationObject*>(obj));
 
 	obj=new BoxObject;
@@ -150,6 +155,7 @@ void FluidSimulation::placeWalls() {
 	obj->mVisible = false;
 	obj->mMin = Vec3f(0.0, 0.0, 0.0);
 	obj->mMax = Vec3f(mx,my, mWallThickness);
+	obj->mVoxelSize=mVoxelSize;
 	addSimulationObject(static_cast<SimulationObject*>(obj));
 
 	obj=new BoxObject;
@@ -160,6 +166,7 @@ void FluidSimulation::placeWalls() {
 	obj->mVisible = false;
 	obj->mMin = Vec3f(0.0, 0.0, mz - mWallThickness);
 	obj->mMax = Vec3f(mx,my,mz);
+	obj->mVoxelSize=mVoxelSize;
 	addSimulationObject(static_cast<SimulationObject*>(obj));
 }
 void FluidSimulation::placeObjects() {
@@ -266,13 +273,11 @@ void FluidSimulation::repositionParticles(vector<int>& indices) {
 		p->mVelocity = u;
 	}
 }
-void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
-		ObjectType type) {
+void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,ObjectType type) {
 	SimulationObject *inside_obj = nullptr;
 	const int MAX_INT = std::numeric_limits<int>::max();
 	const float MAX_ANGLE = 30.0f * M_PI / 180.0f;
 	bool found = false;
-	//std::cout<<"Inside objects "<<mSimulationObjects.size()<<" "<<(int)type<<std::endl;
 	if(type==ObjectType::FLUID){
 		for (std::shared_ptr<SimulationObject>& obj : mFluidObjects) {
 			found=obj->inside(pt);
@@ -291,12 +296,13 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 		}
 	}
 	if (inside_obj) {
+		FluidParticle *p = new FluidParticle;
+
 		Vec3s axis(((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f,
 				((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f,
 				((rand() % MAX_INT) / (MAX_INT - 1.0)) * 2.0f - 1.0f);
 		axis.normalize(1E-6f);
 		Mat3s R = rotation<Mat3s>(axis,MAX_ANGLE * (rand() % MAX_INT) / (MAX_INT - 1.0));
-		FluidParticle *p = new FluidParticle;
 		if (inside_obj->mType == ObjectType::FLUID) {
 			p->mLocation = center + R * (pt - center);
 		} else {
@@ -304,10 +310,8 @@ void FluidSimulation::addParticle(openvdb::Vec3s pt, openvdb::Vec3s center,
 		}
 		p->mVelocity = Vec3f(0.0);
 		p->mNormal = Vec3f(0.0);
-		//p->mThinParticle = 0;
 		p->mDensity = 10.0;
 		p->mObjectType = inside_obj->mType;
-		//p->mVisible = inside_obj->mVisible;
 		p->mMass = 1.0;
 		mParticles.push_back(ParticlePtr(p));
 	}
@@ -401,9 +405,13 @@ bool FluidSimulation::init() {
 // Comput Normal for Walls
 	computeWallNormals();
 	updateParticleVolume();
+
 	//createLevelSet();
+	//WriteToRawFile(mSignedDistanceField,"/home/blake/tmp/particle_signed.xml");
+
 	initLevelSet();
-	//WriteToRawFile(mLevelSet,"/home/blake/tmp/signed.xml");
+	//WriteToRawFile(mLevelSet,"/home/blake/tmp/init_signed.xml");
+
 	mSource.create(mLevelSet);
 	if(!mSpringlTracking){
 		mSource.mConstellation.reset();
@@ -411,17 +419,6 @@ bool FluidSimulation::init() {
 		mAdvect=std::unique_ptr<SpringLevelSetParticleDeformation<FluidSimulation,openvdb::util::NullInterrupter> >(new SpringLevelSetParticleDeformation<FluidSimulation,openvdb::util::NullInterrupter>(mSource,*this,mMotionScheme));
 		mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
 		mAdvect->setResampleEnabled(true);
-		//mAdvect->setConvergenceThreshold(0.0f);
-		//mAdvect->setTrackingIterations(32);
-		/*
-		mTrackingField=std::unique_ptr<FluidTrackingField<float> >(new FluidTrackingField<float>(mSignedDistanceField));
-		mTrack=std::unique_ptr<SpringLevelSetFieldDeformation<FluidTrackingField<float> ,openvdb::util::NullInterrupter> >(new SpringLevelSetFieldDeformation<FluidTrackingField<float> ,openvdb::util::NullInterrupter>(
-				mSource,*mTrackingField,mMotionScheme));
-		mTrack->setResampleEnabled(false);
-		mTrack->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
-		mTrack->setConvergenceThreshold(0.0f);
-		mTrack->setTrackingIterations(16);
-		*/
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
 	#pragma omp for
 		for(int n=0;n<velocities.size();n++){
@@ -570,6 +567,7 @@ void FluidSimulation::advectParticles() {
 				p->mRemoveIndicator = true;
 			}
 		}
+
 	}
 // Reposition If Necessary
 	vector<int> reposition_indices;
@@ -602,7 +600,6 @@ bool FluidSimulation::step() {
 		correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 		updateParticleVolume();
 		createLevelSet();
-		mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
 		mSource.mSignedLevelSet=std::unique_ptr<FloatGrid>(new FloatGrid());
 		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
 		mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
@@ -613,7 +610,6 @@ bool FluidSimulation::step() {
 		stringstream distFile,signedFile,afterFile,beforeFile;
 		updateParticleVolume();
 		createLevelSet();
-		mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
 		mSource.mSignedLevelSet=std::unique_ptr<FloatGrid>(new FloatGrid());
 		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
 		mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
@@ -629,7 +625,6 @@ bool FluidSimulation::step() {
 		correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 		updateParticleVolume();
 		createLevelSet();
-		mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
 		//WriteToRawFile(mSignedDistanceField,MakeString()<<"/home/blake/tmp/signed_after"<<mSimulationIteration<<".xml");
 		mSource.mSignedLevelSet=std::unique_ptr<FloatGrid>(new FloatGrid());
 		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
@@ -905,6 +900,7 @@ void FluidSimulation::createLevelSet() {
 				mLevelSet(i, j, k) = clamp(value / mVoxelSize,-openvdb::LEVEL_SET_HALF_WIDTH,openvdb::LEVEL_SET_HALF_WIDTH);
 			}
 		}END_FOR;
+	mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
 }
 void FluidSimulation::initLevelSet() {
 // Create Density Field
@@ -1169,6 +1165,7 @@ double FluidSimulation::implicit_func( vector<FluidParticle*> &neighbors,openvdb
 			phi = d;
 		}
 	}
+	//std::cout<<"IMPLICIT "<<phi<<" "<<density<<" "<<voxelSize<<std::endl;
 	return phi - density*voxelSize;
 }
 double FluidSimulation::implicit_func( openvdb::Vec3f& p, float density ) {

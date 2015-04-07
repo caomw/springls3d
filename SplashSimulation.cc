@@ -29,7 +29,6 @@ using namespace imagesci::fluid;
 SplashSimulation::SplashSimulation(const std::string& fileName,int gridSize,MotionScheme scheme):FluidSimulation(Coord(
 		gridSize,2*gridSize,gridSize),1.0f/gridSize,scheme),mSourceFileName(fileName),mGridSize(gridSize) {
 }
-
 bool SplashSimulation::init(){
 	bool ret=FluidSimulation::init();
 	mIsMeshDirty=true;
@@ -37,8 +36,6 @@ bool SplashSimulation::init(){
 	return ret;
 }
 void SplashSimulation::addFluid(){
-	//replace with level set for falling object
-
 	Coord dims=mLabel.dimensions();
 	if(mSourceFileName.size()==0){
 		SphereObject* obj=new SphereObject;
@@ -46,6 +43,7 @@ void SplashSimulation::addFluid(){
 		obj->mVisible = true;
 		obj->mRadius=0.075f;
 		obj->mThickness=3.0*mVoxelSize;
+		obj->mVoxelSize=mVoxelSize;
 		obj->mCenter=Vec3f(mVoxelSize*dims[0]*0.5f,mVoxelSize*dims[1]-0.2-obj->mRadius,mVoxelSize*dims[2]*0.5f);
 		addSimulationObject(static_cast<SimulationObject*>(obj));
 	} else {
@@ -72,15 +70,14 @@ void SplashSimulation::addFluid(){
 			addSimulationObject(static_cast<SimulationObject*>(obj));
 		}
 	}
-
 	BoxObject* box=new BoxObject;
 	box->mType = ObjectType::FLUID;
 	box->mVisible = true;
 	box->mThickness=3.0*mVoxelSize;
+	box->mVoxelSize=mVoxelSize;
 	box->mMin = Vec3f(mWallThickness, mWallThickness, mWallThickness);
-	box->mMax = Vec3f(mVoxelSize*dims[0] - mWallThickness,0.15,mVoxelSize*dims[2] - mWallThickness);
+	box->mMax = Vec3f(mVoxelSize*dims[0] - mWallThickness,mVoxelSize*10,mVoxelSize*dims[2] - mWallThickness);
 	addSimulationObject(static_cast<SimulationObject*>(box));
-
 }
 
 void SplashSimulation::cleanup(){

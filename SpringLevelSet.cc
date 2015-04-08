@@ -136,6 +136,36 @@ float Springl::distanceToFaceSqr(const openvdb::Vec3s& pt) {
 				(*this)[3], normal(), &closest);
 	}
 }
+float Springl::signedDistanceToFaceSqr(const openvdb::Vec3s& pt) {
+	Vec3s closest;
+	if (size() == 3) {
+		float d=DistanceToTriangleSqr(pt, (*this)[0], (*this)[1], (*this)[2],
+				&closest);
+		return d*imagesci::Sign((pt-closest).dot(normal()));
+
+	} else {
+		float d=DistanceToQuadSqr(pt, (*this)[0], (*this)[1], (*this)[2],
+				(*this)[3], normal(), &closest);
+		return d*imagesci::Sign((pt-closest).dot(normal()));
+	}
+}
+openvdb::math::BBox<Vec3s> Springl::getBoundingBox(){
+	openvdb::math::BBox<Vec3s> bbox;
+
+	bbox.min()=Vec3s(std::numeric_limits<float>::max());
+	bbox.max()=Vec3s(std::numeric_limits<float>::min());
+
+	for(int n=0;n<size();n++){
+		Vec3s pt=(*this)[n];
+		bbox.min()=openvdb::math::Min(bbox.min(),pt);
+		bbox.max()=openvdb::math::Max(bbox.max(),pt);
+	}
+	return bbox;
+}
+float Springl::signedDistanceToFace(const openvdb::Vec3s& pt) {
+	float d=signedDistanceToFaceSqr(pt);
+	return imagesci::Sign(d)*std::sqrt(abs(d));
+}
 float Springl::distanceToEdgeSqr(const openvdb::Vec3s& pt, int e) {
 	return DistanceToEdgeSqr(pt, (*this)[e], (*this)[(e + 1) % size()]);
 }

@@ -68,8 +68,8 @@ class FluidSimulation :public Simulation{
 		RegularGrid<openvdb::Vec3s> mWallNormal;
 		RegularGrid<openvdb::Vec3s> mDenseMap;
 		RegularGrid<float> mWallWeight;
-		RegularGrid<float> mLevelSet;
-		RegularGrid<float> mSignedDistanceField;
+		RegularGrid<float> mParticleLevelSet;
+		RegularGrid<float> mSignedLevelSet;
 		openvdb::FloatGrid::Ptr mSparseLevelSet;
 		openvdb::Coord mGridSize;
 		openvdb::Vec3f mDomainSize;

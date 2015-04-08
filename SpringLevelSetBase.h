@@ -86,8 +86,11 @@ public:
 	}
 	int size() const;
 	float area() const;
+	openvdb::math::BBox<Vec3s> getBoundingBox();
 	float distanceToFace(const openvdb::Vec3s& pt);
+	float signedDistanceToFace(const openvdb::Vec3s& pt);
 	float distanceToFaceSqr(const openvdb::Vec3s& pt);
+	float signedDistanceToFaceSqr(const openvdb::Vec3s& pt);
 	float distanceToParticle(const openvdb::Vec3s& pt);
 	float distanceToParticleSqr(const openvdb::Vec3s& pt);
 	float distanceToEdgeSqr(const openvdb::Vec3s& pt, int e);

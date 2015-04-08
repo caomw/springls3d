@@ -49,13 +49,13 @@ FluidSimulation::FluidSimulation(const openvdb::Coord& dims, float voxelSize,
 		Simulation("Fluid_Simulation", scheme), mMaxDensity(0.0), mStuckParticleCount(
 				0), mPicFlipBlendWeight(0.95f), mFluidParticleDiameter(0.5f), mVoxelSize(
 				voxelSize), mGridSize(dims), mWallNormal(dims, voxelSize,openvdb::Vec3s(0.0)),
-				mLevelSet(Coord(dims[0] * 2, dims[1] * 2, dims[2] * 2), 0.5f * voxelSize,0.0f),
+				mParticleLevelSet(Coord(dims[0] * 2, dims[1] * 2, dims[2] * 2), 0.5f * voxelSize,0.0f),
 				mDenseMap(Coord(dims[0] * 2, dims[1] * 2, dims[2] * 2), 0.5f * voxelSize,openvdb::Vec3s(0.0f)),
 				mLabel(dims, voxelSize), mLaplacian(dims, voxelSize), mDivergence(dims,
 				voxelSize), mPressure(dims, voxelSize), mVelocity(dims,
 				voxelSize), mVelocityLast(dims, voxelSize), mWallWeight(dims,
 				voxelSize),mSpringlTracking(scheme!=IMPLICIT),
-				mSignedDistanceField(Coord(dims[0] * 2, dims[1] * 2, dims[2] * 2), 0.5f * voxelSize,0.0f),
+				mSignedLevelSet(Coord(dims[0] * 2, dims[1] * 2, dims[2] * 2), 0.5f * voxelSize,0.0f),
 				mDistanceField(dims[0] * 2, dims[1] * 2, dims[2] * 2){
 	mWallThickness = voxelSize;
 	srand(52372143L);
@@ -406,13 +406,13 @@ bool FluidSimulation::init() {
 	computeWallNormals();
 	updateParticleVolume();
 
-	//createLevelSet();
-	//WriteToRawFile(mSignedDistanceField,"/home/blake/tmp/particle_signed.xml");
-
 	initLevelSet();
-	//WriteToRawFile(mLevelSet,"/home/blake/tmp/init_signed.xml");
+	//WriteToRawFile(mParticleLevelSet,"/home/blake/tmp/init_signed.xml");
+	mSource.create(mParticleLevelSet);
+	//createLevelSet();
+	//WriteToRawFile(mSignedLevelSet,"/home/blake/tmp/near_signed.xml");
+	//WriteToRawFile(mParticleLevelSet,"/home/blake/tmp/particle_signed.xml");
 
-	mSource.create(mLevelSet);
 	if(!mSpringlTracking){
 		mSource.mConstellation.reset();
 	} else {
@@ -604,7 +604,7 @@ bool FluidSimulation::step() {
 		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
 		mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
 		mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
-		openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
+		openvdb::tools::copyFromDense(mSignedLevelSet,*mSource.mSignedLevelSet,1E-3f);
 		mSource.updateIsoSurface();
 	} else {
 		stringstream distFile,signedFile,afterFile,beforeFile;
@@ -614,7 +614,7 @@ bool FluidSimulation::step() {
 		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
 		mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
 		mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
-		openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
+		openvdb::tools::copyFromDense(mSignedLevelSet,*mSource.mSignedLevelSet,1E-3f);
 		mSource.updateIsoSurface();
 		mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
 		mSource.clean();
@@ -630,7 +630,7 @@ bool FluidSimulation::step() {
 		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
 		mSource.mSignedLevelSet->setTransform(Transform::createLinearTransform(1.0));
 		mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
-		openvdb::tools::copyFromDense(mSignedDistanceField,*mSource.mSignedLevelSet,1E-3f);
+		openvdb::tools::copyFromDense(mSignedLevelSet,*mSource.mSignedLevelSet,1E-3f);
 		mSource.updateIsoSurface();
 		//WriteToRawFile(mSource.mSignedLevelSet,MakeString()<<"/home/blake/tmp/signed_sparse"<<mSimulationIteration<<".xml");
 		//mSource.mIsoSurface.save(MakeString()<<"/home/blake/tmp/iso"<<mSimulationIteration<<".ply");
@@ -864,7 +864,7 @@ void FluidSimulation::solvePicFlip() {
 
 void FluidSimulation::updateParticleVolume(){
 	//
-	float voxelSize = mLevelSet.voxelSize();
+	float voxelSize = mParticleLevelSet.voxelSize();
 		mSource.mParticleVolume.mParticles.clear();
 		mSource.mParticleVolume.mVelocities.clear();
 		float scale = mVoxelSize / voxelSize;
@@ -878,14 +878,14 @@ void FluidSimulation::updateParticleVolume(){
 				mSource.mParticleVolume.mVelocities.push_back(p->mVelocity);
 			}
 		}
-		Coord dims(mLevelSet.rows(), mLevelSet.cols(), mLevelSet.slices());
+		Coord dims(mParticleLevelSet.rows(), mParticleLevelSet.cols(), mParticleLevelSet.slices());
 		mSource.mParticleVolume.setBoundingBox(BBoxd(Vec3d(0, 0, 0), Vec3d(dims[0], dims[1], dims[2])));
 }
 void FluidSimulation::createLevelSet() {
 // Create Density Field
-	Coord dims(mLevelSet.rows(), mLevelSet.cols(), mLevelSet.slices());
-	float voxelSize = mLevelSet.voxelSize();
-	OPENMP_FOR FOR_EVERY_GRID_CELL_Y(mLevelSet)
+	Coord dims(mParticleLevelSet.rows(), mParticleLevelSet.cols(), mParticleLevelSet.slices());
+	float voxelSize = mParticleLevelSet.voxelSize();
+	OPENMP_FOR FOR_EVERY_GRID_CELL_Y(mParticleLevelSet)
 		{
 			double x = i * voxelSize;
 			double y = j * voxelSize;
@@ -894,33 +894,78 @@ void FluidSimulation::createLevelSet() {
 
 			if (i == 0 || i == dims[0] - 1 || j == 0 || j == dims[1] - 1|| k == 0 || k == dims[2] - 1) {
 				//value = max(value,0.01);
-				mLevelSet(i, j, k) = 0.001;
+				mParticleLevelSet(i, j, k) = openvdb::LEVEL_SET_HALF_WIDTH;
 			} else {
 				double value = implicit_func(p,mFluidParticleDiameter);
-				mLevelSet(i, j, k) = clamp(value / mVoxelSize,-openvdb::LEVEL_SET_HALF_WIDTH,openvdb::LEVEL_SET_HALF_WIDTH);
+				mParticleLevelSet(i, j, k) = clamp(value / mVoxelSize,-openvdb::LEVEL_SET_HALF_WIDTH,openvdb::LEVEL_SET_HALF_WIDTH);
 			}
 		}END_FOR;
-	mDistanceField.solve(mLevelSet,mSignedDistanceField,openvdb::LEVEL_SET_HALF_WIDTH);
+
+	//WriteToRawFile(mParticleLevelSet,"/home/blake/tmp/original_signed.xml");
+	mSignedLevelSet.set(openvdb::LEVEL_SET_HALF_WIDTH);
+	const float R=openvdb::LEVEL_SET_HALF_WIDTH;
+	for(Springl& springl:mSource.mConstellation.springls){
+		openvdb::math::BBox<Vec3s> bbox=springl.getBoundingBox();
+		Vec3s minPt=bbox.min();
+		Vec3s maxPt=bbox.max();
+
+		int minX=max((int)floor(minPt[0]-R),0);
+		int maxX=min((int)ceil(maxPt[0]+R),(int)mSignedLevelSet.rows()-1);
+
+		int minY=max((int)floor(minPt[1]-R),0);
+		int maxY=min((int)ceil(maxPt[1]+R),(int)mSignedLevelSet.cols()-1);
+
+		int minZ=max((int)floor(minPt[2]-R),0);
+		int maxZ=min((int)ceil(maxPt[2]+R),(int)mSignedLevelSet.slices()-1);
+
+		for(int i=minX;i<=maxX;i++){
+			for(int j=minY;j<=maxY;j++){
+				for(int k=minZ;k<=maxZ;k++){
+					float d=springl.signedDistanceToFace(Vec3s(i,j,k));
+					float oldD=mSignedLevelSet(i,j,k);
+					if(abs(d)<abs(oldD)){
+						mSignedLevelSet(i,j,k)=d;
+					}
+				}
+			}
+		}
+	}
+	//WriteToRawFile(mSignedLevelSet,"/home/blake/tmp/near_signed.xml");
+
+	OPENMP_FOR FOR_EVERY_GRID_CELL_Y(mParticleLevelSet){
+		float val=mSignedLevelSet(i,j,k);
+		if((mParticleLevelSet(i, j, k)+mFluidParticleDiameter)*2.0f<abs(val)){
+			mParticleLevelSet(i,j,k)=-2.0f*mFluidParticleDiameter;
+		} else {
+			mParticleLevelSet(i, j, k)=mSignedLevelSet(i,j,k);
+		}
+	}END_FOR;
+
+	//WriteToRawFile(mParticleLevelSet,"/home/blake/tmp/merged_signed.xml");
+
+	mDistanceField.solve(mParticleLevelSet,mSignedLevelSet,openvdb::LEVEL_SET_HALF_WIDTH);
+	//WriteToRawFile(mSignedLevelSet,"/home/blake/tmp/redistant.xml");
+	//std::exit(0);
 }
 void FluidSimulation::initLevelSet() {
 // Create Density Field
-	Coord dims(mLevelSet.rows(), mLevelSet.cols(), mLevelSet.slices());
-	float voxelSize = mLevelSet.voxelSize();
+	Coord dims(mParticleLevelSet.rows(), mParticleLevelSet.cols(), mParticleLevelSet.slices());
+	float voxelSize = mParticleLevelSet.voxelSize();
 
-	OPENMP_FOR FOR_EVERY_GRID_CELL_Y(mLevelSet)
+	OPENMP_FOR FOR_EVERY_GRID_CELL_Y(mParticleLevelSet)
 		{
 			double x = i * voxelSize;
 			double y = j * voxelSize;
 			double z = k * voxelSize;
 			Vec3f p(x, y, z);
 			if (i == 0 || i == dims[0] - 1 || j == 0 || j == dims[1] - 1|| k == 0 || k == dims[2] - 1) {
-				mLevelSet(i, j, k) = 0.001;
+				mParticleLevelSet(i, j, k) = 0.001;
 			} else {
 				float value = 1E30f;
 				for(shared_ptr<SimulationObject>& obj:mFluidObjects){
 					value=std::min(obj->signedDistance(p),value);
 				}
-				mLevelSet(i, j, k) = clamp(value / mVoxelSize,-(float)openvdb::LEVEL_SET_HALF_WIDTH,(float)openvdb::LEVEL_SET_HALF_WIDTH);
+				mParticleLevelSet(i, j, k) = clamp(value / mVoxelSize,-(float)openvdb::LEVEL_SET_HALF_WIDTH,(float)openvdb::LEVEL_SET_HALF_WIDTH);
 			}
 		}END_FOR;
 }

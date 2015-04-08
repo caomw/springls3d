@@ -234,6 +234,13 @@ public:
 			src[n] += dest[n];
 		}
 	}
+	void set(const ValueT out) {
+		size_t N = size();
+		ValueT* src = this->data();
+		OPENMP_FOR for (size_t n = 0; n < N; n++) {
+			src[n] = out;
+		}
+	}
 	void subtract(RegularGrid<ValueT>& out) {
 		ValueT* src = this->data();
 		ValueT* dest = out.data();

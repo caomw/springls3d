@@ -32,7 +32,7 @@ SplashSimulation::SplashSimulation(const std::string& fileName,int gridSize,Moti
 bool SplashSimulation::init(){
 	bool ret=FluidSimulation::init();
 	mIsMeshDirty=true;
-	mSimulationDuration=2.0;
+	mSimulationDuration=4.0;
 	return ret;
 }
 void SplashSimulation::addFluid(){

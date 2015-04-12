@@ -602,8 +602,6 @@ bool FluidSimulation::step() {
 		openvdb::tools::copyFromDense(mSignedLevelSet,*mSource.mSignedLevelSet,1E-3f);
 		mSource.updateIsoSurface();
 	} else {
-		std::cout<<"Cycle "<<mSimulationIteration<<std::endl;
-		stringstream distFile,signedFile,afterFile,beforeFile;
 		createLevelSet();
 		mSource.mSignedLevelSet=std::unique_ptr<FloatGrid>(new FloatGrid());
 		mSource.mSignedLevelSet->setBackground(openvdb::LEVEL_SET_HALF_WIDTH);
@@ -614,10 +612,7 @@ bool FluidSimulation::step() {
 		mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
 		mSource.updateGradient();
 		mSource.evolve();
-
 		mSource.updateIsoSurface();
-		mSource.mIsoSurface.save(MakeString()<<"/home/blake/tmp/iso_before"<<(frameCounter-1)<<".ply");
-
 		mSource.clean();
 
 		mSource.updateUnSignedLevelSet();
@@ -637,13 +632,11 @@ bool FluidSimulation::step() {
 		mSource.mSignedLevelSet->setGridClass(GRID_LEVEL_SET);
 		openvdb::tools::copyFromDense(mSignedLevelSet,*mSource.mSignedLevelSet,1E-3f);
 		mSource.updateIsoSurface();
-		mSource.mIsoSurface.save(MakeString()<<"/home/blake/tmp/iso_after"<<(frameCounter-1)<<".ply");
-//WriteToRawFile(mSource.mSignedLevelSet,MakeString()<<"/home/blake/tmp/signed_sparse"<<mSimulationIteration<<".xml");
+		//mSource.mIsoSurface.save(MakeString()<<"/home/blake/tmp/iso_after"<<(frameCounter-1)<<".ply");
+		//WriteToRawFile(mSource.mSignedLevelSet,MakeString()<<"/home/blake/tmp/signed_sparse"<<mSimulationIteration<<".xml");
 		//mSource.mIsoSurface.save(MakeString()<<"/home/blake/tmp/iso"<<mSimulationIteration<<".ply");
 		//std::exit(0);
 	}
-	//WriteToRawFile(mSource.mSignedLevelSet,"/home/blake/tmp/signed.xml");
-	//WriteToRawFile(mVelocity,"/home/blake/tmp/velocity");
 	mSimulationIteration++;
 	mSimulationTime = mSimulationIteration * mTimeStep;
 	if (mSimulationTime <= mSimulationDuration && mRunning) {

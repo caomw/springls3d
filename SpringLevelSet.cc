@@ -1063,7 +1063,7 @@ int SpringLevelSet::clean() {
 	meanls /= count;
 	bias /= count;
 
-	std::cout << "Clean mean=" << meanls << " bias=" << bias << " [" << minls<< "," << maxls << "] [far:" << removeFarCount << ", small:"<< removeSmallCount << ", aspect:" << removeAspectCount << "]" << std::endl;
+	//std::cout << "Clean mean=" << meanls << " bias=" << bias << " [" << minls<< "," << maxls << "] [far:" << removeFarCount << ", small:"<< removeSmallCount << ", aspect:" << removeAspectCount << "]" << std::endl;
 
 	if (newSpringlCount == N)
 		return 0;

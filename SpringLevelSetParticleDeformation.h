@@ -80,24 +80,7 @@ public:
 	void setResampleEnabled(bool resample) {
 		mResample = resample;
 	}
-	void evolve(){
-		TrackerT mTracker(*mGrid.mSignedLevelSet, mInterrupt);
-		const math::Transform& trans = mGrid.mSignedLevelSet->transform();
-		if (trans.mapType() == math::UniformScaleMap::mapType()) {
-			SpringLevelSetEvolve<UniformScaleMap> evolve(*this, mTracker, time, 0.75, mTrackingIterations,mConvergenceThresold);
-			evolve.process();
-		} else if (trans.mapType()== math::UniformScaleTranslateMap::mapType()) {
-			SpringLevelSetEvolve<UniformScaleTranslateMap> evolve(*this, mTracker, time, 0.75, mTrackingIterations,mConvergenceThresold);
-			evolve.process();
-		} else if (trans.mapType() == math::UnitaryMap::mapType()) {
-			SpringLevelSetEvolve<UnitaryMap> evolve(*this, mTracker, time, 0.75, mTrackingIterations,mConvergenceThresold);
-			evolve.process();
-		} else if (trans.mapType() == math::TranslationMap::mapType()) {
-			SpringLevelSetEvolve<TranslationMap> evolve(*this, mTracker, time, 0.75, mTrackingIterations,mConvergenceThresold);
-			evolve.process();
-		}
 
-	}
 	void advect(double startTime, double endTime) {
 			const math::Transform& trans = mGrid.mSignedLevelSet->transform();
 			if (trans.mapType() == math::UniformScaleMap::mapType()) {
@@ -151,6 +134,11 @@ public:
 			mGrid.updateIsoSurface();
 		}
 	}
+	template<typename MapT> void evolve1(){
+		TrackerT mTracker(*mGrid.mSignedLevelSet, mInterrupt);
+		SpringLevelSetEvolve<MapT> ev(*this, mTracker, 0, 0.75, mTrackingIterations,mConvergenceThresold);
+		ev.process();
+	}
 	template<typename MapT> void advect1(double mStartTime, double mEndTime) {
 		double dt = 0.0;
 		Vec3d vsz = mGrid.transformPtr()->voxelSize();
@@ -182,6 +170,18 @@ public:
 		mGrid.mConstellation.updateVertexNormals(0,0);
 	}
 
+	void evolve(){
+		const math::Transform& trans = mGrid.mSignedLevelSet->transform();
+		if (trans.mapType() == math::UniformScaleMap::mapType()) {
+			evolve1<math::UniformScaleMap>();
+		} else if (trans.mapType()== math::UniformScaleTranslateMap::mapType()) {
+			evolve1<math::UniformScaleTranslateMap>();
+		} else if (trans.mapType() == math::UnitaryMap::mapType()) {
+			evolve1<math::UnitaryMap>();
+		} else if (trans.mapType() == math::TranslationMap::mapType()) {
+			evolve1<math::TranslationMap>();
+		}
+	}
 	template<typename MapT> class SpringLevelSetEvolve {
 	public:
 		SpringLevelSetParticleDeformation& mParent;

@@ -406,8 +406,10 @@ bool FluidSimulation::init() {
 	computeWallNormals();
 	updateParticleVolume();
 
+	std::cout<<"INIT "<<std::endl;
 	initLevelSet();
 	mSource.create(mParticleLevelSet);
+
 
 	if(!mSpringlTracking){
 		mSource.mConstellation.reset();
@@ -415,7 +417,34 @@ bool FluidSimulation::init() {
 		mAdvect=std::unique_ptr<SpringLevelSetParticleDeformation<FluidSimulation,openvdb::util::NullInterrupter> >(new SpringLevelSetParticleDeformation<FluidSimulation,openvdb::util::NullInterrupter>(mSource,*this,mMotionScheme));
 		mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
 		mAdvect->setResampleEnabled(true);
+		mAdvect->setTrackingIterations(16);
+		mAdvect->setConvergenceThreshold(0.01);
+		/*
+		std::cout<<"CREATE "<<std::endl;
+			createLevelSet();
+			mSource.updateGradient();
+			std::cout<<"EVOLVE "<<std::endl;
+			mAdvect->evolve();
+
+			std::cout<<"CLEAN "<<std::endl;
+			mSource.clean();
+
+
+			std::cout<<"UPDATE UNSIGEND "<<std::endl;
+			mSource.updateUnSignedLevelSet();
+
+			std::cout<<"FILL "<<std::endl;
+			int count=mSource.fill();
+
+			mSource.updateUnSignedLevelSet();
+			mSource.updateNearestNeighbors();
+			std::cout<<"RELAX "<<std::endl;
+			//mSource.relax(5);
+			//mSource.fillWithNearestNeighbors();
+			//std::cout<<"DONE UPDATE "<<std::endl;
+	*/
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
+
 	#pragma omp for
 		for(int n=0;n<velocities.size();n++){
 			velocities[n]=Vec3s(0.0);
@@ -611,7 +640,7 @@ bool FluidSimulation::step() {
 
 		mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
 		mSource.updateGradient();
-		mSource.evolve();
+		mAdvect->evolve();
 		mSource.updateIsoSurface();
 		mSource.clean();
 
@@ -623,7 +652,7 @@ bool FluidSimulation::step() {
 		createLevelSet();
 		mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
 		mSource.updateGradient();
-		mSource.evolve();
+		mAdvect->evolve();
 
 		//WriteToRawFile(mSignedDistanceField,MakeString()<<"/home/blake/tmp/signed_after"<<mSimulationIteration<<".xml");
 		mSource.mSignedLevelSet=std::unique_ptr<FloatGrid>(new FloatGrid());

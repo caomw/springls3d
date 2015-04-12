@@ -80,6 +80,24 @@ public:
 	void setResampleEnabled(bool resample) {
 		mResample = resample;
 	}
+	void evolve(){
+		TrackerT mTracker(*mGrid.mSignedLevelSet, mInterrupt);
+		const math::Transform& trans = mGrid.mSignedLevelSet->transform();
+		if (trans.mapType() == math::UniformScaleMap::mapType()) {
+			SpringLevelSetEvolve<UniformScaleMap> evolve(*this, mTracker, time, 0.75, mTrackingIterations,mConvergenceThresold);
+			evolve.process();
+		} else if (trans.mapType()== math::UniformScaleTranslateMap::mapType()) {
+			SpringLevelSetEvolve<UniformScaleTranslateMap> evolve(*this, mTracker, time, 0.75, mTrackingIterations,mConvergenceThresold);
+			evolve.process();
+		} else if (trans.mapType() == math::UnitaryMap::mapType()) {
+			SpringLevelSetEvolve<UnitaryMap> evolve(*this, mTracker, time, 0.75, mTrackingIterations,mConvergenceThresold);
+			evolve.process();
+		} else if (trans.mapType() == math::TranslationMap::mapType()) {
+			SpringLevelSetEvolve<TranslationMap> evolve(*this, mTracker, time, 0.75, mTrackingIterations,mConvergenceThresold);
+			evolve.process();
+		}
+
+	}
 	void advect(double startTime, double endTime) {
 			const math::Transform& trans = mGrid.mSignedLevelSet->transform();
 			if (trans.mapType() == math::UniformScaleMap::mapType()) {

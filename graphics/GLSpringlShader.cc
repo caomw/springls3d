@@ -133,6 +133,8 @@ bool GLSpringlShader::save(const std::string& file){
 }
 void GLSpringlShader::compute(GLFWwindow* win){
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
 	isoImage->begin();
 		glUseProgram(mNormalsAndDepthProgram.GetProgramHandle());
 		glUniform1f(glGetUniformLocation(mNormalsAndDepthProgram.GetProgramHandle(),"MAX_DEPTH"),mCamera->farPlane());
@@ -174,9 +176,11 @@ void GLSpringlShader::compute(GLFWwindow* win){
 		glUniform1f(glGetUniformLocation(mWireframeProgram.GetProgramHandle(),"MAX_DEPTH"),mCamera->farPlane());
 		glUniform1f(glGetUniformLocation(mWireframeProgram.GetProgramHandle(),"MIN_DEPTH"),mCamera->nearPlane());
 		glDisable(GL_BLEND);
+
 		mSpringLS->mConstellation.draw();
 		glUseProgram((GLuint)NULL);
 	wireImage->end();
+	glDisable(GL_CULL_FACE);
 }
 void GLSpringlShader::render(GLFWwindow* win) {
 	int winw,winh;

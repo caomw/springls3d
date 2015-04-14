@@ -26,6 +26,7 @@ uniform sampler2D colormapTexture;
 uniform float maxVelocity;
 uniform float minVelocity;
 uniform float colorMapValue;
+uniform int transparent;
 void main() {
    vec3 normalized_normal = normalize(normal);
    vec4 c=texture2D(matcapTexture,0.5f*normalized_normal.xy+0.5f);
@@ -34,5 +35,6 @@ void main() {
       vec4 colormap=texture2D(colormapTexture,vec2(((colorMapValue<0)?1.0-hue:hue),abs(colorMapValue)));
       c=mix(c,colormap,0.5);//*vec4(hue,(1.0f-hue),0.0,1.0);
     }
+    c.w=(transparent>0)?dot(normalized_normal.xy,normalized_normal.xy):1.0;
     gl_FragColor=c;
  }

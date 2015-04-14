@@ -356,12 +356,16 @@ SimulationVisualizer::render()
 			if(mShowIsoSurface){
 				mIsoSurfaceShader.begin();
 					mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mIsoSurfaceShader);
+					glUniform1f(glGetUniformLocation(mIsoSurfaceShader.GetProgramHandle(),"minVelocity"),0);
+					glUniform1f(glGetUniformLocation(mIsoSurfaceShader.GetProgramHandle(),"maxVelocity"),0);
+					glUniform1i(glGetUniformLocation(mIsoSurfaceShader.GetProgramHandle(),"transparent"),(mShowParticles)?1:0);
 					mSimulation->getSource().mIsoSurface.draw();
 				mIsoSurfaceShader.end();
 			}
 			if(mShowSpringls){
 				mSpringlsShader.begin();
 					mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mSpringlsShader);
+					glUniform1i(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"transparent"),0);
 					glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"minVelocity"),mSimulation->getSource().mParticleVolume.mMinVelocityMagnitude);
 					glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"maxVelocity"),mSimulation->getSource().mParticleVolume.mMaxVelocityMagnitude);
 					mSimulation->getSource().mConstellation.draw();

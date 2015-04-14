@@ -405,12 +405,8 @@ bool FluidSimulation::init() {
 // Comput Normal for Walls
 	computeWallNormals();
 	updateParticleVolume();
-
-	std::cout<<"INIT "<<std::endl;
 	initLevelSet();
 	mSource.create(mParticleLevelSet);
-
-
 	if(!mSpringlTracking){
 		mSource.mConstellation.reset();
 	} else {
@@ -418,33 +414,8 @@ bool FluidSimulation::init() {
 		mAdvect->setTemporalScheme(imagesci::TemporalIntegrationScheme::RK1);
 		mAdvect->setResampleEnabled(true);
 		mAdvect->setTrackingIterations(16);
-		mAdvect->setConvergenceThreshold(0.01);
-		/*
-		std::cout<<"CREATE "<<std::endl;
-			createLevelSet();
-			mSource.updateGradient();
-			std::cout<<"EVOLVE "<<std::endl;
-			mAdvect->evolve();
-
-			std::cout<<"CLEAN "<<std::endl;
-			mSource.clean();
-
-
-			std::cout<<"UPDATE UNSIGEND "<<std::endl;
-			mSource.updateUnSignedLevelSet();
-
-			std::cout<<"FILL "<<std::endl;
-			int count=mSource.fill();
-
-			mSource.updateUnSignedLevelSet();
-			mSource.updateNearestNeighbors();
-			std::cout<<"RELAX "<<std::endl;
-			//mSource.relax(5);
-			//mSource.fillWithNearestNeighbors();
-			//std::cout<<"DONE UPDATE "<<std::endl;
-	*/
+		mAdvect->setConvergenceThreshold(1E-6f);
 		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
-
 	#pragma omp for
 		for(int n=0;n<velocities.size();n++){
 			velocities[n]=Vec3s(0.0);

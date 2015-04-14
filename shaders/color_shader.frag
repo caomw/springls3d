@@ -19,9 +19,16 @@
  * THE SOFTWARE.
  */
 #version 330
-in vec3 normal;
-in vec3 pos_eye;
+in float mag;
+uniform sampler2D colormapTexture;
+uniform float maxVelocity;
+uniform float minVelocity;
+uniform float colorMapValue;
 void main() {
-   	vec3 normalized_normal = normalize(normal);
-    gl_FragColor = vec4(normalized_normal.xyz,pos_eye.z);
+   if(maxVelocity>0.0&&maxVelocity-minVelocity>1E-6f){
+    	float hue=clamp(mag,0.0,1.0);
+    	gl_FragColor=texture2D(colormapTexture,vec2(((colorMapValue<0)?1.0-hue:hue),abs(colorMapValue)));
+    } else {
+    	gl_FragColor=vec4(1.0,1.0,1.0,1.0);
+    }
  }

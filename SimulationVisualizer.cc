@@ -110,7 +110,7 @@ SimulationVisualizer::SimulationVisualizer()
 	, mSimulation(NULL)
 	, mShowParticles(false)
 	, mShowIsoSurface(true)
-	, mShowSpringls(false)
+	, mShowSpringls(true)
 	, mOutputDirectory("./")
 {
 }
@@ -164,7 +164,6 @@ bool SimulationVisualizer::run(int width,int height){
         return false;
     }
     GLint major,minor,rev;
-
     glfwSetWindowTitle(mWin,"Simulation Visualizer");
     glfwMakeContextCurrent(mWin);
     glfwSwapBuffers(mWin);
@@ -178,10 +177,8 @@ bool SimulationVisualizer::run(int width,int height){
 
     mMiniCamera->loadConfig();
     mCamera->loadConfig();
-    std::list<std::string> attrib;
-	attrib.push_back("vp");
-	attrib.push_back("vn");
-	mIsoSurfaceShader.Init("./matcap/JG_Silver.png");
+
+ 	mIsoSurfaceShader.Init("./matcap/JG_Silver.png");
 	mSpringlsShader.Init("./matcap/JG_Silver.png");
 	mParticleShader.Init();
 	int colormap=8;
@@ -192,8 +189,10 @@ bool SimulationVisualizer::run(int width,int height){
 	args.push_back("uv");
 	int mainW=1200;
 
-	mOverlayShader=std::unique_ptr<GLSpringlShader>(new GLSpringlShader(0,0,width,height));
-	mOverlayShader->setMesh(mCamera.get(),&mSimulation->getSource(),"./matcap/JG_Red.png","./matcap/JG_Silver.png");
+ 	mOverlayShader=std::unique_ptr<GLSpringlShader>(new GLSpringlShader(0,0,width,height));
+	mOverlayShader->setMesh(mCamera.get(),&mSimulation->getSource(),"./matcap/JG_Silver.png","./matcap/JG_Silver.png");
+	mOverlayShader->setColorMapIndex(colormap,true);
+
 	mOverlayShader->updateGL();
 
 	mImageShader.Initialize(ReadTextFile("shaders/image_shader.vert"),ReadTextFile("shaders/image_shader.frag"),"",args);
@@ -210,7 +209,6 @@ bool SimulationVisualizer::run(int width,int height){
 	mMiniViewShader.Initialize(ReadTextFile("shaders/silhouette_shader.vert"),ReadTextFile("shaders/silhouette_shader.frag"),"",args);
 	mMiniViewTexture->setShader(&mMiniViewShader);
 	mMiniViewTexture->updateGL();
-
 	std::vector<RGBA> imgBuffer;
 	int imgW,imgH;
     glfwSetKeyCallback(mWin,keyCB);
@@ -317,7 +315,6 @@ SimulationVisualizer::render()
     miniPose.postTranslate(-minPt);
 	miniPose.postScale(Vec3s(scale,scale,scale));
 	miniPose.postTranslate(rminPt);
-
 	int width,height;
 	glfwGetWindowSize(mWin,&width, &height);
 	glViewport(0,0,width,height);
@@ -338,36 +335,43 @@ SimulationVisualizer::render()
     mMiniCamera->setPose(miniPose.transpose());
     glEnable(GL_DEPTH_TEST);
 
-
     if(hasParticles){
-		mParticleTexture->begin();
+		if(mShowIsoSurface&&mShowSpringls){
+			mOverlayShader->compute(mWin);
+			glViewport(0,0,width,height);
+			glDisable(GL_DEPTH_TEST);
+			mOverlayShader->render(mWin);
+		} else {
+			mParticleTexture->begin();
+			if(mShowParticles){
+				mParticleShader.begin();
+					mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mParticleShader);
+					glUniform1f(glGetUniformLocation(mParticleShader.GetProgramHandle(),"minVelocity"),mSimulation->getSource().mParticleVolume.mMinVelocityMagnitude);
+					glUniform1f(glGetUniformLocation(mParticleShader.GetProgramHandle(),"maxVelocity"),mSimulation->getSource().mParticleVolume.mMaxVelocityMagnitude);
+					//std::cout<<"MAX PARTICLE VELOCITY "<<mSimulation->getSource().mParticleVolume.mMinVelocityMagnitude<<" "<< mSimulation->getSource().mParticleVolume.mMaxVelocityMagnitude<<std::endl;
 
-		if(mShowParticles){
-			mParticleShader.begin();
-				mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mParticleShader);
-				glUniform1f(glGetUniformLocation(mParticleShader.GetProgramHandle(),"minVelocity"),mSimulation->getSource().mParticleVolume.mMinVelocityMagnitude);
-				glUniform1f(glGetUniformLocation(mParticleShader.GetProgramHandle(),"maxVelocity"),mSimulation->getSource().mParticleVolume.mMaxVelocityMagnitude);
-				//std::cout<<"MAX PARTICLE VELOCITY "<<mSimulation->getSource().mParticleVolume.mMinVelocityMagnitude<<" "<< mSimulation->getSource().mParticleVolume.mMaxVelocityMagnitude<<std::endl;
-
-				mSimulation->getSource().mParticleVolume.draw();
-			mParticleShader.end();
+					mSimulation->getSource().mParticleVolume.draw();
+				mParticleShader.end();
+			}
+			if(mShowIsoSurface){
+				mIsoSurfaceShader.begin();
+					mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mIsoSurfaceShader);
+					mSimulation->getSource().mIsoSurface.draw();
+				mIsoSurfaceShader.end();
+			}
+			if(mShowSpringls){
+				mSpringlsShader.begin();
+					mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mSpringlsShader);
+					glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"minVelocity"),mSimulation->getSource().mParticleVolume.mMinVelocityMagnitude);
+					glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"maxVelocity"),mSimulation->getSource().mParticleVolume.mMaxVelocityMagnitude);
+					mSimulation->getSource().mConstellation.draw();
+				mSpringlsShader.end();
+			}
+			mParticleTexture->end();
+			glViewport(0,0,width,height);
+			glDisable(GL_DEPTH_TEST);
+			mParticleTexture->render(mWin);
 		}
-		if(mShowIsoSurface){
-			mIsoSurfaceShader.begin();
-				mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mIsoSurfaceShader);
-				mSimulation->getSource().mIsoSurface.draw();
-			mIsoSurfaceShader.end();
-		}
-		if(mShowSpringls){
-			//std::cout<<"MAX SPRINGL VELOCITY "<<mSimulation->getSource().mConstellation.mMinVelocityMagnitude<<" "<< mSimulation->getSource().mConstellation.mMaxVelocityMagnitude<<std::endl;
-			mSpringlsShader.begin();
-				mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mSpringlsShader);
-				glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"minVelocity"),mSimulation->getSource().mParticleVolume.mMinVelocityMagnitude);
-				glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"maxVelocity"),mSimulation->getSource().mParticleVolume.mMaxVelocityMagnitude);
-				mSimulation->getSource().mConstellation.draw();
-			mSpringlsShader.end();
-		}
-		mParticleTexture->end();
     } else {
 		mMiniViewTexture->begin();
 			mIsoSurfaceShader.begin();
@@ -376,17 +380,11 @@ SimulationVisualizer::render()
 			mIsoSurfaceShader.end();
 		mMiniViewTexture->end();
 		mOverlayShader->compute(mWin);
-    }
-	glViewport(0,0,width,height);
-	glDisable(GL_DEPTH_TEST);
-
-
-	if(hasParticles){
-		mParticleTexture->render(mWin);
-	} else {
+		glViewport(0,0,width,height);
+		glDisable(GL_DEPTH_TEST);
 		mOverlayShader->render(mWin);
 		mMiniViewTexture->render(mWin);
-	}
+    }
 	/*
 	if(isRunning()){
 		std::stringstream ostr1,ostr2,ostr3;

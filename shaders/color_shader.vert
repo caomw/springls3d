@@ -19,9 +19,16 @@
  * THE SOFTWARE.
  */
 #version 330
-in vec3 normal;
-in vec3 pos_eye;
-void main() {
-   	vec3 normalized_normal = normalize(normal);
-    gl_FragColor = vec4(normalized_normal.xyz,pos_eye.z);
- }
+in vec3 vp; 
+in vec3 vn; 
+in vec3 vel;
+uniform mat4 P, V, M; 
+out float mag;
+uniform float maxVelocity;
+uniform float minVelocity;
+void main () {
+  mag =(length(vel)-minVelocity)/max(1E-10,maxVelocity-minVelocity);
+  vec4 pos = V * M * vec4 (vp, 1.0);
+  gl_Position = P * pos; 
+}
+

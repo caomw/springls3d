@@ -38,26 +38,35 @@ private:
 	GLShader mNormalsAndDepthProgram;
 	GLShader mWireframeProgram;
 	GLShader mMixerProgram;
+	GLShader mColorProgram;
 
 	std::unique_ptr<GLFrameBuffer> springlImage;
 	std::unique_ptr<GLFrameBuffer> isoImage;
 	std::unique_ptr<GLFrameBuffer> wireImage;
+	std::unique_ptr<GLFrameBuffer> colorImage;
 	std::unique_ptr<GLImage> renderImage;
 
 	unsigned int mMatCapId1;
 	unsigned int mMatCapId2;
+	unsigned int mColormapId;
+
 	Camera* mCamera;
 	SpringLevelSet* mSpringLS;
 	std::vector<openvdb::Vec4f> mData;
 	std::string mSpringlMatcap;
 	std::string mIsoMatcap;
+	std::string mColorMap;
+	float colorMapValue;
 public:
 	GLSpringlShader(int x,int y,int w,int h);
-	void setMesh(Camera* camera,SpringLevelSet* mesh,const std::string& springlMatcap,const std::string& isoMatcap);
+	void setMesh(Camera* camera,SpringLevelSet* mesh,const std::string& springlMatcap,const std::string& isoMatcap,const std::string& mColormap="./matcap/colormaps.png");
 	void updateGL();
 	void render(GLFWwindow* win);
 	void compute(GLFWwindow* win);
-
+	void setColorMapIndex(int i,bool flip){
+		colorMapValue=(i+0.5f)/12.0f;
+		if(flip)colorMapValue=-colorMapValue;
+	}
 	bool save(const std::string& file);
 	virtual ~GLSpringlShader();
 };

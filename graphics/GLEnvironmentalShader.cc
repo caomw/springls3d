@@ -40,11 +40,12 @@ bool GLEnvironmentalShader::Init(const std::string& matcapFile,const std::string
 		glGenTextures(1, &mTextureId);
 		glBindTexture( GL_TEXTURE_2D, mTextureId);
 		glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, iW, iH, 0, GL_RGBA,GL_UNSIGNED_BYTE, &tmp1[0]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glBindTexture( GL_TEXTURE_2D, 0);
+		if(glGetError()!=GL_NO_ERROR)throw Exception("GL Error loading matcap.");
 	} else {
 		std::cerr<<"Could not read "<<matcapFile<<std::endl;
 		return false;
@@ -59,6 +60,7 @@ bool GLEnvironmentalShader::Init(const std::string& matcapFile,const std::string
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glBindTexture( GL_TEXTURE_2D, 0);
+		if(glGetError()!=GL_NO_ERROR)throw Exception("GL Error loading color map.");
 	} else {
 		std::cerr<<"Could not read "<<colormapFile<<std::endl;
 		return false;

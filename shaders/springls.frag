@@ -22,6 +22,7 @@
 uniform sampler2D isoTexture;
 uniform sampler2D springlsTexture;
 uniform sampler2D wireTexture;
+uniform sampler2D colorTexture;
 uniform sampler2D matcapTexture1;
 uniform sampler2D matcapTexture2;
 
@@ -34,7 +35,7 @@ uniform float SCALE;
 float DISTANCE_TOL=0.75f*SCALE;
 void main(void ){
 	vec2 uv=texture_coordinates;
-	vec4 spgcolor,wirecolor,isocolor;
+	vec4 spgcolor,wirecolor,isocolor,surfcolor;
 	vec4 accumColor=vec4(0.0,0.0,0.0,0.0);
 	float isoz,spgz,wirz;
 	vec2 shift;
@@ -50,6 +51,7 @@ void main(void ){
 			isocolor=texture2D(isoTexture,uv+shift);
 			spgcolor=texture2D(springlsTexture,uv+shift);
 			wirecolor=texture2D(wireTexture,uv+shift);
+			surfcolor=texture2D(colorTexture,uv+shift);
 			
 			isoz = isocolor.w;
 			spgz = spgcolor.w;
@@ -61,11 +63,10 @@ void main(void ){
 				wirz = -(MAX_DEPTH-MIN_DEPTH)*wirz-MIN_DEPTH;
 				
 				if(spgcolor.w>0.0f&&abs(isoz-spgz)<DISTANCE_TOL){
-					//accumColor+=w*texture2D(matcapTexture2,0.5f*isocolor.xy+0.5f);
 					if(dot(wirecolor.xyz,wirecolor.xyz)>0.0&&wirecolor.w>0.0f&&abs(isoz-wirz)<DISTANCE_TOL){
-						accumColor+=w*texture2D(matcapTexture2,0.5f*wirecolor.xy+0.5f);	
+						accumColor+=w*mix(surfcolor,texture2D(matcapTexture2,0.5f*wirecolor.xy+0.5f),0.5);	
 					} else {
-						accumColor+=w*texture2D(matcapTexture2,0.5f*isocolor.xy+0.5f);
+						accumColor+=w*mix(surfcolor,texture2D(matcapTexture2,0.5f*isocolor.xy+0.5f),0.5);
 					}
 					
 				} else {
@@ -73,7 +74,7 @@ void main(void ){
 					accumColor+=w*texture2D(matcapTexture1,0.5f*isocolor.xy+0.5f);
 				}
 			} else {
-				accumColor+=(w/255.0)*mix(vec4(125,144,164,255),vec4(26,28,30,255),uv.y+shift.y);
+				accumColor+=(w/255.0)*mix(vec4(230,230,230,255),vec4(30,30,30,255),uv.y+shift.y);
 			}
 			wsum+=w;
 		}

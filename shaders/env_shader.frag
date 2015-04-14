@@ -33,8 +33,12 @@ void main() {
    if(maxVelocity>0.0&&maxVelocity-minVelocity>1E-6f){
       float hue=clamp(mag,0.0,1.0);
       vec4 colormap=texture2D(colormapTexture,vec2(((colorMapValue<0)?1.0-hue:hue),abs(colorMapValue)));
-      c=mix(c,colormap,0.5);//*vec4(hue,(1.0f-hue),0.0,1.0);
+      c=mix(c,colormap,0.5);
     }
-    c.w=(transparent>0)?dot(normalized_normal.xy,normalized_normal.xy):1.0;
+    if(transparent>0){
+    	c.w=dot(normalized_normal.xy,normalized_normal.xy);
+    } else {
+    	c.w=1.0;
+    }
     gl_FragColor=c;
  }

@@ -36,9 +36,11 @@ void main() {
       c=mix(c,colormap,0.5);
     }
     if(transparent>0){
-    	c.w=dot(normalized_normal.xy,normalized_normal.xy);
+    	float w=dot(normalized_normal.xy,normalized_normal.xy);
+    	c.w=w;
+    	gl_FragColor=c;
     } else {
     	c.w=1.0;
+	    gl_FragColor=c;
     }
-    gl_FragColor=c;
  }

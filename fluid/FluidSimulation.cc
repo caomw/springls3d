@@ -599,11 +599,13 @@ bool FluidSimulation::step() {
 		createLevelSet();
 		mSource.updateIsoSurface();
 	} else {
+		/*
 		createLevelSet();
 		mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
 		mSource.updateGradient();
 		mAdvect->evolve();
 		mSource.updateIsoSurface();
+		*/
 		mSource.clean();
 		mSource.updateUnSignedLevelSet();
 		int count=mSource.fill();

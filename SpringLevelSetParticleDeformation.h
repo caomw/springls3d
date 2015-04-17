@@ -66,6 +66,7 @@ public:
 			mSignChanges(0), mMotionScheme(scheme), mGrid(grid), mInterrupt(interrupt), mTemporalScheme(
 					imagesci::TemporalIntegrationScheme::RK4b), mResample(true) {
 		mGrid.mConstellation.mParticleVelocity.resize(mGrid.mConstellation.mParticles.size(),Vec3s(0.0));
+		mGrid.mConstellation.mVertexVelocity.resize(mGrid.mConstellation.mVertexes.size(),Vec3s(0.0));
 		mGrid.mConstellation.mParticleLabel.resize(mGrid.mConstellation.mParticles.size(),0);
 	}
 	/// @return the temporal integration scheme

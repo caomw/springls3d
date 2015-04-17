@@ -262,6 +262,7 @@ public:
 struct plyVertex {
 	float x[3];             // the usual 3-space position of a vertex
 	float n[3];
+	float vel[3];
 	unsigned char red;
 	unsigned char green;
 	unsigned char blue;
@@ -273,6 +274,9 @@ struct plyVertex {
 		n[0] = 0;
 		n[1] = 0;
 		n[2] = 0;
+		vel[0]=0;
+		vel[1]=0;
+		vel[2]=0;
 		red = 0;
 		green = 0;
 		blue = 0;

@@ -188,7 +188,7 @@ void FluidSimulation::operator()(Springl& springl,double time,double dt){
 	Transform::Ptr trans=mSource.transformPtr();
 	Vec3d v = Vec3d(springl.particle());
 	Vec3d pt = trans->indexToWorld(v);
-	Vec3s vel=dt*springl.velocity();
+	Vec3s vel=dt*springl.particleVelocity();
 	Vec3d npt=pt+vel;
 	double re = 1.5 * mFluidParticleDiameter * mVoxelSize;
 	double r = mWallThickness;
@@ -209,8 +209,11 @@ void FluidSimulation::operator()(Springl& springl,double time,double dt){
 					normal = (npt- np->mLocation)/ dist;
 				}
 				npt += (re - dist) * normal;
-				float dot = springl.velocity().dot(normal);
-				springl.velocity()-= dot * normal;
+				float dot = springl.particleVelocity().dot(normal);
+				springl.particleVelocity()-= dot * normal;
+				for(int n=0;n<springl.size();n++){
+					springl.vertexVelocity(n)-=dot*normal;
+				}
 			}
 		}
 	}
@@ -417,11 +420,7 @@ bool FluidSimulation::init() {
 		mAdvect->setResampleEnabled(true);
 		mAdvect->setTrackingIterations(16);
 		mAdvect->setConvergenceThreshold(1E-6f);
-		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
-	#pragma omp for
-		for(int n=0;n<velocities.size();n++){
-			velocities[n]=Vec3s(0.0);
-		}
+
 	}
 	return true;
 }
@@ -466,10 +465,16 @@ void FluidSimulation::addExternalForce() {
 	}
 	if(mSpringlTracking){
 		//Add velocity to surface particles
-		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
+		std::vector<Vec3s>& particleVelocities=mSource.mConstellation.mParticleVelocity;
+		std::vector<Vec3s>& vertexVelocities=mSource.mConstellation.mVertexVelocity;
+
 #pragma omp for
-		for(int n=0;n<velocities.size();n++){
-			velocities[n]+=Vec3s(0.0,velocity,0.0);
+		for(int n=0;n<particleVelocities.size();n++){
+			particleVelocities[n]+=Vec3s(0.0,velocity,0.0);
+		}
+#pragma omp for
+		for(int n=0;n<vertexVelocities.size();n++){
+			vertexVelocities[n]+=Vec3s(0.0,velocity,0.0);
 		}
 	}
 }
@@ -526,17 +531,14 @@ void FluidSimulation::advectParticles() {
 	}
 	*/
 	if(mSpringlTracking){
-		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
-		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
-		std::vector<Vec3s>& springls=mSource.mConstellation.mVertexes;
 		float invScale=mTimeStep/(0.5f*mVoxelSize);
+		int N=mSource.mConstellation.springls.size();
 #pragma omp for
-		for(int n=0;n<velocities.size();n++){
-			Vec3f v=invScale*velocities[n];
-			positions[n]+=v;
-			size_t offset=n*4;
-			for(int i=0;i<4;i++){
-				springls[offset++]+=v;
+		for(int n=0;n<N;n++){
+			Springl& springl=mSource.mConstellation.springls[n];
+			springl.particle()+=invScale*springl.particleVelocity();
+			for(int i=0;i<springl.size();i++){
+				springl[i]+=invScale*springl.vertexVelocity(i);
 			}
 		}
 	}
@@ -599,19 +601,15 @@ bool FluidSimulation::step() {
 		createLevelSet();
 		mSource.updateIsoSurface();
 	} else {
-		/*
-		createLevelSet();
-		mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
-		mSource.updateGradient();
-		mAdvect->evolve();
-		mSource.updateIsoSurface();
-		*/
 		mSource.clean();
 		mSource.updateUnSignedLevelSet();
 		int count=mSource.fill();
+
 		mSource.fillWithVelocityField(mVelocity,0.5f*mVoxelSize);
 		mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
+
 		advectParticles();
+
 		correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 		createLevelSet();
 		mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
@@ -837,14 +835,20 @@ void FluidSimulation::solvePicFlip() {
 		p->mVelocity = (1.0 - mPicFlipBlendWeight) *currentVelocity  + mPicFlipBlendWeight * velocity;
 	}
 	if(mSpringlTracking){
-		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
-		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
+		int N=mSource.mConstellation.getNumSpringls();
 #pragma omp for
-		for(int n=0;n<velocities.size();n++){
-			Vec3s pt=0.5f*mVoxelSize*positions[n];
+		for(int i=0;i<N;i++){
+			Springl& springl=mSource.mConstellation.springls[i];
+			Vec3s pt=0.5f*mVoxelSize*springl.particle();
 			openvdb::Vec3s currentVelocity=mVelocity.maxInterpolate(pt,0.5f*mVoxelSize);
-			openvdb::Vec3s velocity=velocities[n]+currentVelocity-mVelocityLast.maxInterpolate(pt,0.5f*mVoxelSize);
-			velocities[n] = (1.0 - mPicFlipBlendWeight) *currentVelocity  + mPicFlipBlendWeight * velocity;
+			openvdb::Vec3s velocity=springl.particleVelocity()+currentVelocity-mVelocityLast.maxInterpolate(pt,0.5f*mVoxelSize);
+			springl.particleVelocity() = (1.0 - mPicFlipBlendWeight) *currentVelocity  + mPicFlipBlendWeight * velocity;
+			for(int n=0;n<springl.size();n++){
+				pt=0.5f*mVoxelSize*springl[n];
+				openvdb::Vec3s currentVelocity=mVelocity.maxInterpolate(pt,0.5f*mVoxelSize);
+				openvdb::Vec3s velocity=springl.vertexVelocity(n)+currentVelocity-mVelocityLast.maxInterpolate(pt,0.5f*mVoxelSize);
+				springl.vertexVelocity(n) = (1.0 - mPicFlipBlendWeight) *currentVelocity  + mPicFlipBlendWeight * velocity;
+			}
 		}
 	}
 }
@@ -1110,15 +1114,15 @@ void FluidSimulation::correctParticles(std::vector<ParticlePtr>& particles, floa
 	}
 
 	if(mSpringlTracking){
-		std::vector<Vec3s>& positions=mSource.mConstellation.mParticles;
-		std::vector<Vec3s>& velocities=mSource.mConstellation.mParticleVelocity;
+		int N=mSource.mConstellation.springls.size();
 		#pragma omp for
-		for(int n=0;n<positions.size();n++){
+		for(int n=0;n<N;n++){
+			Springl& springl=mSource.mConstellation.springls[n];
 			//velocities[n]=mVelocity.interpolate(0.5f*mVoxelSize*positions[n]);
 			// Variables for Neighboring Particles
 			float wsum = 0.0;
 			Vec3s u(0.0f);
-			Vec3s pt=positions[n];
+			Vec3s pt=springl.particle();
 			std::vector<FluidParticle*> neighbors = mParticleLocator->getNeigboringCellParticles((int)(0.5f*pt[0]),(int)(0.5f*pt[1]),(int)(0.5f*pt[2]),1,1,1);
 			pt*=0.5f*mVoxelSize;
 			for(FluidParticle *np:neighbors) {
@@ -1130,7 +1134,24 @@ void FluidSimulation::correctParticles(std::vector<ParticlePtr>& particles, floa
 			}
 			if(wsum>0.0f) {
 				u /= wsum;
-				velocities[n]=u;
+				springl.particleVelocity()=u;
+			}
+			for(int i=0;i<springl.size();i++){
+				pt=springl[i];
+				pt*=0.5f*mVoxelSize;
+				u=Vec3s(0.0f);
+				wsum=0.0f;
+				for(FluidParticle *np:neighbors) {
+					if( np->mObjectType == ObjectType::FLUID ) {
+						float w = np->mMass * sharpKernel(distanceSquared(pt,np->mLocation),mFluidParticleDiameter * mVoxelSize);
+						u += w * np->mVelocity;
+						wsum += w;
+					}
+				}
+				if(wsum>0.0f) {
+					u /= wsum;
+					springl.vertexVelocity(i)=u;
+				}
 			}
 		}
 	}

@@ -37,6 +37,9 @@ PlyProperty MeshVertProps[] = { // property information for a vertex
 		{ "nx", Float32, Float32, static_cast<int>(offsetof(plyVertex, n)), 0, 0,0, 0 },
 		{ "ny", Float32, Float32, static_cast<int>(offsetof(plyVertex, n) + sizeof(float)), 0, 0,0, 0 },
 		{ "nz", Float32, Float32, static_cast<int>(offsetof(plyVertex, n) + sizeof(float)+ sizeof(float)), 0, 0, 0, 0 },
+		{ "vx", Float32, Float32, static_cast<int>(offsetof(plyVertex, vel)), 0, 0,0, 0 },
+		{ "vy", Float32, Float32, static_cast<int>(offsetof(plyVertex, vel) + sizeof(float)), 0, 0,0, 0 },
+		{ "vz", Float32, Float32, static_cast<int>(offsetof(plyVertex, vel) + sizeof(float)+ sizeof(float)), 0, 0, 0, 0 },
 		{ "red", Uint8, Uint8, static_cast<int>(offsetof(plyVertex, red)), 0, 0, 0, 0 },
 		{"green", Uint8, Uint8, static_cast<int>(offsetof(plyVertex,green)), 0, 0, 0, 0 },
 		{ "blue", Uint8, Uint8,static_cast<int>(offsetof(plyVertex, blue)), 0, 0, 0, 0 },
@@ -114,11 +117,15 @@ bool Mesh::save(const std::string& f) {
 		ply_describe_property(ply, "vertex", &MeshVertProps[4]);
 		ply_describe_property(ply, "vertex", &MeshVertProps[5]);
 	}
-
-	if (mColors.size() > 0) {
+	if (mVertexVelocity.size() > 0) {
 		ply_describe_property(ply, "vertex", &MeshVertProps[6]);
 		ply_describe_property(ply, "vertex", &MeshVertProps[7]);
 		ply_describe_property(ply, "vertex", &MeshVertProps[8]);
+	}
+	if (mColors.size() > 0) {
+		ply_describe_property(ply, "vertex", &MeshVertProps[9]);
+		ply_describe_property(ply, "vertex", &MeshVertProps[10]);
+		ply_describe_property(ply, "vertex", &MeshVertProps[11]);
 	}
 	element_count_ply(ply, "face", numPolys);
 
@@ -156,6 +163,12 @@ bool Mesh::save(const std::string& f) {
 			vert.n[0]=n[0];
 			vert.n[1]=n[1];
 			vert.n[2]=n[2];
+		}
+		if(mVertexVelocity.size()>0){
+			Vec3s vel=mVertexVelocity[i];
+			vert.vel[0]=vel[0];
+			vert.vel[1]=vel[1];
+			vert.vel[2]=vel[2];
 		}
 		if (pointColors.size() > 0) {
 			idx = 3 * i;
@@ -785,6 +798,31 @@ void Mesh::updateGL() {
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
+	if (mVertexVelocity.size() > 0) {
+			if (glIsBuffer(mGL.mVelocityBuffer) == GL_TRUE)
+				glDeleteBuffers(1, &mGL.mVelocityBuffer);
+			glGenBuffers(1, &mGL.mVelocityBuffer);
+			glBindBuffer(GL_ARRAY_BUFFER, mGL.mVelocityBuffer);
+			if (glIsBuffer(mGL.mVelocityBuffer) == GL_FALSE)
+				throw Exception("Error: Unable to create velocity buffer");
+			mMaxVelocityMagnitude=0.0f;
+			mMinVelocityMagnitude=std::numeric_limits<float>::min();
+			for(Vec3s& vel:mVertexVelocity){
+				float l=vel.lengthSqr();
+				mMaxVelocityMagnitude=std::max(l,mMaxVelocityMagnitude);
+				mMinVelocityMagnitude=std::min(l,mMinVelocityMagnitude);
+			}
+			mMaxVelocityMagnitude=std::sqrt(mMaxVelocityMagnitude);
+			mMinVelocityMagnitude=std::sqrt(mMinVelocityMagnitude);
+
+			if(mMaxVelocityMagnitude-mMinVelocityMagnitude<1E-6f){
+				mMaxVelocityMagnitude=1.0f;
+				mMinVelocityMagnitude=0.0f;
+			}
+			glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 3 * mVertexVelocity.size(),
+					&mVertexVelocity[0], GL_STATIC_DRAW);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+		} else
 	if (mParticleVelocity.size() > 0) {
 		if (glIsBuffer(mGL.mVelocityBuffer) == GL_TRUE)
 			glDeleteBuffers(1, &mGL.mVelocityBuffer);

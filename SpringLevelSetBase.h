@@ -69,8 +69,11 @@ public:
 	openvdb::Vec3s& particle() const {
 		return mesh->mParticles[id];
 	}
-	openvdb::Vec3s& velocity() const {
+	openvdb::Vec3s& particleVelocity() const {
 		return mesh->mParticleVelocity[id];
+	}
+	openvdb::Vec3s& vertexVelocity(size_t idx) const {
+		return mesh->mVertexVelocity[offset + idx];
 	}
 	uint8_t& label() const {
 		return mesh->mParticleLabel[id];

@@ -469,7 +469,7 @@ public:
 			tbb::task::self().cancel_group_execution();
 		for (typename SpringlRange::Iterator springl = range.begin(); springl;
 				++springl) {
-			mMaxAbsV=std::max((double)springl->velocity().lengthSqr(),mMaxAbsV);
+			mMaxAbsV=std::max((double)springl->particleVelocity().lengthSqr(),mMaxAbsV);
 		}
 	}
 };

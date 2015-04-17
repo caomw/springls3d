@@ -83,6 +83,7 @@ class Mesh{
 		std::vector<openvdb::Vec2s> uvMap;
 		std::vector<openvdb::Vec3s> mVertexAuxBuffer;
 		std::vector<openvdb::Vec3s> mParticleVelocity;
+		std::vector<openvdb::Vec3s> mVertexVelocity;
 		std::vector<uint8_t> mParticleLabel;
 		std::vector<openvdb::Vec4I> mFaces;
 		Mesh();

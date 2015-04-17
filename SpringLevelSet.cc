@@ -672,6 +672,12 @@ int SpringLevelSet::fill() {
 						fillList.push_back(springl.id);
 						mConstellation.mParticleVelocity.push_back(Vec3s(0.0f));
 					}
+					if(mConstellation.mVertexVelocity.size()>0){
+						mConstellation.mVertexVelocity.push_back(Vec3s(0.0f));
+						mConstellation.mVertexVelocity.push_back(Vec3s(0.0f));
+						mConstellation.mVertexVelocity.push_back(Vec3s(0.0f));
+						mConstellation.mVertexVelocity.push_back(Vec3s(0.0f));
+					}
 					if(mConstellation.mParticleLabel.size()>0){
 						mConstellation.mParticleLabel.push_back(0);
 					}
@@ -745,6 +751,11 @@ int SpringLevelSet::fill() {
 						fillList.push_back(springl.id);
 						mConstellation.mParticleVelocity.push_back(Vec3s(0.0f));
 					}
+					if(mConstellation.mVertexVelocity.size()>0){
+						mConstellation.mVertexVelocity.push_back(Vec3s(0.0f));
+						mConstellation.mVertexVelocity.push_back(Vec3s(0.0f));
+						mConstellation.mVertexVelocity.push_back(Vec3s(0.0f));
+					}
 					if(mConstellation.mParticleLabel.size()>0){
 						mConstellation.mParticleLabel.push_back(0);
 					}
@@ -771,6 +782,10 @@ void SpringLevelSet::fillWithVelocityField(MACGrid<float>& grid,float radius){
 		//Is particle() in the correct coordinate space?
 		Vec3d wpt=transform().indexToWorld(springl.particle());
 		mConstellation.mParticleVelocity[fid] = grid.maxInterpolate(Vec3s(wpt),radius);
+		for(int n=0;n<springl.size();n++){
+			wpt=transform().indexToWorld(springl[n]);
+			mConstellation.mVertexVelocity[springl.offset+n]=grid.maxInterpolate(Vec3s(wpt),radius);
+		}
 	}
 	fillList.clear();
 }
@@ -791,7 +806,7 @@ void SpringLevelSet::fillWithNearestNeighbors(){
 							springl.id, k);
 					for (SpringlNeighbor ci : map) {
 						Springl& nbr = getSpringl(ci.springlId);
-						Vec3s v = nbr.velocity();
+						Vec3s v = nbr.particleVelocity();
 						if (v.lengthSqr() > 0) {
 							vel += v;
 							wsum += 1.0f;
@@ -801,6 +816,9 @@ void SpringLevelSet::fillWithNearestNeighbors(){
 				if (wsum > 0.0f) {
 					vel *= 1.0 / wsum;
 					mConstellation.mParticleVelocity[fid] = vel;
+					for(int n=0;n<springl.size();n++){
+						mConstellation.mVertexVelocity[springl.offset+n]=vel;
+					}
 				} else {
 					unfilledCount++;
 				}
@@ -947,6 +965,7 @@ void Constellation::create(Mesh* mesh) {
 	mParticleNormals.resize(faceCount);
 	mVertexNormals.resize(mVertexes.size());
 	mParticleVelocity=mesh->mParticleVelocity;
+	mVertexVelocity=mesh->mVertexVelocity;
 	for (openvdb::Vec4I face : mesh->mFaces) {
 		Springl springl(this);
 		springl.offset = counter;
@@ -1082,6 +1101,11 @@ int SpringLevelSet::clean() {
 			if (mConstellation.mParticleVelocity.size() > 0) {
 				mConstellation.mParticleVelocity[springlOffset]=mConstellation.mParticleVelocity[n];
 			}
+			if(mConstellation.mVertexVelocity.size()>0){
+				for(int n=0;n<springl.size();n++){
+					mConstellation.mVertexVelocity[springl.offset+n]=mConstellation.mVertexVelocity[rspringl.offset+n];
+				}
+			}
 			if(mConstellation.mParticleLabel.size()>0){
 				mConstellation.mParticleLabel[springlOffset]=mConstellation.mParticleLabel[n];
 			}
@@ -1138,7 +1162,11 @@ int SpringLevelSet::clean() {
 				mConstellation.mParticleVelocity.begin() + springlOffset,
 				mConstellation.mParticleVelocity.end());
 	}
-
+	if (mConstellation.mVertexVelocity.size() > 0) {
+		mConstellation.mVertexVelocity.erase(
+				mConstellation.mVertexVelocity.begin() + vertexOffset,
+				mConstellation.mVertexVelocity.end());
+	}
 	mConstellation.mParticleNormals.erase(
 			mConstellation.mParticleNormals.begin() + springlOffset,
 			mConstellation.mParticleNormals.end());

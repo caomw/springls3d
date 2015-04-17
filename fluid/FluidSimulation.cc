@@ -528,12 +528,12 @@ void FluidSimulation::advectParticles() {
 	if(mSpringlTracking){
 		float invScale=mTimeStep/(0.5f*mVoxelSize);
 		int N=mSource.mConstellation.springls.size();
-#pragma omp for
+
 		for(int n=0;n<N;n++){
 				Springl& springl=mSource.mConstellation.springls[n];
 				springl.particle()+=invScale*springl.particleVelocity();
 				for(int i=0;i<springl.size();i++){
-					springl[i]+=invScale*springl.particleVelocity();//*springl.vertexVelocity(i);
+					springl[i]+=invScale*springl.vertexVelocity(i);
 				}
 
 				Transform::Ptr trans=mSource.transformPtr();
@@ -640,21 +640,19 @@ bool FluidSimulation::step() {
 		createLevelSet();
 		mSource.updateIsoSurface();
 	} else {
-		mSource.clean();
-		mSource.updateUnSignedLevelSet();
 		int count=mSource.fill();
-
 		mSource.fillWithVelocityField(mVelocity,0.5f*mVoxelSize);
 		mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
-
 		advectParticles();
-
 		correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 		createLevelSet();
 		mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
 		mSource.updateGradient();
 		mAdvect->evolve();
 		mSource.updateIsoSurface();
+		mSource.clean();
+		mSource.updateUnSignedLevelSet();
+
 
 		//mSource.mIsoSurface.save(MakeString()<<"/home/blake/tmp/iso_after"<<(frameCounter-1)<<".ply");
 		//WriteToRawFile(mSource.mSignedLevelSet,MakeString()<<"/home/blake/tmp/signed_sparse"<<mSimulationIteration<<".xml");

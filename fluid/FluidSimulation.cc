@@ -525,12 +525,50 @@ void FluidSimulation::advectParticles() {
 			}
 		}
 	}
+	if(mSpringlTracking){
+		float invScale=mTimeStep/(0.5f*mVoxelSize);
+		int N=mSource.mConstellation.springls.size();
+#pragma omp for
+		for(int n=0;n<N;n++){
+				Springl& springl=mSource.mConstellation.springls[n];
+				springl.particle()+=invScale*springl.particleVelocity();
+				for(int i=0;i<springl.size();i++){
+					springl[i]+=invScale*springl.particleVelocity();//*springl.vertexVelocity(i);
+				}
+
+				Transform::Ptr trans=mSource.transformPtr();
+				Vec3d v = Vec3d(springl.particle());
+				Vec3d pt = trans->indexToWorld(v);
+				Vec3s mLocation=Vec3s(pt);
+				mLocation[0] = clamp(mLocation[0], r, mx - r);
+				mLocation[1] = clamp(mLocation[1], r, my - r);
+				mLocation[2] = clamp(mLocation[2], r, mz - r);
+				int i = clamp((int) (mLocation[0] * scale), 0,mGridSize[0] - 1);
+				int j = clamp((int) (mLocation[1] * scale), 0,mGridSize[1] - 1);
+				int k = clamp((int) (mLocation[2] * scale), 0,mGridSize[2] - 1);
+				vector<FluidParticle*> neighbors =mParticleLocator->getNeigboringCellParticles(i, j, k, 1, 1,1);
+				for (int n = 0; n < neighbors.size(); n++) {
+					FluidParticle *np = neighbors[n];
+					if (np->mObjectType == ObjectType::WALL) {
+						float dist = distance(mLocation, np->mLocation);
+						if (dist < re) {
+							Vec3f normal =  np->mNormal;
+							if (normal[0] == 0.0 && normal[1] == 0.0&& normal[2] == 0.0 && dist) {
+								normal = (mLocation - np->mLocation)/ dist;
+							}
+							mLocation += (re - dist) * normal;
+							float dot = springl.particleVelocity().dot(normal);
+							springl.particleVelocity()-= dot * normal;
+						}
+					}
+				}
+				pt=trans->worldToIndex(Vec3s(mLocation));
+				springl.particle()=Vec3s(pt);
+		}
+	}
 	/*
 	if(mSpringlTracking){
-		mAdvect->advect(mSimulationTime,mSimulationTime+mTimeStep);
-	}
-	*/
-	if(mSpringlTracking){
+		//Add repulsive force for walls
 		float invScale=mTimeStep/(0.5f*mVoxelSize);
 		int N=mSource.mConstellation.springls.size();
 #pragma omp for
@@ -542,6 +580,7 @@ void FluidSimulation::advectParticles() {
 			}
 		}
 	}
+	*/
 
 // Remove Particles That Stuck On The Up-Down Wall Cells...
 	OPENMP_FOR FOR_EVERY_PARTICLE(mParticles)

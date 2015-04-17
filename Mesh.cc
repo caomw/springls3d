@@ -310,8 +310,9 @@ bool Mesh::openMesh(const std::string& file) {
 	// Check for optional attribute data. We can handle intensity; and the
 	// triplet red, green, blue.
 	bool RGBPointsAvailable = false;
-	bool hasVelocity=false;
+	bool hasParticleVelocity=false;
 	bool hasNormals=false;
+	bool hasVertexVelocity=false;
 	this->mTriIndexes.clear();
 	this->mQuadIndexes.clear();
 	this->mFaces.clear();
@@ -321,6 +322,7 @@ bool Mesh::openMesh(const std::string& file) {
 	this->mVertexNormals.clear();
 	this->mColors.clear();
 	this->mParticleVelocity.clear();
+	this->mVertexVelocity.clear();
 	if ((elem = find_element(ply, "vertex")) != NULL
 			&& find_property(elem, "red", &index) != NULL
 			&& find_property(elem, "green", &index) != NULL
@@ -333,8 +335,14 @@ bool Mesh::openMesh(const std::string& file) {
 			&& find_property(elem, "nz", &index) != NULL) {
 		hasNormals = true;
 	}
+	if ((elem = find_element(ply, "vertex")) != NULL
+			&& find_property(elem, "vx", &index) != NULL
+			&& find_property(elem, "vy", &index) != NULL
+			&& find_property(elem, "vz", &index) != NULL) {
+		hasVertexVelocity = true;
+	}
 	if ((elem = find_element(ply, "face")) != NULL&& find_property(elem, "velocities", &index) != NULL) {
-		hasVelocity = true;
+		hasParticleVelocity = true;
 	}
 	int verts[256];
 	float velocity[3];
@@ -363,11 +371,17 @@ bool Mesh::openMesh(const std::string& file) {
 				ply_get_property(ply, elemName, &MeshVertProps[4]);
 				ply_get_property(ply, elemName, &MeshVertProps[5]);
 			}
-			if (RGBPointsAvailable) {
-				this->mColors.resize(numPts);
+			if (hasVertexVelocity) {
+				this->mVertexVelocity.resize(numPts);
 				ply_get_property(ply, elemName, &MeshVertProps[6]);
 				ply_get_property(ply, elemName, &MeshVertProps[7]);
 				ply_get_property(ply, elemName, &MeshVertProps[8]);
+			}
+			if (RGBPointsAvailable) {
+				this->mColors.resize(numPts);
+				ply_get_property(ply, elemName, &MeshVertProps[9]);
+				ply_get_property(ply, elemName, &MeshVertProps[10]);
+				ply_get_property(ply, elemName, &MeshVertProps[11]);
 			}
 			for (j = 0; j < numPts; j++) {
 				get_element_ply(ply, &vertex);
@@ -381,6 +395,9 @@ bool Mesh::openMesh(const std::string& file) {
 				if(hasNormals){
 					this->mVertexNormals[j]=Vec3s(vertex.n[0],vertex.n[1],vertex.n[2]);
 				}
+				if(hasVertexVelocity){
+					this->mVertexVelocity[j]=Vec3s(vertex.vel[0],vertex.vel[1],vertex.vel[2]);
+				}
 			}
 		}			//if vertex
 		else if (elemName && !strcmp("face", elemName)) {
@@ -388,13 +405,13 @@ bool Mesh::openMesh(const std::string& file) {
 			numPolys = numElems;
 			// Get the face properties
 			ply_get_property(ply, elemName, &MeshFaceProps[0]);
-			if(hasVelocity){
+			if(hasParticleVelocity){
 				this->mParticleVelocity.resize(numPolys);
 				ply_get_property(ply, elemName, &MeshFaceProps[1]);
 			}
 			for (j = 0; j < numPolys; j++) {
 				get_element_ply(ply, &face);
-				if(hasVelocity){
+				if(hasParticleVelocity){
 					Vec3s vel=Vec3s(face.velocity[0],face.velocity[1],face.velocity[2]);
 					float l=vel.length();
 					this->mParticleVelocity[j]=vel;

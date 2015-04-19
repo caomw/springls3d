@@ -51,7 +51,7 @@ const float SpringLevelSet::SHARPNESS = 5.0f;
 const float SpringLevelSet::SPRING_CONSTANT = 0.3f;
 const float SpringLevelSet::RELAX_TIMESTEP = 0.1f;
 const float SpringLevelSet::MIN_AREA = 0.05f;
-const float SpringLevelSet::MAX_AREA = 2.0 * 2.0f;
+const float SpringLevelSet::MAX_AREA = 2.0 ;
 const float SpringLevelSet::MIN_ASPECT_RATIO = 0.1f;
 MotionScheme DecodeMotionScheme(const std::string& name) {
 	if (name == "implicit" || name == "IMPLICIT") {
@@ -1060,6 +1060,7 @@ int SpringLevelSet::clean() {
 			}
 			float aspect = minEdgeLength / maxEdgeLength;
 			area = springl.area();
+			//std::cout<<"AREA "<<area<<" ASPECT "<<aspect<<std::endl;
 			if (area >= MIN_AREA && area < MAX_AREA
 					&& aspect >= MIN_ASPECT_RATIO) {
 				keepList.push_back(springl.id);
@@ -1082,7 +1083,7 @@ int SpringLevelSet::clean() {
 	meanls /= count;
 	bias /= count;
 
-	//std::cout << "Clean mean=" << meanls << " bias=" << bias << " [" << minls<< "," << maxls << "] [far:" << removeFarCount << ", small:"<< removeSmallCount << ", aspect:" << removeAspectCount << "]" << std::endl;
+	std::cout << "Clean mean=" << meanls << " bias=" << bias << " [" << minls<< "," << maxls << "] [far:" << removeFarCount << ", small:"<< removeSmallCount << ", aspect:" << removeAspectCount << "]" << std::endl;
 
 	if (newSpringlCount == N)
 		return 0;

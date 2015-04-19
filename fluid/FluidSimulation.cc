@@ -184,7 +184,9 @@ void FluidSimulation::addSimulationObject(SimulationObject* obj){
 
 		}
 }
+/*
 void FluidSimulation::operator()(Springl& springl,double time,double dt){
+	std::cout<<"time step "<<time<<" "<<dt<<std::endl;
 	Transform::Ptr trans=mSource.transformPtr();
 	Vec3d v = Vec3d(springl.particle());
 	Vec3d pt = trans->indexToWorld(v);
@@ -197,7 +199,6 @@ void FluidSimulation::operator()(Springl& springl,double time,double dt){
 	int i = clamp((int) (npt[0] * scale), 0,mGridSize[0] - 1);
 	int j = clamp((int) (npt[1] * scale), 0,mGridSize[1] - 1);
 	int k = clamp((int) (npt[2] * scale), 0,mGridSize[2] - 1);
-
 	vector<FluidParticle*> neighbors =mParticleLocator->getNeigboringCellParticles(i, j, k, 1, 1,1);
 	for (int n = 0; n < neighbors.size(); n++) {
 		FluidParticle *np = neighbors[n];
@@ -212,6 +213,7 @@ void FluidSimulation::operator()(Springl& springl,double time,double dt){
 				float dot = springl.particleVelocity().dot(normal);
 				springl.particleVelocity()-= dot * normal;
 				for(int n=0;n<springl.size();n++){
+					dot = springl.vertexVelocity(n).dot(normal);
 					springl.vertexVelocity(n)-=dot*normal;
 				}
 			}
@@ -225,6 +227,7 @@ void FluidSimulation::operator()(Springl& springl,double time,double dt){
 		springl[k] = trans->worldToIndex(pt+npt);
 	}
 }
+*/
 void FluidSimulation::repositionParticles(vector<int>& indices) {
 	if (indices.empty())
 		return;
@@ -559,11 +562,26 @@ void FluidSimulation::advectParticles() {
 							mLocation += (re - dist) * normal;
 							float dot = springl.particleVelocity().dot(normal);
 							springl.particleVelocity()-= dot * normal;
+							for(int ii=0;ii<springl.size();ii++){
+								dot = springl.vertexVelocity(ii).dot(normal);
+								springl.vertexVelocity(ii)-= dot * normal;
+							}
+
 						}
 					}
 				}
 				pt=trans->worldToIndex(Vec3s(mLocation));
 				springl.particle()=Vec3s(pt);
+				for(int ii=0;ii<springl.size();ii++){
+					v = Vec3d(springl[ii]);
+					pt = trans->indexToWorld(v);
+					mLocation=Vec3s(pt);
+					mLocation[0] = clamp(mLocation[0], r, mx - r);
+					mLocation[1] = clamp(mLocation[1], r, my - r);
+					mLocation[2] = clamp(mLocation[2], r, mz - r);
+					pt=trans->worldToIndex(Vec3s(mLocation));
+					springl[ii]=Vec3s(pt);
+				}
 		}
 	}
 	/*
@@ -640,9 +658,13 @@ bool FluidSimulation::step() {
 		createLevelSet();
 		mSource.updateIsoSurface();
 	} else {
+
+		mSource.clean();
+		mSource.updateUnSignedLevelSet();
 		int count=mSource.fill();
 		mSource.fillWithVelocityField(mVelocity,0.5f*mVoxelSize);
 		mSource.updateUnSignedLevelSet(2.5f*LEVEL_SET_HALF_WIDTH);
+
 		advectParticles();
 		correctParticles( mParticles, mTimeStep,mFluidParticleDiameter * mVoxelSize);
 		createLevelSet();
@@ -650,8 +672,6 @@ bool FluidSimulation::step() {
 		mSource.updateGradient();
 		mAdvect->evolve();
 		mSource.updateIsoSurface();
-		mSource.clean();
-		mSource.updateUnSignedLevelSet();
 
 
 		//mSource.mIsoSurface.save(MakeString()<<"/home/blake/tmp/iso_after"<<(frameCounter-1)<<".ply");
@@ -877,15 +897,16 @@ void FluidSimulation::solvePicFlip() {
 		for(int i=0;i<N;i++){
 			Springl& springl=mSource.mConstellation.springls[i];
 			Vec3s pt=0.5f*mVoxelSize*springl.particle();
-			openvdb::Vec3s currentVelocity=mVelocity.maxInterpolate(pt,0.5f*mVoxelSize);
-			openvdb::Vec3s velocity=springl.particleVelocity()+currentVelocity-mVelocityLast.maxInterpolate(pt,0.5f*mVoxelSize);
-			springl.particleVelocity() = (1.0 - mPicFlipBlendWeight) *currentVelocity  + mPicFlipBlendWeight * velocity;
 			for(int n=0;n<springl.size();n++){
 				pt=0.5f*mVoxelSize*springl[n];
 				openvdb::Vec3s currentVelocity=mVelocity.maxInterpolate(pt,0.5f*mVoxelSize);
-				openvdb::Vec3s velocity=springl.vertexVelocity(n)+currentVelocity-mVelocityLast.maxInterpolate(pt,0.5f*mVoxelSize);
+				openvdb::Vec3s velocity=springl.particleVelocity()+currentVelocity-mVelocityLast.maxInterpolate(pt,0.5f*mVoxelSize);
 				springl.vertexVelocity(n) = (1.0 - mPicFlipBlendWeight) *currentVelocity  + mPicFlipBlendWeight * velocity;
 			}
+			openvdb::Vec3s currentVelocity=mVelocity.maxInterpolate(pt,0.5f*mVoxelSize);
+			openvdb::Vec3s velocity=springl.particleVelocity()+currentVelocity-mVelocityLast.maxInterpolate(pt,0.5f*mVoxelSize);
+			springl.particleVelocity() = (1.0 - mPicFlipBlendWeight) *currentVelocity  + mPicFlipBlendWeight * velocity;
+
 		}
 	}
 }

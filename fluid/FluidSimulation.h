@@ -125,7 +125,7 @@ class FluidSimulation :public Simulation{
 		virtual void addFluid()=0;
 		void addSimulationObject(SimulationObject* obj);
 	public:
-		void operator()(Springl& springl,double time,double dt);
+		//void operator()(Springl& springl,double time,double dt);
 		FluidSimulation(const openvdb::Coord& dims,float voxelSize,MotionScheme scheme) ;
 		virtual bool init();
 		virtual bool step();

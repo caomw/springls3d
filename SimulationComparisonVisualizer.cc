@@ -152,14 +152,20 @@ void SimulationComparisonVisualizer::start(){
 	mSimulation2->reset();
     mSimulation1->init();
     mSimulation2->init();
-	mMiniCamera->loadConfig();
+	mCamera->loadConfig();
+	mShowParticles=mCamera->config.mShowParticles;
+	mShowIsoSurface=mCamera->config.mShowIsoSurface;
+	mShowSpringls=mCamera->config.mShowSpringls;
 	mRunning=true;
 	mComparisonThread=std::thread(ExecuteSimulationComparison,this);
 	render();
 }
 void SimulationComparisonVisualizer::resume(){
 	if(mSimulation1!=NULL){
-		mMiniCamera->loadConfig();
+		mCamera->loadConfig();
+		mShowParticles=mCamera->config.mShowParticles;
+		mShowIsoSurface=mCamera->config.mShowIsoSurface;
+		mShowSpringls=mCamera->config.mShowSpringls;
 		mRunning=true;
 		mComparisonThread=std::thread(ExecuteSimulationComparison,this);
 	}
@@ -216,6 +222,9 @@ bool SimulationComparisonVisualizer::init(int width,int height){
 
     mMiniCamera->loadConfig();
     mCamera->loadConfig();
+	mShowParticles=mCamera->config.mShowParticles;
+	mShowIsoSurface=mCamera->config.mShowIsoSurface;
+	mShowSpringls=mCamera->config.mShowSpringls;
 
  	mIsoSurfaceShader.Init("./matcap/JG_Silver.png");
 	mSpringlsShader.Init("./matcap/JG_Silver.png");
@@ -281,11 +290,10 @@ bool SimulationComparisonVisualizer::init(int width,int height){
     mSimulation1->addListener(this);
     start();
     do {
-
-    	mLock.lock();
+    	//mLock.lock();
     	bool ret1=mSimulation1->updateGL();
     	bool ret2=mSimulation2->updateGL();
-    	mLock.unlock();
+    	//mLock.unlock();
     	if(ret1||ret2){
     		render();
         } else {
@@ -306,6 +314,10 @@ bool SimulationComparisonVisualizer::init(int width,int height){
         glfwPollEvents();
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
     } while (!glfwWindowShouldClose(mWin));
+
+    mCamera->config.mShowParticles=mShowParticles;
+    mCamera->config.mShowIsoSurface=mShowIsoSurface;
+    mCamera->config.mShowSpringls=mShowSpringls;
     mCamera->saveConfig();
     glfwTerminate();
     return true;
@@ -385,7 +397,7 @@ SimulationComparisonVisualizer::render()
     mMiniCamera->setConfig(p);
     mMiniCamera->setPose(miniPose.transpose());
     glEnable(GL_DEPTH_TEST);
-    glViewport(0,0,width,height);
+    glViewport(0,0,width/2,height);
     if(hasParticles1){
 		if(mShowIsoSurface&&mShowSpringls){
 			mMultiPassShader1->compute(mWin);
@@ -470,47 +482,27 @@ SimulationComparisonVisualizer::render()
 		mIsoTexture2->render(mWin);
 	}
 	CHECK_GL_ERROR();
-    /*
-	mIsoTexture1->begin();
-	mIsoSurfaceShader.begin();
-	mMiniCamera->aim(0,0,mIsoTexture1->w,mIsoTexture1->h,mIsoSurfaceShader);
-	mSimulation1->getSource().mIsoSurface.draw();
-	mIsoSurfaceShader.end();
-	mIsoTexture1->end();
 
-	mIsoTexture2->begin();
-	mIsoSurfaceShader.begin();
-	mMiniCamera->aim(0,0,mIsoTexture2->w,mIsoTexture2->h,mIsoSurfaceShader);
-	mSimulation2->getSource().mIsoSurface.draw();
-	mIsoSurfaceShader.end();
-	mIsoTexture2->end();
-
-	glViewport(0,0,width,height);
-	glEnable(GL_BLEND);
-	glDisable(GL_DEPTH_TEST);
-	mIsoTexture1->render(mWin);
-	mIsoTexture2->render(mWin);
-	*/
 	mSubtitle1->render(mWin);
 	mSubtitle2->render(mWin);
 	CHECK_GL_ERROR();
-	/*
 	if(isRunning()){
-		std::stringstream ostr1,ostr2,ostr3;
-		ostr1 << mOutputDirectory<<"sim_screenshot_"<<std::setw(8)<<std::setfill('0')<< mSimulation1->getSimulationIteration() << ".png";
-		std::vector<RGBA> tmp1(width*height);
-		std::vector<RGBA> tmp2(width*height);
-		glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &tmp1[0]);
+		std::string fileName=MakeString() << mOutputDirectory<<"sim_screenshot_"<<std::setw(8)<<std::setfill('0')<< mSimulation1->getSimulationIteration() << ".png";
+		rgbaBuffer.resize(width*height);
+		outBuffer.resize(width*height);
+		glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &rgbaBuffer[0]);
+
 		for(int j=0;j<height;j++){
 			for(int i=0;i<width;i++){
-				RGBA c=tmp1[(height-1-j)*width+i];
+				RGBA c=rgbaBuffer[(height-1-j)*width+i];
 				c[3]=255;
-				tmp2[j*width+i]=c;
+				outBuffer[j*width+i]=c;
 			}
 		}
-		WriteImageToFile(ostr1.str(),tmp2,width,height);
+		WriteImageToFile(fileName,outBuffer,width,height);
+		CHECK_GL_ERROR();
 	}
-	*/
+
 }
 
 

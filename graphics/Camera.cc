@@ -325,25 +325,24 @@ CameraAndSceneConfig Camera::getConfig(){
 	p.mDistanceToObject=mDistanceToObject;
 	return p;
 }
+
 bool Camera::saveConfig(const std::string& file){
 	if(!mChanged&&!mNeedsDisplay)return false;
-	CameraAndSceneConfig p;
-	p.mModelRotation=mRm.getMat3();
-	p.mWorldRotation=mRw.getMat3();
-	p.mModelTranslation=mCameraTrans;
-	p.mWorldTranslation=mLookAt;
-	p.mDistanceToObject=mDistanceToObject;
-	return p.save(file);
+	config.mModelRotation=mRm.getMat3();
+	config.mWorldRotation=mRw.getMat3();
+	config.mModelTranslation=mCameraTrans;
+	config.mWorldTranslation=mLookAt;
+	config.mDistanceToObject=mDistanceToObject;
+	return config.save(file);
 }
-bool Camera::loadConfig(const std::string& file){
-	CameraAndSceneConfig p;
-	if(CameraAndSceneConfig::load(file,&p)){
-		mRm.setMat3(p.mModelRotation);
-		mRw.setMat3(p.mWorldRotation);
-		mCameraTrans=p.mModelTranslation;
-		mLookAt=p.mWorldTranslation;
-		mDistanceToObject=p.mDistanceToObject;
 
+bool Camera::loadConfig(const std::string& file){
+	if(CameraAndSceneConfig::load(file,&config)){
+		mRm.setMat3(config.mModelRotation);
+		mRw.setMat3(config.mWorldRotation);
+		mCameraTrans=config.mModelTranslation;
+		mLookAt=config.mWorldTranslation;
+		mDistanceToObject=config.mDistanceToObject;
 		mChanged=true;
 		mNeedsDisplay=true;
 		return true;

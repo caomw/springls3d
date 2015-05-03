@@ -46,7 +46,8 @@ private:
     GLEnvironmentalShader mSpringlsShader;
     GLFluidParticleShader mParticleShader;
     GLShader mImageShader;
-
+	std::vector<RGBA> rgbaBuffer;
+	std::vector<RGBA> outBuffer;
     std::unique_ptr<GLFrameBuffer> mIsoTexture1;
     std::unique_ptr<GLFrameBuffer> mIsoTexture2;
     std::unique_ptr<GLText> mSubtitle1;

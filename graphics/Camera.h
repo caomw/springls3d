@@ -54,7 +54,9 @@ public:
 	openvdb::Vec3s mModelTranslation;
 
 	double mDistanceToObject;
-
+	bool mShowParticles=false;
+	bool mShowIsoSurface=false;
+	bool mShowSpringls=false;
 	void serialize(Json::Value& root_in)
 	{
 		Json::Value &root = root_in["CameraAndScene"];
@@ -65,7 +67,9 @@ public:
 		JsonUtil::Vec3sToJson(mModelTranslation,root["ModelTranslation"]);
 
 		root["DistanceToObject"]=mDistanceToObject;
-
+		root["ShowParticles"]=mShowParticles;
+		root["ShowIsoSurface"]=mShowIsoSurface;
+		root["ShowSpringls"]=mShowSpringls;
 	}
 	void deserialize(Json::Value& root_in)
 	{
@@ -77,6 +81,9 @@ public:
 		mModelTranslation=JsonUtil::JsonToVec3s(root["ModelTranslation"]);
 
 		mDistanceToObject=root.get("DistanceToObject",0.0).asDouble();
+		mShowParticles=root.get("ShowParticles",false).asBool();
+		mShowIsoSurface=root.get("ShowIsoSurface",false).asBool();
+		mShowSpringls=root.get("ShowSpringls",false).asBool();
 	}
 	static bool load(const std::string& file,CameraAndSceneConfig* out){
 		std::ifstream ifs;
@@ -124,6 +131,8 @@ protected:
     double mMouseXPos, mMouseYPos;
     int mWheelPos;
 public:
+
+	CameraAndSceneConfig config;
 	void serialize(Json::Value& root_in)
 	{
 		Json::Value &root = root_in["Camera"];

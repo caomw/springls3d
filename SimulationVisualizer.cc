@@ -197,6 +197,7 @@ bool SimulationVisualizer::run(int width,int height){
 	mImageShader.Initialize(ReadTextFile("shaders/image_shader.vert"),ReadTextFile("shaders/image_shader.frag"),"",args);
 	mParticleTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(0,0,width,height,width,height));
 	mParticleTexture->setShader(&mImageShader);
+	mParticleTexture->setShowBackground(true);
 	mParticleTexture->updateGL();
 
 	int miniW=256;

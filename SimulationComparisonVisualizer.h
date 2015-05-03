@@ -65,12 +65,12 @@ private:
 	SimulationPlayback* mSimulation2;
 	static SimulationComparisonVisualizer* mSimVis;
 	std::thread mComparisonThread;
-	std::mutex mLock;
 	bool mRunning;
 	std::string mOutputDirectory;
 	SimulationComparisonVisualizer();
 public:
-	std::mutex& getLock(){return mLock;}
+	std::mutex mLock;
+	bool requestUpdateGL=false;
 	SimulationPlayback* getSimulation1(){
 		return mSimulation1;
 	}

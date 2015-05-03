@@ -53,18 +53,21 @@ void ExecuteSimulationComparison(SimulationComparisonVisualizer* sim){
 		sim->getSimulation1()->fireUpdateEvent();
 		sim->getSimulation2()->fireUpdateEvent();
 		bool ret1,ret2;
-		sim->getLock().lock();
+		sim->mLock.lock();
 		ret1=sim->getSimulation1()->forceStep();
 		ret2=sim->getSimulation2()->forceStep();
-		sim->getLock().unlock();
+		sim->requestUpdateGL=true;
+		sim->mLock.unlock();
 		while(sim->isRunning()&&ret1&&ret2){
 			sim->getSimulation1()->fireUpdateEvent();
 			sim->getSimulation2()->fireUpdateEvent();
-
-			sim->getLock().lock();
+			while(sim->requestUpdateGL)std::this_thread::sleep_for(std::chrono::milliseconds(30));
+			sim->mLock.lock();
 			ret1=sim->getSimulation1()->forceStep();
 			ret2=sim->getSimulation2()->forceStep();
-			sim->getLock().unlock();
+			sim->requestUpdateGL=true;
+			sim->mLock.unlock();
+
 			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		}
 	} catch (imagesci::Exception& e) {
@@ -188,7 +191,7 @@ void SimulationComparisonVisualizer::SimulationEvent(Simulation* simulation,int 
 	while(this->needsDisplay()){
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
 	}
-	std::cout<<" Done."<<std::endl;
+	std::cout<<" done."<<std::endl;
 }
 bool SimulationComparisonVisualizer::init(int width,int height){
     if (glfwInit() != GL_TRUE) {
@@ -290,10 +293,15 @@ bool SimulationComparisonVisualizer::init(int width,int height){
     mSimulation1->addListener(this);
     start();
     do {
-    	//mLock.lock();
-    	bool ret1=mSimulation1->updateGL();
-    	bool ret2=mSimulation2->updateGL();
-    	//mLock.unlock();
+    	bool ret1=false,ret2=false;
+    	if(requestUpdateGL){
+			mLock.lock();
+			ret1=mSimulation1->updateGL();
+			ret2=mSimulation2->updateGL();
+			requestUpdateGL=false;
+			mLock.unlock();
+    	}
+
     	if(ret1||ret2){
     		render();
         } else {

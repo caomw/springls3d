@@ -99,9 +99,9 @@ bool SimulationPlayback::init(){
 	return true;
 }
 bool SimulationPlayback::step(){
-	while(mIsMeshDirty&&mRunning){
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
-	}
+	//while(mIsMeshDirty&&mRunning){
+	//	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	//}
 	if(mSimulationIteration<mConstellationFiles.size()&&mConstellationFiles[mSimulationIteration].length()>0&&mTemporaryMesh.openMesh(mDirectory+GetFileName(mConstellationFiles[mSimulationIteration]))){
 		mSource.mConstellation.create(&mTemporaryMesh);
 		mSource.mConstellation.updateVertexNormals();

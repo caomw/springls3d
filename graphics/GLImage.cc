@@ -38,7 +38,7 @@ GLShader* GLImage::getShader(){
 	if(imageShader==NULL){
 		if(defaultShader.get()==nullptr){
 			std::vector<std::string> attrib={"vp","uv"};
-			defaultShader=std::unique_ptr<GLShader>(new GLShader(ReadTextFile("image_shader.vert"),ReadTextFile("image_shader.frag"),"",attrib));
+			defaultShader=std::unique_ptr<GLShader>(new GLShader(ReadTextFile("shaders/image_shader.vert"),ReadTextFile("shaders/image_shader.frag"),"",attrib));
 		}
 		imageShader=defaultShader.get();
 	}
@@ -59,6 +59,8 @@ void GLImage::render(GLFWwindow* win) {
 		glUniform2f(glGetUniformLocation(shader->GetProgramHandle(),"IMG_POS"),x,y);
 		glUniform2f(glGetUniformLocation(shader->GetProgramHandle(),"IMG_DIMS"),w,h);
 		glUniform2f(glGetUniformLocation(shader->GetProgramHandle(),"SCREEN_DIMS"),winw,winh);
+		glUniform1i(glGetUniformLocation(shader->GetProgramHandle(),"showBackground"),mShowBackground?1:0);
+
 		glBindTexture(GL_TEXTURE_2D,mTextureId);
 	}
 
@@ -81,13 +83,13 @@ void GLImage::render(GLFWwindow* win) {
 	}
 
 }
-GLImage::GLImage(int _x,int _y,int _width,int _height,int imageWidth,int imageHeight,bool floatType):imageShader(NULL),mFloatType(floatType),GLComponent(_x,_y,_width,_height),mWidth(imageWidth),mHeight(imageHeight),mTextureId(0),mData(imageWidth*imageHeight,RGBA(0,0,0,0)),mShadeEnabled(true){
+GLImage::GLImage(int _x,int _y,int _width,int _height,int imageWidth,int imageHeight,bool floatType):mShowBackground(false),imageShader(NULL),mFloatType(floatType),GLComponent(_x,_y,_width,_height),mWidth(imageWidth),mHeight(imageHeight),mTextureId(0),mData(imageWidth*imageHeight,RGBA(0,0,0,0)),mShadeEnabled(true){
 
 }
-GLImage::GLImage(const std::vector<RGBA>& data,int width,int height):imageShader(NULL),mFloatType(false),GLComponent(0,0,width,height),mWidth(width),mHeight(height),mTextureId(0),mShadeEnabled(true){
+GLImage::GLImage(const std::vector<RGBA>& data,int width,int height):imageShader(NULL),mFloatType(false),mShowBackground(false),GLComponent(0,0,width,height),mWidth(width),mHeight(height),mTextureId(0),mShadeEnabled(true){
 	mData=data;
 }
-GLImage::GLImage(const std::vector<RGBAf>& data,int width,int height):imageShader(NULL),mFloatType(true),GLComponent(0,0,width,height),mWidth(width),mHeight(height),mTextureId(0),mShadeEnabled(true){
+GLImage::GLImage(const std::vector<RGBAf>& data,int width,int height):imageShader(NULL),mFloatType(true),mShowBackground(false),GLComponent(0,0,width,height),mWidth(width),mHeight(height),mTextureId(0),mShadeEnabled(true){
 	mDataf=data;
 }
 GLImage* GLImage::read(const std::string& file){

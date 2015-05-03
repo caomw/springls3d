@@ -25,6 +25,7 @@
 #include "SimulationPlayback.h"
 #include "graphics/Camera.h"
 #include "graphics/GLEnvironmentalShader.h"
+#include "graphics/GLFluidParticleShader.h"
 #include "graphics/GLFrameBuffer.h"
 #include "graphics/GLImage.h"
 #include "graphics/GLText.h"
@@ -38,14 +39,21 @@ class SimulationComparisonVisualizer: public SimulationListener {
 private:
 
 	int mUpdates;
-    GLEnvironmentalShader mIsoShader;
-    GLEnvironmentalShader mSpringlShader;
+    bool mShowParticles;
+    bool mShowIsoSurface;
+    bool mShowSpringls;
+    GLEnvironmentalShader mIsoSurfaceShader;
+    GLEnvironmentalShader mSpringlsShader;
+    GLFluidParticleShader mParticleShader;
+    GLShader mImageShader;
+
     std::unique_ptr<GLFrameBuffer> mIsoTexture1;
     std::unique_ptr<GLFrameBuffer> mIsoTexture2;
     std::unique_ptr<GLText> mSubtitle1;
     std::unique_ptr<GLText> mSubtitle2;
-	std::unique_ptr<GLShader> isoShader;
-
+	//std::unique_ptr<GLShader> isoShader;
+	std::unique_ptr<GLSpringlShader> mMultiPassShader1;
+	std::unique_ptr<GLSpringlShader> mMultiPassShader2;
 	std::unique_ptr<Camera> mCamera;
 	std::unique_ptr<Camera> mMiniCamera;
 

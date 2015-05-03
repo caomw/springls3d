@@ -22,10 +22,11 @@
 in vec3 pos3d;
 uniform sampler2D textureImage;
 uniform vec2 IMG_DIMS;
+uniform int showBackground;
 void main() {
 	vec4 rgba=texture2D(textureImage,pos3d.xy);
-	if(rgba.w==0){
-		rgba=(1.0/255.0)*mix(vec4(230,230,230,255),vec4(30,30,30,255),smoothstep(0.0,1.0,pos3d.y));//mix(vec4(125,144,164,255),vec4(26,28,30,255),pos3d.y);
+	if(rgba.w==0&&showBackground>0){
+		rgba=(1.0/255.0)*mix(vec4(230,230,230,255),vec4(30,30,30,255),smoothstep(0.0,1.0,pos3d.y));
 	}
 	gl_FragColor=rgba;
 }

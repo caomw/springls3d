@@ -23,7 +23,21 @@
 #include <iostream>
 
 
+int printOglError(const char *file, int line)
+{
 
+    GLenum glErr;
+    int    retCode = 0;
+
+    glErr = glGetError();
+    if (glErr != GL_NO_ERROR)
+    {
+        printf("glError in file %s @ line %d: %s\n",
+			     file, line, gluErrorString(glErr));
+        retCode = 1;
+    }
+    return retCode;
+}
 namespace imagesci {
 
 GLShader::GLShader() :
@@ -44,6 +58,7 @@ bool GLShader::Initialize(
 		const std::string& pFragmentShaderString,
 		const std::string& pGeometryShaderString,
 		std::vector<std::string>& pAttributeLocations) {
+	if(pVertexShaderString.size()==0||pFragmentShaderString.size()==0)return false;
 	GLint lStatus;
 	char message[4096]="";
 	// Compile vertex shader.

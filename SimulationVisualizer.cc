@@ -192,7 +192,6 @@ bool SimulationVisualizer::run(int width,int height){
  	mOverlayShader=std::unique_ptr<GLSpringlShader>(new GLSpringlShader(0,0,width,height));
 	mOverlayShader->setMesh(mCamera.get(),&mSimulation->getSource(),"./matcap/JG_Silver.png","./matcap/JG_Silver.png");
 	mOverlayShader->setColorMapIndex(colormap,true);
-
 	mOverlayShader->updateGL();
 
 	mImageShader.Initialize(ReadTextFile("shaders/image_shader.vert"),ReadTextFile("shaders/image_shader.frag"),"",args);
@@ -203,7 +202,6 @@ bool SimulationVisualizer::run(int width,int height){
 	int miniW=256;
 	int miniH=256;
 	mMiniViewTexture=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(width-miniW,0,miniW,miniH,miniW,miniH));
-
 
 	//Set shader to use for background of texture
 	mMiniViewShader.Initialize(ReadTextFile("shaders/silhouette_shader.vert"),ReadTextFile("shaders/silhouette_shader.frag"),"",args);
@@ -283,11 +281,7 @@ SimulationVisualizer::render()
 	bool hasParticles=(mSimulation->getSource().mParticleVolume.mParticles.size()>0);
     const openvdb::BBoxd renderBBox=BBoxd(Vec3s(-0.5,-0.5,-0.5),Vec3s(0.5,0.5,0.5));
     if(mSimulation->getSimulationIteration()==0){
-    	//if(hasParticles){
-    	//	mOriginalBoundingBox=mSimulation->getSource().mParticleVolume.getBoundingBox();
-    	//} else {
-    		mOriginalBoundingBox=mSimulation->getSource().mIsoSurface.getBoundingBox();
-    	//}
+    	mOriginalBoundingBox=mSimulation->getSource().mIsoSurface.getBoundingBox();
     }
     openvdb::BBoxd bbox=mOriginalBoundingBox;
     openvdb::Vec3d extents = bbox.extents();
@@ -348,8 +342,6 @@ SimulationVisualizer::render()
 					mCamera->aim(0,0,mParticleTexture->w,mParticleTexture->h,mParticleShader);
 					glUniform1f(glGetUniformLocation(mParticleShader.GetProgramHandle(),"minVelocity"),mSimulation->getSource().mParticleVolume.mMinVelocityMagnitude);
 					glUniform1f(glGetUniformLocation(mParticleShader.GetProgramHandle(),"maxVelocity"),mSimulation->getSource().mParticleVolume.mMaxVelocityMagnitude);
-					//std::cout<<"MAX PARTICLE VELOCITY "<<mSimulation->getSource().mParticleVolume.mMinVelocityMagnitude<<" "<< mSimulation->getSource().mParticleVolume.mMaxVelocityMagnitude<<std::endl;
-
 					mSimulation->getSource().mParticleVolume.draw();
 				mParticleShader.end();
 			}

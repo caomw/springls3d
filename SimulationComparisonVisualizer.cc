@@ -135,6 +135,9 @@ SimulationComparisonVisualizer::SimulationComparisonVisualizer()
 	, mSimulation1(NULL)
 	, mSimulation2(NULL)
 	, mUpdates(0)
+	, mShowParticles(false)
+	, mShowIsoSurface(true)
+	, mShowSpringls(false)
 	, mRunning(false)
 {
 }
@@ -200,12 +203,10 @@ bool SimulationComparisonVisualizer::init(int width,int height){
         return false;
     }
     GLint major,minor,rev;
-
     glfwSetWindowTitle(mWin,"Simulation Visualizer");
     glfwMakeContextCurrent(mWin);
     glfwSwapBuffers(mWin);
 
-    std::cout<<"Draw "<<std::endl;
     mCamera->setSpeed(/*zoom=*/0.1, /*strafe=*/0.002, /*tumbling=*/0.2);
     mCamera->setNearFarPlanes(0.01f,1000.0f);
     mCamera->lookAt(Vec3d(0,0,0),1.0);
@@ -216,29 +217,42 @@ bool SimulationComparisonVisualizer::init(int width,int height){
     mMiniCamera->loadConfig();
     mCamera->loadConfig();
 
-    std::list<std::string> attrib;
-	attrib.push_back("vp");
-	attrib.push_back("vn");
-	mIsoShader.Init("./matcap/JG_Red.png");
-
-	mSpringlShader.Init("./matcap/JG_Silver.png");
+ 	mIsoSurfaceShader.Init("./matcap/JG_Silver.png");
+	mSpringlsShader.Init("./matcap/JG_Silver.png");
+	mParticleShader.Init();
+	int colormap=8;
+	mParticleShader.setColorMapIndex(colormap,true);
+	mSpringlsShader.setColorMapIndex(colormap,true);
+	std::vector<std::string> args;
+	args.push_back("vp");
+	args.push_back("uv");
 	int mainW=1200;
+
+ 	mMultiPassShader1=std::unique_ptr<GLSpringlShader>(new GLSpringlShader(0,0,width/2,height));
+	mMultiPassShader1->setMesh(mCamera.get(),&mSimulation1->getSource(),"./matcap/JG_Silver.png","./matcap/JG_Silver.png");
+	mMultiPassShader1->setColorMapIndex(colormap,true);
+	mMultiPassShader1->updateGL();
+
+ 	mMultiPassShader2=std::unique_ptr<GLSpringlShader>(new GLSpringlShader(width/2,0,width/2,height));
+	mMultiPassShader2->setMesh(mCamera.get(),&mSimulation2->getSource(),"./matcap/JG_Silver.png","./matcap/JG_Silver.png");
+	mMultiPassShader2->setColorMapIndex(colormap,true);
+	mMultiPassShader2->updateGL();
 
 	mIsoTexture1=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(0,0,width/2,height,width/2,height));
 	mIsoTexture2=std::unique_ptr<GLFrameBuffer>(new GLFrameBuffer(width/2,0,width/2,height,width/2,height));
 
-	std::vector<std::string> args;
-	args.push_back("vp");
-	args.push_back("uv");
+	mIsoTexture1->setShowBackground(true);
+	mIsoTexture2->setShowBackground(true);
 
-	isoShader=std::unique_ptr<GLShader>(new GLShader());
-	isoShader->Initialize(ReadTextFile("silhouette_shader.vert"),ReadTextFile("fade_shader.frag"),"",args);
+	mImageShader.Initialize(ReadTextFile("shaders/image_shader.vert"),ReadTextFile("shaders/image_shader.frag"),"",args);
 
-	mIsoTexture1->setShader(isoShader.get());
+	mIsoTexture1->setShader(&mImageShader);
 	mIsoTexture1->updateGL();
 
-	mIsoTexture2->setShader(isoShader.get());
+
+	mIsoTexture2->setShader(&mImageShader);
 	mIsoTexture2->updateGL();
+
 
 	mSubtitle1=std::unique_ptr<GLText>(new GLText(0,height-80,width/2,80));
 	mSubtitle1->setText("Spring Level Set",30,true);
@@ -314,8 +328,10 @@ SimulationComparisonVisualizer::setWindowTitle(double fps)
 void
 SimulationComparisonVisualizer::render()
 {
+	bool hasParticles1=(mSimulation1->getSource().mParticleVolume.mParticles.size()>0);
+	bool hasParticles2=(mSimulation2->getSource().mParticleVolume.mParticles.size()>0);
 
-    const openvdb::BBoxd renderBBox=BBoxd(Vec3s(-0.5,-0.5,-0.5),Vec3s(0.5,0.5,0.5));
+	const openvdb::BBoxd renderBBox=BBoxd(Vec3s(-0.5,-0.5,-0.5),Vec3s(0.5,0.5,0.5));
     if(mSimulation1->getSimulationIteration()==0){
     	mOriginalBoundingBox=mSimulation1->getSource().mIsoSurface.getBoundingBox();
     }
@@ -330,6 +346,13 @@ SimulationComparisonVisualizer::render()
     Pose.postTranslate(-minPt);
 	Pose.postScale(Vec3s(scale,scale,scale));
 	Pose.postTranslate(rminPt);
+
+	if(mSimulation1->getSource().mConstellation.mVertexes.size()>0){
+		bbox=mSimulation1->getSource().mConstellation.getBoundingBox();
+	} else {
+		bbox=mSimulation1->getSource().mIsoSurface.getBoundingBox();
+	}
+
     extents = bbox.extents();
     scale = std::max(rextents[0], std::max(rextents[1], rextents[2]))/std::max(extents[0], std::max(extents[1], extents[2]));
     minPt=bbox.getCenter();
@@ -360,22 +383,106 @@ SimulationComparisonVisualizer::render()
     p.mWorldTranslation=Vec3d(0);
 
     mMiniCamera->setConfig(p);
-
     mMiniCamera->setPose(miniPose.transpose());
-
     glEnable(GL_DEPTH_TEST);
+    glViewport(0,0,width,height);
+    if(hasParticles1){
+		if(mShowIsoSurface&&mShowSpringls){
+			mMultiPassShader1->compute(mWin);
+		} else {
+			mIsoTexture1->begin();
+			if(mShowParticles){
+				mParticleShader.begin();
+					mCamera->aim(0,0,mIsoTexture1->w,mIsoTexture1->h,mParticleShader);
+					glUniform1f(glGetUniformLocation(mParticleShader.GetProgramHandle(),"minVelocity"),mSimulation1->getSource().mParticleVolume.mMinVelocityMagnitude);
+					glUniform1f(glGetUniformLocation(mParticleShader.GetProgramHandle(),"maxVelocity"),mSimulation1->getSource().mParticleVolume.mMaxVelocityMagnitude);
+					mSimulation1->getSource().mParticleVolume.draw();
+				mParticleShader.end();
+			}
+			if(mShowIsoSurface){
+				mIsoSurfaceShader.begin();
+					mCamera->aim(0,0,mIsoTexture1->w,mIsoTexture1->h,mIsoSurfaceShader);
+					glUniform1f(glGetUniformLocation(mIsoSurfaceShader.GetProgramHandle(),"minVelocity"),0);
+					glUniform1f(glGetUniformLocation(mIsoSurfaceShader.GetProgramHandle(),"maxVelocity"),0);
+					glUniform1i(glGetUniformLocation(mIsoSurfaceShader.GetProgramHandle(),"transparent"),(mShowParticles)?1:0);
+					mSimulation1->getSource().mIsoSurface.draw();
+				mIsoSurfaceShader.end();
+			}
+			if(mShowSpringls){
+				mSpringlsShader.begin();
+					mCamera->aim(0,0,mIsoTexture1->w,mIsoTexture1->h,mSpringlsShader);
+					glUniform1i(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"transparent"),0);
+					glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"minVelocity"),mSimulation1->getSource().mParticleVolume.mMinVelocityMagnitude);
+					glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"maxVelocity"),mSimulation1->getSource().mParticleVolume.mMaxVelocityMagnitude);
+					mSimulation1->getSource().mConstellation.draw();
+				mSpringlsShader.end();
+			}
+			mIsoTexture1->end();
+
+		}
+    }
+
+    if(hasParticles2){
+   		if(mShowIsoSurface&&mShowSpringls){
+   			mMultiPassShader2->compute(mWin);
+
+   		} else {
+   			mIsoTexture2->begin();
+   			if(mShowParticles){
+   				mParticleShader.begin();
+   					mCamera->aim(0,0,mIsoTexture2->w,mIsoTexture2->h,mParticleShader);
+   					glUniform1f(glGetUniformLocation(mParticleShader.GetProgramHandle(),"minVelocity"),mSimulation2->getSource().mParticleVolume.mMinVelocityMagnitude);
+   					glUniform1f(glGetUniformLocation(mParticleShader.GetProgramHandle(),"maxVelocity"),mSimulation2->getSource().mParticleVolume.mMaxVelocityMagnitude);
+   					mSimulation2->getSource().mParticleVolume.draw();
+   				mParticleShader.end();
+   			}
+   			if(mShowIsoSurface){
+   				mIsoSurfaceShader.begin();
+   					mCamera->aim(0,0,mIsoTexture2->w,mIsoTexture2->h,mIsoSurfaceShader);
+   					glUniform1f(glGetUniformLocation(mIsoSurfaceShader.GetProgramHandle(),"minVelocity"),0);
+   					glUniform1f(glGetUniformLocation(mIsoSurfaceShader.GetProgramHandle(),"maxVelocity"),0);
+   					glUniform1i(glGetUniformLocation(mIsoSurfaceShader.GetProgramHandle(),"transparent"),(mShowParticles)?1:0);
+   					mSimulation2->getSource().mIsoSurface.draw();
+   				mIsoSurfaceShader.end();
+   			}
+   			if(mShowSpringls){
+   				mSpringlsShader.begin();
+   					mCamera->aim(0,0,mIsoTexture2->w,mIsoTexture2->h,mSpringlsShader);
+   					glUniform1i(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"transparent"),0);
+   					glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"minVelocity"),mSimulation2->getSource().mParticleVolume.mMinVelocityMagnitude);
+   					glUniform1f(glGetUniformLocation(mSpringlsShader.GetProgramHandle(),"maxVelocity"),mSimulation2->getSource().mParticleVolume.mMaxVelocityMagnitude);
+   					mSimulation2->getSource().mConstellation.draw();
+   				mSpringlsShader.end();
+   			}
+   			mIsoTexture2->end();
+
+   		}
+      }
+
+    CHECK_GL_ERROR();
+	glViewport(0,0,width,height);
+	glDisable(GL_DEPTH_TEST);
+	if(mShowIsoSurface&&mShowSpringls){
+		mMultiPassShader1->render(mWin);
+		mMultiPassShader2->render(mWin);
+	} else {
+		mIsoTexture1->render(mWin);
+		mIsoTexture2->render(mWin);
+	}
+	CHECK_GL_ERROR();
+    /*
 	mIsoTexture1->begin();
-	mIsoShader.begin();
-	mMiniCamera->aim(0,0,mIsoTexture1->w,mIsoTexture1->h,mIsoShader);
+	mIsoSurfaceShader.begin();
+	mMiniCamera->aim(0,0,mIsoTexture1->w,mIsoTexture1->h,mIsoSurfaceShader);
 	mSimulation1->getSource().mIsoSurface.draw();
-	mIsoShader.end();
+	mIsoSurfaceShader.end();
 	mIsoTexture1->end();
 
 	mIsoTexture2->begin();
-	mIsoShader.begin();
-	mMiniCamera->aim(0,0,mIsoTexture2->w,mIsoTexture2->h,mIsoShader);
+	mIsoSurfaceShader.begin();
+	mMiniCamera->aim(0,0,mIsoTexture2->w,mIsoTexture2->h,mIsoSurfaceShader);
 	mSimulation2->getSource().mIsoSurface.draw();
-	mIsoShader.end();
+	mIsoSurfaceShader.end();
 	mIsoTexture2->end();
 
 	glViewport(0,0,width,height);
@@ -383,9 +490,11 @@ SimulationComparisonVisualizer::render()
 	glDisable(GL_DEPTH_TEST);
 	mIsoTexture1->render(mWin);
 	mIsoTexture2->render(mWin);
+	*/
 	mSubtitle1->render(mWin);
 	mSubtitle2->render(mWin);
-
+	CHECK_GL_ERROR();
+	/*
 	if(isRunning()){
 		std::stringstream ostr1,ostr2,ostr3;
 		ostr1 << mOutputDirectory<<"sim_screenshot_"<<std::setw(8)<<std::setfill('0')<< mSimulation1->getSimulationIteration() << ".png";
@@ -401,7 +510,7 @@ SimulationComparisonVisualizer::render()
 		}
 		WriteImageToFile(ostr1.str(),tmp2,width,height);
 	}
-
+	*/
 }
 
 
@@ -411,7 +520,7 @@ SimulationComparisonVisualizer::keyCallback(GLFWwindow* win,int key, int action,
     bool keyPress = (glfwGetKey(win,key) == GLFW_PRESS);
     mCamera->keyCallback(win,key, action);
     if(keyPress){
-		if(key==' '){
+		if(key==GLFW_KEY_ENTER){
 			if(mSimulation1->isRunning()){
 				std::cout<<"############# STOP #############"<<std::endl;
 				stop();
@@ -419,6 +528,17 @@ SimulationComparisonVisualizer::keyCallback(GLFWwindow* win,int key, int action,
 				std::cout<<"############# START #############"<<std::endl;
 				resume();
 			}
+		} else if(key=='P'){
+			mShowParticles=!mShowParticles;
+		}  else if(key=='I'){
+			mShowIsoSurface=!mShowIsoSurface;
+		}  else if(key=='E'){
+			mShowSpringls=!mShowSpringls;
+		} else if(key==GLFW_KEY_SPACE){
+			mSimulation1->step();
+			mSimulation1->fireUpdateEvent();
+			mSimulation2->step();
+			mSimulation2->fireUpdateEvent();
 		}
     }
     setNeedsDisplay();

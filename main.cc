@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
 						break;
 					}
 					SplashSimulation sim(sourceFileName,dim,scheme);
-					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_HEIGHT,WIN_HEIGHT,dirName);
+					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
 					status=EXIT_SUCCESS;
 				}
 			} else if(args[i]== "-dam_break"){
@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 						break;
 					}
 					DamBreakSimulation sim(sourceFileName,dim,scheme);
-					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_HEIGHT,WIN_HEIGHT,dirName);
+					SimulationVisualizer::run(static_cast<Simulation*>(&sim),WIN_WIDTH,WIN_HEIGHT,dirName);
 					status=EXIT_SUCCESS;
 				}
 			} else if(args[i]=="-twist"){

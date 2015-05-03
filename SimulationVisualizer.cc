@@ -123,13 +123,19 @@ void SimulationVisualizer::run(Simulation* simulation,int width,int height,const
 void SimulationVisualizer::start(){
 	if(mSimulation!=NULL){
 		mSimulation->reset();
-		mMiniCamera->loadConfig();
+		mCamera->loadConfig();
+		mShowParticles=mCamera->config.mShowParticles;
+		mShowIsoSurface=mCamera->config.mShowIsoSurface;
+		mShowSpringls=mCamera->config.mShowSpringls;
 		mSimulation->start();
 	}
 }
 void SimulationVisualizer::resume(){
 	if(mSimulation!=NULL){
-		mMiniCamera->loadConfig();
+		mCamera->loadConfig();
+		mShowParticles=mCamera->config.mShowParticles;
+		mShowIsoSurface=mCamera->config.mShowIsoSurface;
+		mShowSpringls=mCamera->config.mShowSpringls;
 		mSimulation->start();
 	}
 }
@@ -177,6 +183,9 @@ bool SimulationVisualizer::run(int width,int height){
 
     mMiniCamera->loadConfig();
     mCamera->loadConfig();
+	mShowParticles=mCamera->config.mShowParticles;
+	mShowIsoSurface=mCamera->config.mShowIsoSurface;
+	mShowSpringls=mCamera->config.mShowSpringls;
 
  	mIsoSurfaceShader.Init("./matcap/JG_Silver.png");
 	mSpringlsShader.Init("./matcap/JG_Silver.png");
@@ -256,6 +265,9 @@ bool SimulationVisualizer::run(int width,int height){
         glfwPollEvents();
 		std::this_thread::sleep_for(std::chrono::milliseconds(20));
     } while (!glfwWindowShouldClose(mWin));
+    mCamera->config.mShowParticles=mShowParticles;
+    mCamera->config.mShowIsoSurface=mShowIsoSurface;
+    mCamera->config.mShowSpringls=mShowSpringls;
     mCamera->saveConfig();
     glfwTerminate();
     return true;
@@ -382,7 +394,7 @@ SimulationVisualizer::render()
 		mOverlayShader->render(mWin);
 		mMiniViewTexture->render(mWin);
     }
-	/*
+
 	if(isRunning()){
 		std::stringstream ostr1,ostr2,ostr3;
 		ostr1 << mOutputDirectory<<"sim_screenshot_"<<std::setw(8)<<std::setfill('0')<< mSimulation->getSimulationIteration() << ".png";
@@ -400,7 +412,7 @@ SimulationVisualizer::render()
 			std::cout<<"Wrote "<<ostr1.str()<<std::endl;
 		}
 	}
-	*/
+
 	mCamera->setNeedsDisplay(false);
 	mDrawLock.unlock();
 }

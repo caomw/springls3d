@@ -123,7 +123,7 @@ void SimulationVisualizer::run(Simulation* simulation,int width,int height,const
 void SimulationVisualizer::start(){
 	if(mSimulation!=NULL){
 		mSimulation->reset();
-		mCamera->loadConfig();
+		//mCamera->loadConfig();
 		mShowParticles=mCamera->config.mShowParticles;
 		mShowIsoSurface=mCamera->config.mShowIsoSurface;
 		mShowSpringls=mCamera->config.mShowSpringls;
@@ -132,7 +132,7 @@ void SimulationVisualizer::start(){
 }
 void SimulationVisualizer::resume(){
 	if(mSimulation!=NULL){
-		mCamera->loadConfig();
+		//mCamera->loadConfig();
 		mShowParticles=mCamera->config.mShowParticles;
 		mShowIsoSurface=mCamera->config.mShowIsoSurface;
 		mShowSpringls=mCamera->config.mShowSpringls;

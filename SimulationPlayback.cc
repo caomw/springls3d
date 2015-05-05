@@ -36,19 +36,29 @@ bool SimulationPlayback::init(){
 	mTimeSteps.clear();
 	std::vector<std::string> jsonFiles;
 	int n=GetDirectoryListing(mDirectory,jsonFiles,"",".sim");
+
 	Json::Reader reader;
 	SpringLevelSetDescription springlDesc;
 	SimulationTimeStepDescription simDesc;
 	std::ifstream ifs;
-	if(n==0)return false;
+	if(n==0){
+		std::cout<<"Could not find any *.sim files"<<std::endl;
+		return false;
+	}
 	for(std::string& file:jsonFiles){
 		Json::Value deserializeRoot;
 		ifs.open(file, std::ifstream::in);
-		if (!ifs.is_open()) return false;
+		if (!ifs.is_open()) {
+			std::cout<<"Could not open "<<file<<std::endl;
+			return false;
+		}
 		std::string input((std::istreambuf_iterator<char>(ifs)),
 		std::istreambuf_iterator<char>());
 		ifs.close();
-		if ( !reader.parse(input, deserializeRoot) )return false;
+		if ( !reader.parse(input, deserializeRoot) ){
+			std::cout<<"Could not parse "<<file<<std::endl;
+			continue;
+		}
 		springlDesc.deserialize(deserializeRoot["Simulation Record"]);
 		simDesc.deserialize(deserializeRoot["Simulation Record"]);
 		mIsoSurfaceFiles.push_back(springlDesc.mIsoSurfaceFile);
@@ -71,6 +81,7 @@ bool SimulationPlayback::init(){
 	if(mSimulationIteration<mIsoSurfaceFiles.size()&&mIsoSurfaceFiles[mSimulationIteration].length()>0&&mSource.mIsoSurface.openMesh(mDirectory+GetFileName(mIsoSurfaceFiles[mSimulationIteration]))){
 		mSource.mIsoSurface.updateVertexNormals(4);
 	}
+
 	if(mSimulationIteration<mParticleVolumeFiles.size()&&mParticleVolumeFiles[mSimulationIteration].length()>0&&mSource.mParticleVolume.open(mDirectory+GetFileName(mParticleVolumeFiles[mSimulationIteration]))){
 	}
 
@@ -99,9 +110,6 @@ bool SimulationPlayback::init(){
 	return true;
 }
 bool SimulationPlayback::step(){
-	//while(mIsMeshDirty&&mRunning){
-	//	std::this_thread::sleep_for(std::chrono::milliseconds(10));
-	//}
 	if(mSimulationIteration<mConstellationFiles.size()&&mConstellationFiles[mSimulationIteration].length()>0&&mTemporaryMesh.openMesh(mDirectory+GetFileName(mConstellationFiles[mSimulationIteration]))){
 		mSource.mConstellation.create(&mTemporaryMesh);
 		mSource.mConstellation.updateVertexNormals();

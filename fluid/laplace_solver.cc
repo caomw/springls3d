@@ -74,7 +74,7 @@ static double product(RegularGrid<char>& A, RegularGrid<float>& x,
 	static double ans;
 	ans = 0.0;
 #ifdef MP
-#pragma omp for reduction(+:ans)
+#pragma omp parallel for reduction(+:ans)
 #endif
 	FOR_EVERY_GRID_CELL(A)
 		{

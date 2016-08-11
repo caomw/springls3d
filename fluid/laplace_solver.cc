@@ -18,7 +18,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- *  This implementation of a PIC/FLIP static_cast<char>(ObjectType::FLUID) simulator is derived from:
+ *  This implementation of a PIC/FLIP fluid simulator is derived from:
  *
  *  Ando, R., Thurey, N., & Tsuruno, R. (2012). Preserving fluid sheets with adaptively sampled anisotropic particles.
  *  Visualization and Computer Graphics, IEEE Transactions on, 18(8), 1202-1214.

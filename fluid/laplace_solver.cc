@@ -20,7 +20,7 @@
  *
  *  This implementation of a PIC/FLIP static_cast<char>(ObjectType::FLUID) simulator is derived from:
  *
- *  Ando, R., Thurey, N., & Tsuruno, R. (2012). Preserving static_cast<char>(ObjectType::FLUID) sheets with adaptively sampled anisotropic particles.
+ *  Ando, R., Thurey, N., & Tsuruno, R. (2012). Preserving fluid sheets with adaptively sampled anisotropic particles.
  *  Visualization and Computer Graphics, IEEE Transactions on, 18(8), 1202-1214.
  */
 #include "laplace_solver.h"
